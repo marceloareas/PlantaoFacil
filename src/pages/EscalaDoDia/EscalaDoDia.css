@@ -1,0 +1,48 @@
+.escala-page {
+    padding: 20px;
+}
+
+.escala-layout {
+    display: flex;
+    gap: 40px;
+}
+
+.nomes-box,
+.escala-box {
+    flex: 1;
+}
+
+.nomes-table,
+.escala-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.nomes-table th,
+.nomes-table td,
+.escala-table th,
+.escala-table td {
+    border: 1px solid #000;
+    padding: 10px;
+    text-align: center;
+}
+
+.nome-item {
+    cursor: grab;
+    background-color: #f7f7f7;
+    border-radius: 4px;
+}
+
+.nome-item:active {
+    cursor: grabbing;
+}
+
+.escala-cell {
+    min-height: 40px;
+    background-color: #fafafa;
+    transition: background 0.3s;
+}
+
+.escala-cell:hover {
+    background-color: #e3f2fd;
+}
