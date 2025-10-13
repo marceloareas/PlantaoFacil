@@ -4,14 +4,16 @@ import "./EscalaDoDia.css";
 
 const EscalaDoDia = () => {
     const { data } = useParams();
-    const dataObj = new Date(data);
 
-    // Lista com categoria, nome e horário
     const [nomesDisponiveis, setNomesDisponiveis] = useState([
         { nome: "Andressa", categoria: "Categoria 1", horario: "08-12h" },
         { nome: "Antonio", categoria: "Categoria 1", horario: "13-17h" },
         { nome: "Luiz", categoria: "Categoria 2", horario: "08-12h" },
         { nome: "Nickolas", categoria: "Categoria 2", horario: "13-17h" },
+    ]);
+
+    const [nomesAusentes, setNomesAusentes] = useState([
+        { nome: "Marcelo", categoria: "Categoria 1", horario: "08-12h" }
     ]);
 
     const [escala, setEscala] = useState([
@@ -34,13 +36,11 @@ const EscalaDoDia = () => {
         setEscala(novaEscala);
     };
 
-    // Ordenar os nomes por horário (08-12h antes de 13-17h)
     const ordenarPorHorario = (a, b) => {
         const horarios = { "08-12h": 1, "13-17h": 2 };
         return horarios[a.horario] - horarios[b.horario];
     };
 
-    // Filtrar nomes por categoria
     const nomesPorCategoria = (categoria) =>
         nomesDisponiveis
             .filter((n) => n.categoria === categoria)
@@ -48,11 +48,7 @@ const EscalaDoDia = () => {
 
     const handleSubmit = (e) => {
         e.preventDefault();
-
-        // Aqui você pode enviar os dados da escala para uma API, salvar no localStorage, etc.
         console.log("Escala submetida:", escala);
-
-        // Exemplo: alert
         alert("Escala enviada com sucesso!");
     };
 
@@ -60,11 +56,10 @@ const EscalaDoDia = () => {
         <div className="escala-page">
             <h2>
                 Escala do Dia:{" "}
-                {dataObj.toLocaleDateString() || "Nenhuma data selecionada"}
+                {data ? data.replaceAll("-", "/") : "Nenhuma data selecionada"}
             </h2>
 
             <div className="escala-layout">
-                {/* Tabela lateral com nomes por categoria */}
                 <div className="nomes-box">
                     <h3>Nomes disponíveis</h3>
                     <table className="nomes-table">
@@ -84,7 +79,9 @@ const EscalaDoDia = () => {
                                             {nomes1[idx] ? (
                                                 <div
                                                     draggable
-                                                    onDragStart={(e) => handleDragStart(e, nomes1[idx].nome)}
+                                                    onDragStart={(e) =>
+                                                        handleDragStart(e, nomes1[idx].nome)
+                                                    }
                                                     className="nome-item"
                                                 >
                                                     {`${nomes1[idx].nome} - ${nomes1[idx].horario}`}
@@ -95,7 +92,9 @@ const EscalaDoDia = () => {
                                             {nomes2[idx] ? (
                                                 <div
                                                     draggable
-                                                    onDragStart={(e) => handleDragStart(e, nomes2[idx].nome)}
+                                                    onDragStart={(e) =>
+                                                        handleDragStart(e, nomes2[idx].nome)
+                                                    }
                                                     className="nome-item"
                                                 >
                                                     {`${nomes2[idx].nome} - ${nomes2[idx].horario}`}
@@ -109,9 +108,8 @@ const EscalaDoDia = () => {
                     </table>
                 </div>
 
-                {/* Tabela principal da escala com formulário */}
                 <div className="escala-box">
-                    <form onSubmit={handleSubmit}>
+                    <form onSubmit={handleSubmit} className="form">
                         <table className="escala-table">
                             <thead>
                                 <tr>
@@ -146,6 +144,23 @@ const EscalaDoDia = () => {
                             Enviar Escala
                         </button>
                     </form>
+                </div>
+
+                <div className="ausentes-box">
+                    <table className="colab-ausente">
+                        <thead>
+                            <tr>
+                                <th>Colaboradores Ausentes</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {nomesAusentes.map((colab, idx) => (
+                                <tr key={idx}>
+                                    <th>{colab.nome}</th>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
