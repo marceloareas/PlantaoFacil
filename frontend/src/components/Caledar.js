@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import "./Calendar.css"; // Importa o CSS com !important
+import "./Calendar.css"; 
 import { FaArrowRight } from "react-icons/fa";
 import { FaArrowLeft } from "react-icons/fa";
 import EscalaDoDia from "../pages/EscalaDoDia/EscalaDoDia";

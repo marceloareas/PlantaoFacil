@@ -109,6 +109,7 @@ const EscalaDoDia = () => {
                 </div>
 
                 <div className="escala-box">
+                    <h3>Escala</h3>
                     <form onSubmit={handleSubmit} className="form">
                         <table className="escala-table">
                             <thead>
@@ -147,16 +148,17 @@ const EscalaDoDia = () => {
                 </div>
 
                 <div className="ausentes-box">
+                    <h3>Colaboradores Ausentes</h3>
                     <table className="colab-ausente">
                         <thead>
                             <tr>
-                                <th>Colaboradores Ausentes</th>
+                                <th>Nome</th>
                             </tr>
                         </thead>
                         <tbody>
                             {nomesAusentes.map((colab, idx) => (
                                 <tr key={idx}>
-                                    <th>{colab.nome}</th>
+                                    <td>{colab.nome}</td>
                                 </tr>
                             ))}
                         </tbody>

@@ -7,6 +7,7 @@ import { useState } from 'react';
 import CalendarPage from './components/Caledar';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import EscalaDoDia from './pages/EscalaDoDia/EscalaDoDia';
+import EscalaDaSemana from './pages/EscalaDaSemana/EscalaDaSemana';
 
 function App() {
 
@@ -14,17 +15,18 @@ function App() {
   const [showRelat, setShowRelat] = useState(false);
 
   function Home() {
-    // const navigate = useNavigate();
     return (
-      <h1>
-        Bem vindo ao Plantão Fácil!
-      </h1>
+      <div>
+        <h1 style={{marginLeft: "20px" }}>
+          Bem vindo ao Plantão Fácil!
+        </h1>
+        <EscalaDaSemana/>
+      </div>
     );
   }
 
   return (
     <Router>
-      {/* Menu fullscreen renderizado acima de tudo */}
       {showMenu && (
         <div className="fullscreen-menu">
           <button className="close-button" onClick={() => setShowMenu(false)}>×</button>
@@ -43,7 +45,7 @@ function App() {
               </a>
 
               {showRelat && (
-                <ul className="submenu"> {/* submenu específico */}
+                <ul className="submenu">
                   <li>
                     <a href="/relatorio1" onClick={() => setShowMenu(false)}>Relatório 1</a>
                   </li>
@@ -75,7 +77,7 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/SignUp" element={<SignUpPage />} />
-            <Route path="/Calendar" element={<CalendarPage/>} />
+            <Route path="/Calendar" element={<CalendarPage />} />
             <Route path="/escalaDoDia/:data" element={<EscalaDoDia />} />
           </Routes>
         </div>

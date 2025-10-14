@@ -12,7 +12,6 @@ const SignUpModal = ({ show, onClose }) => {
   const [cargo, setCargo] = useState('');
   const [error, setError] = useState('');
 
-  // Máscara CPF
   const handleCpfChange = (e) => {
     let value = e.target.value.replace(/\D/g, "");
     value = value.replace(/(\d{3})(\d)/, "$1.$2");
@@ -28,11 +27,10 @@ const SignUpModal = ({ show, onClose }) => {
       return;
     }
     setError("");
-    // lógica de cadastro...
-    onClose(); // fecha o modal depois do cadastro
+    onClose(); 
   };
 
-  if (!show) return null; // se não estiver visível, não renderiza nada
+  if (!show) return null; 
 
   return (
     <>
@@ -133,7 +131,6 @@ const SignUpModal = ({ show, onClose }) => {
         </div>
       </div>
 
-      {/* Fundo escuro */}
       <div className="modal-backdrop fade show"></div>
     </>
   );

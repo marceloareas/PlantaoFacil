@@ -1,9 +1,8 @@
-/* src/LoginPage.css */
 .container {
   min-height: calc(100vh - 94px);
   display: flex;
   align-items: center;
-  justify-content: center; /* Adiciona centralização horizontal */
+  justify-content: center; 
 }
 .marginTop{
   margin-top: 2px;
@@ -15,7 +14,7 @@
   border-radius: 4px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   font-family: sans-serif;
-  background-color: white; /* opcional: para contraste com o fundo */
+  background-color: white; 
 }
 
   

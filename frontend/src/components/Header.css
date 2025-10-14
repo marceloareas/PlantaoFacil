@@ -1,4 +1,3 @@
-/* Container principal do header */
 .Container {
   background-color: #333;
   display: flex;
@@ -8,7 +7,6 @@
   flex-wrap: wrap;
 }
 
-/* Título do site */
 .Container h3 {
   margin: 0;
   font-size: 30px;
@@ -20,7 +18,6 @@
   text-decoration: none;
 }
 
-/* Navegação */
 nav ul {
   list-style: none;
   display: flex;
@@ -29,7 +26,6 @@ nav ul {
   padding: 0;
 }
 
-/* Estilo geral dos links */
 nav ul li a {
   color: aliceblue;
   text-decoration: none;
@@ -43,7 +39,6 @@ nav ul li a:hover,
   background-color: #111;
 }
 
-/* Botão de login */
 .login-button {
   background: none;
   border: none;
@@ -55,7 +50,6 @@ nav ul li a:hover,
   transition: background-color 0.3s ease;
 }
 
-/* Responsividade (exemplo básico) */
 @media (max-width: 768px) {
   .Container {
     flex-direction: column;
