@@ -310,7 +310,7 @@ const EscalaDoDia = () => {
                     </div>
                 </div>
             )} 
-            {!user && user.cargo !== "Coordenador" && (
+            {user && user.cargo !== "Coordenador" && (
             <h2>Você não tem permissão para acessar esta página.</h2>
             )}
         </div>
