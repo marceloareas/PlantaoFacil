@@ -26,7 +26,8 @@ const EscalaDoDia = () => {
                 const dataRes = await res.json();
                 setUsuarios(dataRes);
 
-                const uniqueCategorias = [...new Set(dataRes.map((u) => u.cargo))];
+                const uniqueCategorias = [...new Set(dataRes.map((u) => u.cargo))
+                ].filter((cargo) => cargo.toLowerCase() !== "coordenador");
                 setCategorias(uniqueCategorias);
             } catch (err) {
                 console.error("Erro ao buscar usuários:", err);
@@ -100,16 +101,18 @@ const EscalaDoDia = () => {
         fetchAusentes();
     }, [data]);
 
-    const nomesPorCategoria = (categoria) =>
+    const nomesPorCategoria = (categoria, horario) =>
         usuarios
-            .filter((u) => u.cargo === categoria) 
+            .filter((u) => u.cargo === categoria)
             .filter(
                 (u) =>
                     !nomesAusentes.some(
                         (ausente) =>
-                            ausente.nome === u.nome_completo && ausente.ausente === "Sim"
+                            ausente.nome === u.nome_completo &&
+                            ausente.ausente === "Sim" &&
+                            ausente.horario === horario
                     )
-            ) 
+            )
             .map((u) => ({ nome: u.nome_completo, cargo: u.cargo }));
 
     const handleDragStart = (e, nome) => {
@@ -124,6 +127,7 @@ const EscalaDoDia = () => {
 
         const categoriaAlvo = categorias[col];
         const usuario = usuarios.find((u) => u.nome_completo === nome);
+        const horarioAlvo = horarios[row];
 
         if (!usuario) {
             alert("Usuário não encontrado!");
@@ -132,6 +136,19 @@ const EscalaDoDia = () => {
 
         if (usuario.cargo !== categoriaAlvo) {
             alert(`Erro: ${nome} não pertence à categoria ${categoriaAlvo}`);
+            return;
+        }
+
+        const estaAusente = nomesAusentes.some(
+            (ausente) =>
+                ausente.nome === usuario.nome_completo &&
+                ausente.ausente === "Sim" &&
+                ausente.horario === horarioAlvo
+        );
+
+
+        if (estaAusente) {
+            alert(`Erro: ${nome} está ausente neste horário (${horarioAlvo})`);
             return;
         }
 
@@ -213,8 +230,12 @@ const EscalaDoDia = () => {
                                 {Array.from({ length: maxRows }).map((_, rowIdx) => (
                                     <tr key={rowIdx}>
                                         {categorias.map((cat, colIdx) => {
-                                            const nomes = nomesPorCategoria(cat);
-                                            return (
+                                            const nomes = Array.from(
+                                                new Map(
+                                                    horarios.flatMap(h => nomesPorCategoria(cat, h))
+                                                        .map(u => [u.nome, u])
+                                                ).values()
+                                            ); return (
                                                 <td key={colIdx}>
                                                     {nomes[rowIdx] && (
                                                         <div
@@ -299,7 +320,7 @@ const EscalaDoDia = () => {
                             </thead>
                             <tbody>
                                 {nomesAusentes
-                                    .filter(item => item.ausente === "Sim") 
+                                    .filter(item => item.ausente === "Sim")
                                     .map((colab) => (
                                         <tr key={colab.id}>
                                             <td>{`${colab.nome} - ${colab.horario}`}</td>
@@ -309,9 +330,9 @@ const EscalaDoDia = () => {
                         </table>
                     </div>
                 </div>
-            )} 
+            )}
             {user && user.cargo !== "Coordenador" && (
-            <h2>Você não tem permissão para acessar esta página.</h2>
+                <h2>Você não tem permissão para acessar esta página.</h2>
             )}
         </div>
     );

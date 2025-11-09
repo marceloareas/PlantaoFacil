@@ -34,6 +34,27 @@ def list_users(db: Session = Depends(get_db)):
     users = db.query(User).all()
     return users
 
+@router.put("/{user_id}")
+def update_user(user_id: int, user: UserCreate, db: Session = Depends(get_db)):
+    db_user = db.query(User).filter(User.id == user_id).first()
+    if not db_user:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+
+    # Atualiza apenas os campos enviados
+    db_user.email = user.email
+    db_user.password = user.password
+    db_user.crm = user.crm
+    db_user.cpf = user.cpf
+    db_user.nome_completo = user.nome_completo
+    db_user.cargo = user.cargo
+
+    db.commit()
+    db.refresh(db_user)
+
+    return {
+        "message": "Usuário atualizado com sucesso ✅",
+        "user": db_user
+    }
 @LoginRouter.post("/")
 def login(user: UserLogin, db: Session = Depends(get_db)):
     db_user = db.query(User).filter(User.email == user.email).first() 

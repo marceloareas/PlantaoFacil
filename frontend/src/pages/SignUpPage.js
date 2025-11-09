@@ -19,6 +19,20 @@ const SignUpModal = ({ show, onClose }) => {
     setCpf(value);
   };
 
+  const handleCoren = (coren) => {
+    const value = coren.trim().toUpperCase();
+    const regex = /^[0-9]{3,6}-[A-Z]{2}\/(ENF|TE|AE|OBST)$/;
+
+    if (!regex.test(value)) {
+      return {
+        valido: false,
+        mensagem: "Formato inválido! Use o padrão: XXXXXX-YY/ZZZ"
+      };
+    }
+
+    return { valido: true };
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -27,10 +41,16 @@ const SignUpModal = ({ show, onClose }) => {
       return;
     }
 
-    setError(""); 
+    const corenValidacao = handleCoren(crms);
+    if (!corenValidacao.valido) {
+      setError(corenValidacao.mensagem);
+      return;
+    }
+
+    setError("");
 
     const payload = {
-      nome_completo: name,  
+      nome_completo: name,
       email,
       password,
       crm: crms,
@@ -124,6 +144,7 @@ const SignUpModal = ({ show, onClose }) => {
                   <input
                     type="text"
                     className="form-control"
+                    placeholder=' Ex: 123456-RJ/ENF'
                     value={crms}
                     onChange={(e) => setCrms(e.target.value)}
                     required

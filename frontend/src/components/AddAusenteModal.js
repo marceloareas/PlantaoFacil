@@ -24,7 +24,8 @@ const AddAusenteModal = ({ show, onClose, onSuccess }) => {
                 const res = await fetch("http://localhost:8000/usuario/");
                 const data = await res.json();
                 setFuncionarios(data);
-                const cargosUnicos = [...new Set(data.map(u => u.cargo))];
+                const cargosUnicos = [...new Set(data.map(u => u.cargo)
+                )].filter((cargo) => cargo.toLowerCase() !== "coordenador");
                 setCargos(cargosUnicos);
             } catch (err) {
                 console.error(err);

@@ -11,7 +11,7 @@ import EscalaDaSemana from './pages/EscalaDaSemana/EscalaDaSemana';
 import FuncionariosAusentes from './pages/FuncAusente';
 import ApiServer from './components/api/Api';
 import { IoPersonCircleSharp } from "react-icons/io5";
-
+import Pessoas from "./pages/Pessoas/Pessoas";
 function App() {
 
   const [showMenu, setShowMenu] = useState(false);
@@ -29,6 +29,7 @@ function App() {
     sessionStorage.removeItem('user');
     setUser(null);
     setShowMenu(false);
+    window.location.reload();
   };
 
   const handleLoginSuccess = (userData) => {
@@ -82,7 +83,7 @@ function App() {
                   <a className="menu-username"><IoPersonCircleSharp /> Logado como <strong>{user.nome_completo}</strong> ({user.cargo})</a>
                 </li>
                 <li>
-                  <a className="menu-link" onClick={handleLogout}>Logout</a>
+                  <a className="menu-link" onClick={() => {handleLogout(); setShowMenu(false)}}>Logout</a>
                 </li>
               </>
             )}
@@ -115,6 +116,7 @@ function App() {
               <>
                 <li><a href="/Calendar" onClick={() => setShowMenu(false)}>Calendário</a></li>
                 <li><a href='/Ausentes' onClick={() => setShowMenu(false)}>Funcionários Ausentes</a></li>
+                <li><a href="/pessoas" onClick={() => setShowMenu(false)}>Funcionários</a></li>
                 <li><a href="/settings" onClick={() => setShowMenu(false)}>Configurações</a></li>
                 <li><a href="/help" onClick={() => setShowMenu(false)}>Ajuda</a></li>
               </>
@@ -134,6 +136,7 @@ function App() {
             <Route path="/Calendar" element={<CalendarPage />} />
             <Route path="/escalaDoDia/:data" element={<EscalaDoDia />} />
             <Route path="/Ausentes" element={<FuncionariosAusentes />} />
+            <Route path="/pessoas" element={<Pessoas />} />
           </Routes>
         </div>
       </div>

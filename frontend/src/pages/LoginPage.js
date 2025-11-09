@@ -36,6 +36,7 @@ const LoginModal = ({ show, onClose }) => {
       onClose();
 
       console.log("Login bem-sucedido:", defaultUser);
+      window.location.reload();
     }
     else {
       try {
@@ -67,7 +68,7 @@ const LoginModal = ({ show, onClose }) => {
         onClose();
 
         console.log("Login successful:", data);
-
+        window.location.reload();
       } catch (err) {
         setError("Erro de conexão com o servidor");
       }

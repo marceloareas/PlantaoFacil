@@ -20,10 +20,12 @@ const Header = ({ onOpenMenu }) => {
     sessionStorage.removeItem('token');
     sessionStorage.removeItem('user');
     setUser(null);
+    window.location.reload();
   };
 
   const handleLoginSuccess = (userData) => {
     setUser(userData);
+    window.location.reload();
   };
 
   return (
