@@ -5,8 +5,11 @@
 .bgImage {
   position: relative;
   /* background-image: url("https://w0.peakpx.com/wallpaper/20/335/HD-wallpaper-my-little-med-diary-medical-school-motivation-medical-med-school-motivation-medical-study.jpg"); */
-  background-image: url("https://img.freepik.com/fotos-premium/vista-de-angulo-alto-de-plantas-em-mesa-contra-fundo-branco_1048944-21057526.jpg");
+  /* background-image: url("https://img.freepik.com/fotos-premium/vista-de-angulo-alto-de-plantas-em-mesa-contra-fundo-branco_1048944-21057526.jpg"); */
+  /* background-image: url("https://github.com/andressa-oliveira21051/Fotos/blob/main/Background_reduzida.png?raw=true"); */
+
   background-position: center;
+  background-color: #d7f5ff;
   background-repeat: no-repeat;
   height: calc(100vh - 68px);
   overflow: hidden;

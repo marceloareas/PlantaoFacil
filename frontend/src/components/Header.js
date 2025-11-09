@@ -4,6 +4,8 @@ import { NavLink } from "react-router-dom";
 import LoginModal from '../pages/LoginPage';
 import SignUpModal from '../pages/SignUpPage';
 import { IoPersonCircleSharp } from "react-icons/io5";
+import { PiStethoscopeFill } from "react-icons/pi";
+
 
 const Header = ({ onOpenMenu }) => {
   const [user, setUser] = useState(null);
@@ -31,7 +33,7 @@ const Header = ({ onOpenMenu }) => {
   return (
     <div className='Container'>
       <h3 className='two alt-two'>
-        <NavLink to="/" end>Plantão Fácil</NavLink>
+        <NavLink to="/" end><PiStethoscopeFill />  Plantão Fácil</NavLink>
       </h3>
       <nav>
         <ul>
