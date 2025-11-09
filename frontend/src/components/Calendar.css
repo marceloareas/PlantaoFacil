@@ -1,0 +1,87 @@
+.calendar-container {
+  background-color: aliceblue;
+  border-radius: 20px;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  padding: 20px !important;
+}
+
+.calendar-header {
+  background-color: #ccc;
+  padding: 10px 15px !important;
+  border-radius: 10px;
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  width: 100% !important;
+  max-width: 400px !important;
+  margin-bottom: 15px !important;
+}
+
+.calendar-header h2 {
+  font-size: 20px !important;
+  font-weight: bold !important;
+}
+
+.calendar-grid {
+  display: grid !important;
+  max-height: 400px;
+  min-height: 400px;
+  grid-template-columns: repeat(7, 1fr) !important;
+  gap: 8px !important;
+  width: 100% !important;
+  max-width: 400px !important;
+  min-width: 400px !important;
+  text-align: center !important;
+}
+
+.calendar-day-name {
+  font-weight: bold !important;
+}
+
+.calendar-day {
+  border-color: black;
+  border: 2px solid !important;
+  background-color: rgb(207, 211, 211);
+  padding: 10px !important;
+  border-radius: 6px !important;
+  min-height: 40px !important;
+}
+
+.calendar-day:hover {
+  border-color: black;
+  border: 2px solid !important;
+  background-color: rgb(137, 247, 247);
+  padding: 10px !important;
+  border-radius: 6px !important;
+  min-height: 40px !important;
+}
+
+.calendar-today {
+  background-color: #4da6ff !important;
+  color: white !important;
+  border-color: black !important;
+  font-weight: bold !important;
+}
+
+.calendar-today:hover {
+  background-color: rgb(137, 247, 247) !important;
+  color: rgb(0, 0, 0) !important;
+  text-decoration-color: black !important;
+  border-color: black !important;
+  font-weight: bold !important;
+}
+
+.PassButton {
+  align-items: center !important;
+  text-align: center !important;
+  background-color: white;
+  color: black;
+  border: 2px solid #555555;
+}
+
+.PassButton:hover {
+  background-color: #555555;
+  color: white;
+}
