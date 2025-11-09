@@ -1,5 +1,5 @@
 # 🌿 Plantão Fácil
-
+ 
 O **Plantão Fácil** é um aplicativo voltado para a **gestão de horários e plantões de enfermeiros e técnicos de enfermagem**.  
 Ele facilita a organização de escalas, trocas, horas extras e controle de férias, garantindo transparência e praticidade tanto para os profissionais quanto para os gestores.
 
