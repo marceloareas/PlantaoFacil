@@ -11,7 +11,7 @@
   background-position: center;
   background-color: #d7f5ff;
   background-repeat: no-repeat;
-  height: calc(100vh - 68px);
+  min-height: calc(100vh - 68px);
   overflow: hidden;
 }
 

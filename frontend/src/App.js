@@ -11,6 +11,10 @@ import EscalaDaSemana from './pages/EscalaDaSemana/EscalaDaSemana';
 import FuncionariosAusentes from './pages/FuncAusente';
 import ApiServer from './components/api/Api';
 import { IoPersonCircleSharp } from "react-icons/io5";
+import TrocasAprovacao from './pages/Trocas/TrocasAprovacao';
+import Trocas from './pages/Trocas/trocas';
+import Pessoas from './pages/Pessoas/Pessoas';
+
 
 function App() {
 
@@ -115,7 +119,9 @@ function App() {
               <>
                 <li><a href="/Calendar" onClick={() => setShowMenu(false)}>Calendário</a></li>
                 <li><a href='/Ausentes' onClick={() => setShowMenu(false)}>Funcionários Ausentes</a></li>
-                <li><a href="/settings" onClick={() => setShowMenu(false)}>Configurações</a></li>
+                <li><a href="/Pessoas" onClick={() => setShowMenu(false)}>Funcionários</a></li>
+                <li><a href="/Trocas" onClick={() => setShowMenu(false)}>Trocas</a></li>
+                <li><a href="/TrocasAprovacao" onClick={() => setShowMenu(false)}>Trocas para aprovação</a></li>
                 <li><a href="/help" onClick={() => setShowMenu(false)}>Ajuda</a></li>
               </>
             )}
@@ -134,11 +140,14 @@ function App() {
             <Route path="/Calendar" element={<CalendarPage />} />
             <Route path="/escalaDoDia/:data" element={<EscalaDoDia />} />
             <Route path="/Ausentes" element={<FuncionariosAusentes />} />
+            <Route path="/Trocas" element={<Trocas />} />
+            <Route path="/TrocasAprovacao" element={<TrocasAprovacao />} />
+            <Route path="/Pessoas" element={<Pessoas />} />
+            
           </Routes>
         </div>
       </div>
 
-      {/* Modal de login */}
       <LoginPage
         show={showLogin}
         onClose={() => setShowLogin(false)}

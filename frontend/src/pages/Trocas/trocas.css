@@ -1,5 +1,5 @@
 .troca-container {
-    max-width: 500px;
+    max-width: fit-content;
     margin: 40px auto;
     padding: 20px;
     border: 1px solid #ccc;
@@ -40,13 +40,12 @@ input, select, textarea {
 
 .trocas-aprovacao-container {
     padding: 20px;
-    max-width: 1000px;
+    max-width: fit-content;
     margin: 0 auto;
 }
 
 .tabela-trocas {
-    width: 100%;
-    border-collapse: collapse;
+    width: fit-content;
     background-color: #fafafa;
 }
 
@@ -97,4 +96,16 @@ input, select, textarea {
 
 .btn-rejeitar:hover {
     background-color: #c0392b;
+}
+.delete-btn {
+  background-color: #e74c3c;
+  color: white;
+  border: none;
+  padding: 5px 10px;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.delete-btn:hover {
+  background-color: #c0392b;
 }

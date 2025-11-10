@@ -23,20 +23,19 @@ const TrocasAprovacao = () => {
         fetchTrocas();
     }, []);
 
-    const atualizarStatus = async (id, novoStatus) => {
+    const atualizarsituacao = async (id, novosituacao) => {
         try {
             const endpoint =
-                novoStatus === "Aprovada"
+                novosituacao === "Aprovada"
                     ? `http://localhost:8000/trocas/${id}/aprovar`
                     : `http://localhost:8000/trocas/${id}/rejeitar`;
 
             const res = await fetch(endpoint, { method: "PUT" });
             if (!res.ok) throw new Error("Erro ao atualizar troca");
 
-            // Atualiza localmente
             setTrocas((prev) =>
                 prev.map((t) =>
-                    t.id === id ? { ...t, status: novoStatus } : t
+                    t.id === id ? { ...t, situacao: novosituacao } : t
                 )
             );
         } catch (err) {
@@ -61,12 +60,12 @@ const TrocasAprovacao = () => {
                     <thead>
                         <tr>
                             <th>ID</th>
-                            <th>Data</th>
-                            <th>Horário</th>
                             <th>Solicitante</th>
+                            <th>Seu Dia/Horário</th>
                             <th>Destinatário</th>
+                            <th>Dia/Horário do colega</th>
                             <th>Motivo</th>
-                            <th>Status</th>
+                            <th>situacao</th>
                             <th>Ações</th>
                         </tr>
                     </thead>
@@ -74,34 +73,28 @@ const TrocasAprovacao = () => {
                         {trocas.map((t) => (
                             <tr key={t.id}>
                                 <td>{t.id}</td>
-                                <td>{new Date(t.data).toLocaleDateString()}</td>
-                                <td>{t.horario}</td>
                                 <td>{t.solicitante}</td>
+                                <td>{t.meudia} - {t.horariosolicitante}</td>
                                 <td>{t.destinatario}</td>
+                                <td>{t.diacolega} - {t.horariodestinatario}</td>
                                 <td>{t.motivo || "—"}</td>
                                 <td>
-                                    <span
-                                        className={`status-${t.status.toLowerCase()}`}
-                                    >
-                                        {t.status}
+                                    <span className={`situacao-${t.situacao.toLowerCase()}`}>
+                                        {t.situacao}
                                     </span>
                                 </td>
                                 <td>
-                                    {t.status === "Pendente" && (
+                                    {t.situacao === "Pendente" && (
                                         <>
                                             <button
                                                 className="btn-aprovar"
-                                                onClick={() =>
-                                                    atualizarStatus(t.id, "Aprovada")
-                                                }
+                                                onClick={() => atualizarsituacao(t.id, "Aprovada")}
                                             >
                                                 Aprovar
                                             </button>
                                             <button
                                                 className="btn-rejeitar"
-                                                onClick={() =>
-                                                    atualizarStatus(t.id, "Rejeitada")
-                                                }
+                                                onClick={() => atualizarsituacao(t.id, "Rejeitada")}
                                             >
                                                 Rejeitar
                                             </button>
