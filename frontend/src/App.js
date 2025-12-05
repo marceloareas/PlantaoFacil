@@ -92,17 +92,18 @@ function App() {
             )}
 
             <li>
-              <a
-                href="#"
-                onClick={(e) => {
-                  e.preventDefault();
-                  setShowRelat((prev) => !prev);
-                }}
-                className="menu-link"
-              >
-                Relatórios
-              </a>
-
+              {user.cargo === "Coordenador" ? (
+                <a
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setShowRelat((prev) => !prev);
+                  }}
+                  className="menu-link"
+                >
+                  Relatórios
+                </a>
+              ) : null}
               {showRelat && (
                 <ul className="submenu">
                   <li>
@@ -119,9 +120,18 @@ function App() {
               <>
                 <li><a href="/Calendar" onClick={() => setShowMenu(false)}>Calendário</a></li>
                 <li><a href='/Ausentes' onClick={() => setShowMenu(false)}>Funcionários Ausentes</a></li>
-                <li><a href="/Pessoas" onClick={() => setShowMenu(false)}>Funcionários</a></li>
-                <li><a href="/Trocas" onClick={() => setShowMenu(false)}>Trocas</a></li>
-                <li><a href="/TrocasAprovacao" onClick={() => setShowMenu(false)}>Trocas para aprovação</a></li>
+                {user.cargo === "Coordenador" ? (
+
+                  <li><a href="/Pessoas" onClick={() => setShowMenu(false)}>Funcionários</a></li>
+                ) : null}
+                {user.cargo != "Coordenador" ? (
+
+                  <li><a href="/Trocas" onClick={() => setShowMenu(false)}>Trocas</a></li>
+                ) : null}
+                {user.cargo === "Coordenador" ? (
+
+                  <li><a href="/TrocasAprovacao" onClick={() => setShowMenu(false)}>Trocas para aprovação</a></li>
+                ) : null}
                 <li><a href="/help" onClick={() => setShowMenu(false)}>Ajuda</a></li>
               </>
             )}

@@ -42,12 +42,13 @@ const Header = ({ onOpenMenu, user, onLogout }) => {
               </button>
             </li>
           )}
-
-          <li>
+          {user && (
+            <li>
             <button className="login-button" onClick={onOpenMenu}>
               Menu
             </button>
           </li>
+      )}
         </ul>
       </nav>
 

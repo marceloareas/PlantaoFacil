@@ -222,7 +222,7 @@ const Trocas = () => {
   return (
     <div className="troca-container">
       <h2>Solicitar Troca de Plantão</h2>
-      {user ? (
+      {user && user.cargo != "Coordenador" ? (
         <>
           <form onSubmit={handleSubmit} className="troca-form">
             <label>Dia do plantão:</label>
@@ -353,7 +353,7 @@ const Trocas = () => {
           </div>
         </>
       ) : (
-        <p>Carregando usuário...</p>
+        <p> Você não tem acesso a esta página</p>
       )}
     </div>
   );
