@@ -28,7 +28,7 @@ const LoginModal = ({ show, onClose }) => {
     setError("");
 
     if (email === defaultUser.email && password === defaultUser.password) {
-      sessionStorage.setItem('user', JSON.stringify(defaultUser));
+      localStorage.setItem('user', JSON.stringify(defaultUser));
 
       setEmail('');
       setPassword('');
@@ -59,8 +59,8 @@ const LoginModal = ({ show, onClose }) => {
 
         const data = await response.json();
 
-        sessionStorage.setItem('token', data.token); 
-        sessionStorage.setItem('user', JSON.stringify(data.user));
+        localStorage.setItem('token', data.token); 
+        localStorage.setItem('user', JSON.stringify(data.user));
 
         setEmail('');
         setPassword('');

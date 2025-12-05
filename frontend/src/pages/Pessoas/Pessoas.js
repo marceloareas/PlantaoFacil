@@ -17,7 +17,7 @@ const Pessoas = () => {
 
     // 🔒 Verifica o token e o cargo do usuário
     useEffect(() => {
-        const userData = sessionStorage.getItem("user");
+        const userData = localStorage.getItem("user");
         if (userData) {
             const parsedUser = JSON.parse(userData);
             setUser(parsedUser);
@@ -41,7 +41,7 @@ const Pessoas = () => {
             if (!user || user.cargo.toLowerCase() !== "coordenador") return;
 
             try {
-                const token = sessionStorage.getItem("token");
+                const token = localStorage.getItem("token");
                 const res = await fetch("http://localhost:8000/usuario/", {
                     headers: {
                         Authorization: `Bearer ${token}`,

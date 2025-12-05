@@ -23,7 +23,7 @@ const Trocas = () => {
   };
 
   useEffect(() => {
-    const userData = sessionStorage.getItem("user");
+    const userData = localStorage.getItem("user");
     if (userData) setUser(JSON.parse(userData));
   }, []);
 

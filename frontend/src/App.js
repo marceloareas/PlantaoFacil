@@ -24,19 +24,19 @@ function App() {
   const [showLogin, setShowLogin] = useState(false);
 
   useEffect(() => {
-    const userData = sessionStorage.getItem('user');
+    const userData = localStorage.getItem('user');
     if (userData) setUser(JSON.parse(userData));
   }, []);
 
   const handleLogout = () => {
-    sessionStorage.removeItem('token');
-    sessionStorage.removeItem('user');
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
     setUser(null);
     setShowMenu(false);
   };
 
   const handleLoginSuccess = (userData) => {
-    sessionStorage.setItem('user', JSON.stringify(userData));
+    localStorage.setItem('user', JSON.stringify(userData));
     setUser(userData);
     setShowLogin(false);
     setShowMenu(false);
@@ -78,7 +78,7 @@ function App() {
           <ul className="menu">
             {!user ? (
               <li>
-                <a className="menu-link" onClick={() => {setShowLogin(true); setShowMenu(false);}}>Login</a>
+                <a className="menu-link" onClick={() => { setShowLogin(true); setShowMenu(false); }}>Login</a>
               </li>
             ) : (
               <>
@@ -129,7 +129,11 @@ function App() {
         </div>
       )}
 
-      <Header onOpenMenu={() => setShowMenu(true)} />
+      <Header
+        onOpenMenu={() => setShowMenu(true)}
+        user={user}
+        onLogout={handleLogout}
+      />
 
       <div className='bgImage'>
         <div className='Container-App'>
@@ -143,7 +147,7 @@ function App() {
             <Route path="/Trocas" element={<Trocas />} />
             <Route path="/TrocasAprovacao" element={<TrocasAprovacao />} />
             <Route path="/Pessoas" element={<Pessoas />} />
-            
+
           </Routes>
         </div>
       </div>

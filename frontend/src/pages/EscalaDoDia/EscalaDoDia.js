@@ -3,19 +3,20 @@ import { useState, useEffect } from "react";
 import "./EscalaDoDia.css";
 
 const EscalaDoDia = () => {
-    const { data } = useParams();
+    const { data } = useParams(); // espera formato "DD-MM-YYYY"
 
     const [usuarios, setUsuarios] = useState([]);
     const [categorias, setCategorias] = useState([]);
-    const [escala, setEscala] = useState([]);
+    const [escala, setEscala] = useState([]); // estrutura: [row][col] -> array de nomes
     const [nomesAusentes, setNomesAusentes] = useState([]);
     const [escalaExistente, setEscalaExistente] = useState([]);
+    const [escalaAnterior, setEscalaAnterior] = useState([]); // lista de objetos {Horario, Nome, Cargo}
     const [user, setUser] = useState(null);
 
     const horarios = ["08:00 - 12:00", "13:00 - 17:00"];
 
     useEffect(() => {
-        const userData = sessionStorage.getItem('user');
+        const userData = localStorage.getItem('user');
         if (userData) setUser(JSON.parse(userData));
     }, []);
 
@@ -26,8 +27,8 @@ const EscalaDoDia = () => {
                 const dataRes = await res.json();
                 setUsuarios(dataRes);
 
-                const uniqueCategorias = [...new Set(dataRes.map((u) => u.cargo))
-                ].filter((cargo) => cargo.toLowerCase() !== "coordenador");
+                const uniqueCategorias = [...new Set(dataRes.map((u) => u.cargo))]
+                    .filter((cargo) => cargo.toLowerCase() !== "coordenador");
                 setCategorias(uniqueCategorias);
             } catch (err) {
                 console.error("Erro ao buscar usuários:", err);
@@ -53,7 +54,7 @@ const EscalaDoDia = () => {
                 const res = await fetch(`http://localhost:8000/escaladodia/${data}`);
                 if (!res.ok) return;
                 const dataRes = await res.json();
-                setEscalaExistente(dataRes.Escala);
+                setEscalaExistente(dataRes.Escala || []);
             } catch (err) {
                 console.error("Erro ao buscar escala:", err);
             }
@@ -62,6 +63,7 @@ const EscalaDoDia = () => {
         fetchEscala();
     }, [data]);
 
+    // Monta a escala a partir do objeto escalaExistente
     useEffect(() => {
         if (escalaExistente.length === 0 || categorias.length === 0) return;
 
@@ -79,6 +81,44 @@ const EscalaDoDia = () => {
 
         setEscala(novaEscala);
     }, [escalaExistente, categorias]);
+
+    // Busca escala do dia anterior (mesmo formato de resposta)
+    useEffect(() => {
+        const fetchEscalaAnterior = async () => {
+            if (!data) return;
+
+            // data no formato DD-MM-YYYY
+            const partes = data.split("-");
+            const dia = parseInt(partes[0], 10);
+            const mes = parseInt(partes[1], 10) - 1; // month index
+            const ano = parseInt(partes[2], 10);
+
+            const atual = new Date(ano, mes, dia);
+            const anterior = new Date(atual);
+            anterior.setDate(anterior.getDate() - 1);
+
+            const diaA = String(anterior.getDate()).padStart(2, "0");
+            const mesA = String(anterior.getMonth() + 1).padStart(2, "0");
+            const anoA = anterior.getFullYear();
+
+            const dataAnterior = `${diaA}-${mesA}-${anoA}`; // mantém formato DD-MM-YYYY
+
+            try {
+                const res = await fetch(`http://localhost:8000/escaladodia/${dataAnterior}`);
+                if (!res.ok) {
+                    setEscalaAnterior([]);
+                    return;
+                }
+                const dataRes = await res.json();
+                setEscalaAnterior(dataRes.Escala || []);
+            } catch (err) {
+                console.error("Erro ao buscar escala anterior:", err);
+                setEscalaAnterior([]);
+            }
+        };
+
+        fetchEscalaAnterior();
+    }, [data]);
 
     useEffect(() => {
         const fetchAusentes = async () => {
@@ -165,6 +205,71 @@ const EscalaDoDia = () => {
         setEscala(novaEscala);
     };
 
+    // Monta um mapa de turnos considerando o dia anterior + dia atual
+    const montaMapaTurnos = () => {
+        const mapa = {}; // { nome: [ {row, dia: 'anterior'|'atual'} ] }
+
+        // Escala anterior (vinda da API)
+        escalaAnterior.forEach(item => {
+            const row = horarios.indexOf(item.Horario);
+            if (row >= 0) {
+                if (!mapa[item.Nome]) mapa[item.Nome] = [];
+                mapa[item.Nome].push({ row, dia: 'anterior' });
+            }
+        });
+
+        // Escala atual (estado 'escala' com estrutura matricial)
+        escala.forEach((linha, rowIdx) => {
+            linha.forEach((coluna) => {
+                coluna.forEach((nome) => {
+                    if (!mapa[nome]) mapa[nome] = [];
+                    mapa[nome].push({ row: rowIdx, dia: 'atual' });
+                });
+            });
+        });
+
+        return mapa;
+    };
+
+    const validaTurnosSeguidos = () => {
+        const mapa = montaMapaTurnos();
+
+        for (const [nome, dados] of Object.entries(mapa)) {
+            const ordenados = dados.slice().sort((a, b) => {
+                if (a.dia === b.dia) return a.row - b.row;
+                return a.dia === 'anterior' ? -1 : 1;
+            });
+
+            let consecutivos = 1;
+
+            for (let i = 1; i < ordenados.length; i++) {
+                const atual = ordenados[i];
+                const anterior = ordenados[i - 1];
+
+                if (atual.dia === anterior.dia && atual.row === anterior.row + 1) {
+                    consecutivos++;
+                }
+                else if (
+                    anterior.dia === 'anterior' &&
+                    atual.dia === 'atual' &&
+                    anterior.row === horarios.length - 1 &&
+                    atual.row === 0
+                ) {
+                    consecutivos++;
+                } else {
+                    consecutivos = 1; 
+                }
+
+                if (consecutivos >= 3) {
+                    alert(`Erro: ${nome} está escalado em ${consecutivos} turnos consecutivos!\nTotalizando mais de 24 horas seguidas de trabalho.`);
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
 
@@ -172,6 +277,10 @@ const EscalaDoDia = () => {
             DataEscala: data,
             Escala: []
         };
+
+        if (!validaTurnosSeguidos()) {
+            return;
+        }
 
         horarios.forEach((horario, rowIdx) => {
             categorias.forEach((categoria, colIdx) => {
