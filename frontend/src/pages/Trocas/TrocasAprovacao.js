@@ -148,7 +148,7 @@ const TrocasAprovacao = () => {
 
                                     {t.situacao === "Aprovada" && (
                                         <button
-                                            className="btn-desfazer"
+                                            className="btn-rejeitar"
                                             onClick={() => desfazerTroca(t)}
                                         >
                                             Desfazer
@@ -157,7 +157,7 @@ const TrocasAprovacao = () => {
 
                                     {t.situacao === "Desfeita" && (
                                         <button
-                                            className="btn-refazer"
+                                            className="btn-aprovar"
                                             onClick={() => refazerTroca(t)}
                                         >
                                             Refazer

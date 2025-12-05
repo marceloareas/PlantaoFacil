@@ -1,12 +1,15 @@
 import { useState, useEffect } from "react";
 import "./trocas.css";
 
+const API = "http://localhost:8000";
+
 const Trocas = () => {
   const [user, setUser] = useState(null);
   const [meusHorarios, setMeusHorarios] = useState([]);
   const [colegasDisponiveis, setColegasDisponiveis] = useState([]);
   const [horariosColega, setHorariosColega] = useState([]);
-  const [trocasUsuario, setTrocasUsuario] = useState([]);
+  const [trocasUsuario, setTrocasUsuario] = useState([]); 
+  const [trocasParaMim, setTrocasParaMim] = useState([]);
   const [troca, setTroca] = useState({
     meuDia: "",
     meuHorario: "",
@@ -27,25 +30,29 @@ const Trocas = () => {
     if (userData) setUser(JSON.parse(userData));
   }, []);
 
+  const carregarTrocas = async (usuario) => {
+    if (!usuario) return;
+    try {
+      const res = await fetch(`${API}/trocas/`);
+      const data = await res.json();
+
+      const minhas = data.filter((t) => t.solicitante === usuario.nome_completo);
+      setTrocasUsuario(minhas);
+
+      const paraMim = data.filter(
+        (t) =>
+          t.destinatario === usuario.nome_completo &&
+          (t.situacao === "Aguardando Destinatario" || t.situacao === "Aguardando Destinatário")
+      );
+      setTrocasParaMim(paraMim);
+    } catch (err) {
+      console.error("Erro ao carregar trocas:", err);
+    }
+  };
+
   useEffect(() => {
     if (!user) return;
-
-    const fetchMinhasTrocas = async () => {
-      try {
-        const res = await fetch(`http://localhost:8000/trocas/`);
-        const data = await res.json();
-
-        const minhasTrocas = data.filter(
-          (t) => t.solicitante === user.nome_completo
-        );
-
-        setTrocasUsuario(minhasTrocas);
-      } catch (err) {
-        console.error("Erro ao buscar trocas do usuário:", err);
-      }
-    };
-
-    fetchMinhasTrocas();
+    carregarTrocas(user);
   }, [user]);
 
   useEffect(() => {
@@ -58,7 +65,7 @@ const Trocas = () => {
     const fetchMeusHorarios = async () => {
       try {
         const dataParaURL = formatarDataParaURL(troca.meuDia);
-        const res = await fetch(`http://localhost:8000/escaladodia/${dataParaURL}`);
+        const res = await fetch(`${API}/escaladodia/${dataParaURL}`);
         const dataRes = await res.json();
         const escala = dataRes.Escala || [];
 
@@ -87,7 +94,7 @@ const Trocas = () => {
     const fetchColegasDoDiaColega = async () => {
       try {
         const dataParaURL = formatarDataParaURL(diaColega);
-        const res = await fetch(`http://localhost:8000/escaladodia/${dataParaURL}`);
+        const res = await fetch(`${API}/escaladodia/${dataParaURL}`);
         const dataRes = await res.json();
         const escala = dataRes.Escala || [];
 
@@ -116,7 +123,7 @@ const Trocas = () => {
     const fetchHorariosColega = async () => {
       try {
         const dataParaURL = formatarDataParaURL(diaColega);
-        const res = await fetch(`http://localhost:8000/escaladodia/${dataParaURL}`);
+        const res = await fetch(`${API}/escaladodia/${dataParaURL}`);
         const dataRes = await res.json();
         const escala = dataRes.Escala || [];
 
@@ -161,11 +168,11 @@ const Trocas = () => {
       diacolega: diaColega,
       horariodestinatario: troca.horarioColega,
       motivo: troca.motivo,
-      situacao: "Pendente"
+      situacao: "Aguardando Destinatario"
     };
 
     try {
-      const res = await fetch("http://localhost:8000/trocas/", {
+      const res = await fetch(`${API}/trocas/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
@@ -185,12 +192,7 @@ const Trocas = () => {
       setColegasDisponiveis([]);
       setHorariosColega([]);
 
-      const todasTrocasRes = await fetch(`http://localhost:8000/trocas/`);
-      const todasTrocas = await todasTrocasRes.json();
-      const minhasTrocas = todasTrocas.filter(
-        (t) => t.solicitante === user.nome_completo
-      );
-      setTrocasUsuario(minhasTrocas);
+      carregarTrocas(user);
     } catch (err) {
       console.error(err);
       alert("Erro ao enviar solicitação de troca.");
@@ -205,7 +207,7 @@ const Trocas = () => {
     if (!window.confirm("Tem certeza que deseja deletar esta solicitação?")) return;
 
     try {
-      const res = await fetch(`http://localhost:8000/trocas/${id}`, {
+      const res = await fetch(`${API}/trocas/${id}`, {
         method: "DELETE",
       });
 
@@ -219,10 +221,44 @@ const Trocas = () => {
     }
   };
 
+  const aceitarComoDestinatario = async (id) => {
+    try {
+      const res = await fetch(`${API}/trocas/${id}/destinatario-aprovar`, {
+        method: "PUT",
+      });
+      if (!res.ok) throw new Error("Erro ao aceitar solicitação");
+      carregarTrocas(user);
+      alert("Você aceitou a solicitação. Agora está Pendente e aguardando coordenador.");
+    } catch (err) {
+      console.error(err);
+      alert("Erro ao aceitar solicitação.");
+    }
+  };
+
+  const rejeitarComoDestinatario = async (id) => {
+    if (!window.confirm("Deseja recusar esta solicitação?")) return;
+    try {
+      const res = await fetch(`${API}/trocas/${id}/destinatario-rejeitar`, {
+        method: "PUT",
+      });
+      if (!res.ok) throw new Error("Erro ao rejeitar solicitação");
+      carregarTrocas(user);
+      alert("Solicitação rejeitada pelo destinatário.");
+    } catch (err) {
+      console.error(err);
+      alert("Erro ao rejeitar solicitação.");
+    }
+  };
+
+  const carregar = () => {
+    carregarTrocas(user);
+  };
+
   return (
     <div className="troca-container">
       <h2>Solicitar Troca de Plantão</h2>
-      {user && user.cargo != "Coordenador" ? (
+
+      {user && user.cargo !== "Coordenador" ? (
         <>
           <form onSubmit={handleSubmit} className="troca-form">
             <label>Dia do plantão:</label>
@@ -304,7 +340,6 @@ const Trocas = () => {
 
             <button type="submit" className="enviar-btn">Enviar Solicitação</button>
           </form>
-
           <div className="minhas-trocas">
             <h3>Minhas Solicitações de Troca</h3>
             {trocasUsuario.length === 0 ? (
@@ -318,7 +353,7 @@ const Trocas = () => {
                     <th>Horário</th>
                     <th>Dia colega</th>
                     <th>Destinatário</th>
-                    <th>situacao</th>
+                    <th>situação</th>
                     <th>Ações</th>
                   </tr>
                 </thead>
@@ -335,16 +370,87 @@ const Trocas = () => {
                           {t.situacao || "Pendente"}
                         </span>
                       </td>
-                      {t.situacao === "Pendente" && (
-                        <td>
+                      <td>
+                        {t.situacao === "Pendente" && (
                           <button
                             className="delete-btn"
                             onClick={() => handleDelete(t.id, t.situacao)}
                           >
                             Deletar
                           </button>
-                        </td>
-                      )}
+                        )}
+                        {t.situacao === "Aguardando Destinatario" && (
+                          <button
+                            className="delete-btn"
+                            onClick={() => {
+                              if (!window.confirm("Cancelar solicitação?")) return;
+                              // tentar deletar — backend pode exigir Pendente; se falhar, recarregamos
+                              fetch(`${API}/trocas/${t.id}`, { method: "DELETE" })
+                                .then(r => {
+                                  if (!r.ok) throw new Error("Não foi possível cancelar");
+                                  alert("Solicitação cancelada");
+                                  carregarTrocas(user);
+                                })
+                                .catch(err => {
+                                  console.error(err);
+                                  alert("Não foi possível cancelar (backend pode exigir outro estado).");
+                                  carregarTrocas(user);
+                                });
+                            }}
+                          >
+                            Cancelar
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+
+          <div className="trocas-para-mim" style={{ marginTop: 28 }}>
+            <h3>Solicitações Pendentes pra Você</h3>
+            {trocasParaMim.length === 0 ? (
+              <p>Não há solicitações aguardando sua decisão.</p>
+            ) : (
+              <table className="tabela-trocas">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Solicitante</th>
+                    <th>Dia (solicitante)</th>
+                    <th>Horário</th>
+                    <th>Dia (seu)</th>
+                    <th>Horário (seu)</th>
+                    <th>Motivo</th>
+                    <th>Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {trocasParaMim.map((t) => (
+                    <tr key={t.id}>
+                      <td>{t.id}</td>
+                      <td>{t.solicitante}</td>
+                      <td>{t.meudia}</td>
+                      <td>{t.horariosolicitante}</td>
+                      <td>{t.diacolega}</td>
+                      <td>{t.horariodestinatario}</td>
+                      <td>{t.motivo || "—"}</td>
+                      <td>
+                        <button
+                          className="btn-aprovar"
+                          onClick={() => aceitarComoDestinatario(t.id)}
+                        >
+                          Aceitar
+                        </button>
+                        <button
+                          className="btn-rejeitar"
+                          onClick={() => rejeitarComoDestinatario(t.id)}
+                        >
+                          Rejeitar
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

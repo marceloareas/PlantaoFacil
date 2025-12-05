@@ -25,12 +25,40 @@ def criar_troca(troca: TrocaCreate, db: Session = Depends(get_db)):
         diacolega=troca.diacolega,
         horariodestinatario=troca.horariodestinatario,
         motivo=troca.motivo,
-        situacao=troca.situacao or "Pendente"
+        situacao=troca.situacao or "Aguardando Destinatario"
     )
     db.add(nova_troca)
     db.commit()
     db.refresh(nova_troca)
     return nova_troca
+
+@router.put("/{troca_id}/destinatario-aprovar", response_model=TrocaResponse)
+def destinatario_aprovar(troca_id: int, db: Session = Depends(get_db)):
+    troca = db.query(Troca).filter(Troca.id == troca_id).first()
+    if not troca:
+        raise HTTPException(status_code=404, detail="Troca não encontrada")
+
+    if troca.situacao != "Aguardando Destinatario":
+        raise HTTPException(status_code=400, detail="Troca não está aguardando o destinatário")
+
+    troca.situacao = "Pendente"
+    db.commit()
+    db.refresh(troca)
+    return troca
+
+@router.put("/{troca_id}/destinatario-rejeitar", response_model=TrocaResponse)
+def destinatario_rejeitar(troca_id: int, db: Session = Depends(get_db)):
+    troca = db.query(Troca).filter(Troca.id == troca_id).first()
+    if not troca:
+        raise HTTPException(status_code=404, detail="Troca não encontrada")
+
+    if troca.situacao != "Aguardando Destinatario":
+        raise HTTPException(status_code=400, detail="Troca não está aguardando o destinatário")
+
+    troca.situacao = "Rejeitada Pelo Destinatario"
+    db.commit()
+    db.refresh(troca)
+    return troca
 
 
 @router.get("/", response_model=List[TrocaResponse])
