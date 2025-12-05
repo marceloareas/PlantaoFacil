@@ -4,8 +4,16 @@ from database import get_db
 from models.trocasModels import Troca
 from schemas.trocasSchemas import TrocaCreate, TrocaResponse
 from typing import List
+from models.escalaDiaModels import Escala
+from datetime import datetime
 
 router = APIRouter(prefix="/trocas", tags=["Trocas"])
+
+def converter_data(data_iso: str) -> str:
+    try:
+        return datetime.strptime(data_iso, "%Y-%m-%d").strftime("%d-%m-%Y")
+    except:
+        return data_iso 
 
 @router.post("/", response_model=TrocaResponse)
 def criar_troca(troca: TrocaCreate, db: Session = Depends(get_db)):
@@ -17,12 +25,14 @@ def criar_troca(troca: TrocaCreate, db: Session = Depends(get_db)):
         diacolega=troca.diacolega,
         horariodestinatario=troca.horariodestinatario,
         motivo=troca.motivo,
-        status=troca.status or "Pendente"
+        situacao=troca.situacao or "Pendente"
     )
     db.add(nova_troca)
     db.commit()
     db.refresh(nova_troca)
     return nova_troca
+
+
 @router.get("/", response_model=List[TrocaResponse])
 def listar_trocas(solicitante: str | None = None, db: Session = Depends(get_db)):
     query = db.query(Troca)
@@ -36,33 +46,109 @@ def aprovar_troca(troca_id: int, db: Session = Depends(get_db)):
     troca = db.query(Troca).filter(Troca.id == troca_id).first()
     if not troca:
         raise HTTPException(status_code=404, detail="Troca não encontrada")
-    troca.status = "Aprovada"
+
+    if troca.situacao not in ["Pendente", "Desfeita"]:
+        raise HTTPException(status_code=400, detail="Esta troca já foi finalizada")
+
+    data_solicitante = converter_data(troca.meudia)
+    data_destinatario = converter_data(troca.diacolega)
+    escala_solicitante = db.query(Escala).filter(
+        Escala.DataEscala == data_solicitante,
+        Escala.Horario == troca.horariosolicitante
+    ).first()
+
+    if not escala_solicitante:
+        raise HTTPException(status_code=404, detail="Escala do solicitante não encontrada")
+
+    escala_destinatario = db.query(Escala).filter(
+        Escala.DataEscala == data_destinatario,
+        Escala.Horario == troca.horariodestinatario
+    ).first()
+
+    if not escala_destinatario:
+        raise HTTPException(status_code=404, detail="Escala do destinatário não encontrada")
+
+    if escala_solicitante.Nome != troca.solicitante:
+        raise HTTPException(status_code=400, detail="Solicitante não está na escala do dia informado")
+
+    if escala_destinatario.Nome != troca.destinatario:
+        raise HTTPException(status_code=400, detail="Colega não está na escala do dia informado")
+
+    escala_solicitante.Nome = troca.destinatario
+    escala_destinatario.Nome = troca.solicitante
+
+    troca.situacao = "Aprovada"
+
     db.commit()
     db.refresh(troca)
     return troca
+
 
 @router.put("/{troca_id}/rejeitar", response_model=TrocaResponse)
 def rejeitar_troca(troca_id: int, db: Session = Depends(get_db)):
     troca = db.query(Troca).filter(Troca.id == troca_id).first()
     if not troca:
         raise HTTPException(status_code=404, detail="Troca não encontrada")
-    troca.status = "Rejeitada"
+    troca.situacao = "Rejeitada"
     db.commit()
     db.refresh(troca)
     return troca
+
+
 @router.delete("/{troca_id}")
 def deletar_troca(troca_id: int, db: Session = Depends(get_db)):
     troca = db.query(Troca).filter(Troca.id == troca_id).first()
-    
+
     if not troca:
         raise HTTPException(status_code=404, detail="Troca não encontrada")
-    
+
     if troca.situacao != "Pendente":
         raise HTTPException(
-            status_code=400, 
-            detail="Só é possível deletar trocas com status Pendente"
+            status_code=400,
+            detail="Só é possível deletar trocas com situacao Pendente"
         )
-    
+
     db.delete(troca)
     db.commit()
     return {"detail": "Troca deletada com sucesso"}
+@router.put("/{troca_id}/desfazer", response_model=TrocaResponse)
+def desfazer_troca(troca_id: int, db: Session = Depends(get_db)):
+    troca = db.query(Troca).filter(Troca.id == troca_id).first()
+
+    if not troca:
+        raise HTTPException(status_code=404, detail="Troca não encontrada")
+
+    if troca.situacao != "Aprovada":
+        raise HTTPException(
+            status_code=400,
+            detail="Só é possível desfazer trocas já aprovadas"
+        )
+
+    data_solicitante = converter_data(troca.meudia)
+    data_destinatario = converter_data(troca.diacolega)
+
+    escala_solicitante = db.query(Escala).filter(
+        Escala.DataEscala == data_solicitante,
+        Escala.Horario == troca.horariosolicitante
+    ).first()
+
+    if not escala_solicitante:
+        raise HTTPException(status_code=404, detail="Escala original do solicitante não encontrada")
+
+    escala_destinatario = db.query(Escala).filter(
+        Escala.DataEscala == data_destinatario,
+        Escala.Horario == troca.horariodestinatario
+    ).first()
+
+    if not escala_destinatario:
+        raise HTTPException(status_code=404, detail="Escala original do destinatário não encontrada")
+
+    escala_solicitante.Nome = troca.solicitante
+    escala_destinatario.Nome = troca.destinatario
+
+    troca.situacao = "Desfeita"
+
+    db.commit()
+    db.refresh(troca)
+
+    return troca

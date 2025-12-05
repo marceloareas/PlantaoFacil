@@ -270,8 +270,8 @@ const Trocas = () => {
                   required
                 >
                   <option value="">Selecione...</option>
-                  {colegasDisponiveis.map((c, i) => (
-                    <option key={i} value={c.nome}>{c.nome}</option>
+                  {[...new Set(colegasDisponiveis.map(c => c.nome))].map((nome, i) => (
+                    <option key={i} value={nome}>{nome}</option>
                   ))}
                 </select>
               </>
@@ -335,16 +335,16 @@ const Trocas = () => {
                           {t.situacao || "Pendente"}
                         </span>
                       </td>
-                        {t.situacao === "Pendente" && (
-                      <td>
+                      {t.situacao === "Pendente" && (
+                        <td>
                           <button
                             className="delete-btn"
                             onClick={() => handleDelete(t.id, t.situacao)}
                           >
                             Deletar
                           </button>
-                      </td>
-                        )}
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>

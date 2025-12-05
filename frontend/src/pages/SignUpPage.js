@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { CiLogin } from "react-icons/ci";
 import 'bootstrap/dist/css/bootstrap.min.css';
+import { Alert } from 'react-bootstrap';
 
 const SignUpModal = ({ show, onClose }) => {
   const [email, setEmail] = useState('');
@@ -91,6 +92,7 @@ const SignUpModal = ({ show, onClose }) => {
     } catch (err) {
       setError("Erro de conexão com o servidor");
     }
+    alert("Usuário criado com sucesso!");
   };
 
   if (!show) return null;

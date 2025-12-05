@@ -49,6 +49,50 @@ const TrocasAprovacao = () => {
     if (user.cargo !== "Coordenador")
         return <h2>Você não tem permissão para acessar esta página.</h2>;
 
+    const desfazerTroca = async (t) => {
+        try {
+            const res = await fetch(
+                `http://localhost:8000/trocas/${t.id}/desfazer`,
+                { method: "PUT" }
+            );
+
+            if (!res.ok) throw new Error("Erro ao desfazer troca");
+
+            alert("Troca desfeita com sucesso!");
+
+            setTrocas((prev) =>
+                prev.map((x) =>
+                    x.id === t.id ? { ...x, situacao: "Desfeita" } : x
+                )
+            );
+        } catch (err) {
+            console.error(err);
+            alert("Erro ao desfazer troca.");
+        }
+    };
+
+    const refazerTroca = async (t) => {
+        try {
+            const res = await fetch(
+                `http://localhost:8000/trocas/${t.id}/aprovar`,
+                { method: "PUT" }
+            );
+
+            if (!res.ok) throw new Error("Erro ao refazer troca");
+
+            alert("Troca refeita com sucesso!");
+
+            setTrocas((prev) =>
+                prev.map((x) =>
+                    x.id === t.id ? { ...x, situacao: "Aprovada" } : x
+                )
+            );
+        } catch (err) {
+            console.error(err);
+            alert("Erro ao refazer troca.");
+        }
+    };
+
     return (
         <div className="trocas-aprovacao-container">
             <h2>Gerenciamento de Trocas</h2>
@@ -65,7 +109,7 @@ const TrocasAprovacao = () => {
                             <th>Destinatário</th>
                             <th>Dia/Horário do colega</th>
                             <th>Motivo</th>
-                            <th>situacao</th>
+                            <th>Situação</th>
                             <th>Ações</th>
                         </tr>
                     </thead>
@@ -83,6 +127,7 @@ const TrocasAprovacao = () => {
                                         {t.situacao}
                                     </span>
                                 </td>
+
                                 <td>
                                     {t.situacao === "Pendente" && (
                                         <>
@@ -99,6 +144,24 @@ const TrocasAprovacao = () => {
                                                 Rejeitar
                                             </button>
                                         </>
+                                    )}
+
+                                    {t.situacao === "Aprovada" && (
+                                        <button
+                                            className="btn-desfazer"
+                                            onClick={() => desfazerTroca(t)}
+                                        >
+                                            Desfazer
+                                        </button>
+                                    )}
+
+                                    {t.situacao === "Desfeita" && (
+                                        <button
+                                            className="btn-refazer"
+                                            onClick={() => refazerTroca(t)}
+                                        >
+                                            Refazer
+                                        </button>
                                     )}
                                 </td>
                             </tr>
