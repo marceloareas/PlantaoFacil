@@ -13,7 +13,7 @@ const EscalaDoDia = () => {
     const [escalaAnterior, setEscalaAnterior] = useState([]); // lista de objetos {Horario, Nome, Cargo}
     const [user, setUser] = useState(null);
 
-    const horarios = ["08:00 - 12:00", "13:00 - 17:00"];
+    const horarios = ["07:00 - 19:00", "19:00 - 07:00"];
 
     useEffect(() => {
         const userData = localStorage.getItem('user');

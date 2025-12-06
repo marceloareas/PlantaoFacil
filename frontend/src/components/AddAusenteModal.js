@@ -8,7 +8,7 @@ const AddAusenteModal = ({ show, onClose, onSuccess }) => {
         nome: "",
         cpf: "",
         data: "",
-        horario: "08:00 - 12:00",
+        horario: "07:00 - 19:00",
         cargo: "",
     });
 
@@ -92,7 +92,7 @@ const AddAusenteModal = ({ show, onClose, onSuccess }) => {
                 nome: "",
                 cpf: "",
                 data: "",
-                horario: "08:00 - 12:00",
+                horario: "07:00 - 19:00",
                 cargo: "",
             });
 
@@ -199,12 +199,12 @@ const AddAusenteModal = ({ show, onClose, onSuccess }) => {
                                     <select
                                         className="form-select"
                                         name="horario"
-                                        value={"08:00 - 12:00"}
+                                        value={"07:00 - 19:00"}
                                         onChange={handleChange}
                                         required
                                     >
-                                        <option value="08:00 - 12:00">08:00 - 12:00</option>
-                                        <option value="13:00 - 17:00">13:00 - 17:00</option>
+                                        <option value="07:00 - 19:00">07:00 - 19:00</option>
+                                        <option value="19:00 - 07:00">19:00 - 07:00</option>
                                     </select>
                                 </div>
 

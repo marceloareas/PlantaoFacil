@@ -80,7 +80,7 @@ const EscalaDaSemana = () => {
         navigate(`/escalaDoDia/${data}`);
     };
 
-    const horarios = ["08:00 - 12:00", "13:00 - 17:00"];
+    const horarios = ["07:00 - 19:00", "19:00 - 07:00"];
 
     const proximaSemana = () => {
         const novaData = new Date(dataReferencia);
