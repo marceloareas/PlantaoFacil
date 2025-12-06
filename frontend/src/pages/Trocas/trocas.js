@@ -8,7 +8,7 @@ const Trocas = () => {
   const [meusHorarios, setMeusHorarios] = useState([]);
   const [colegasDisponiveis, setColegasDisponiveis] = useState([]);
   const [horariosColega, setHorariosColega] = useState([]);
-  const [trocasUsuario, setTrocasUsuario] = useState([]); 
+  const [trocasUsuario, setTrocasUsuario] = useState([]);
   const [trocasParaMim, setTrocasParaMim] = useState([]);
   const [troca, setTroca] = useState({
     meuDia: "",
@@ -41,8 +41,7 @@ const Trocas = () => {
 
       const paraMim = data.filter(
         (t) =>
-          t.destinatario === usuario.nome_completo &&
-          (t.situacao === "Aguardando Destinatario" || t.situacao === "Aguardando Destinatário")
+          t.destinatario === usuario.nome_completo
       );
       setTrocasParaMim(paraMim);
     } catch (err) {
@@ -353,7 +352,8 @@ const Trocas = () => {
                     <th>Horário</th>
                     <th>Dia colega</th>
                     <th>Destinatário</th>
-                    <th>situação</th>
+                    <th>Situação</th>
+                    <th>Motivo</th>
                     <th>Ações</th>
                   </tr>
                 </thead>
@@ -371,6 +371,9 @@ const Trocas = () => {
                         </span>
                       </td>
                       <td>
+                        {t.motivo}
+                      </td>
+                      <td>
                         {t.situacao === "Pendente" && (
                           <button
                             className="delete-btn"
@@ -384,7 +387,6 @@ const Trocas = () => {
                             className="delete-btn"
                             onClick={() => {
                               if (!window.confirm("Cancelar solicitação?")) return;
-                              // tentar deletar — backend pode exigir Pendente; se falhar, recarregamos
                               fetch(`${API}/trocas/${t.id}`, { method: "DELETE" })
                                 .then(r => {
                                   if (!r.ok) throw new Error("Não foi possível cancelar");
@@ -410,9 +412,9 @@ const Trocas = () => {
           </div>
 
           <div className="trocas-para-mim" style={{ marginTop: 28 }}>
-            <h3>Solicitações Pendentes pra Você</h3>
+            <h3>Solicitações de Terceiros</h3>
             {trocasParaMim.length === 0 ? (
-              <p>Não há solicitações aguardando sua decisão.</p>
+              <p>Não há solicitações.</p>
             ) : (
               <table className="tabela-trocas">
                 <thead>
@@ -423,6 +425,7 @@ const Trocas = () => {
                     <th>Horário</th>
                     <th>Dia (seu)</th>
                     <th>Horário (seu)</th>
+                    <th>Situação</th>
                     <th>Motivo</th>
                     <th>Ações</th>
                   </tr>
@@ -436,20 +439,25 @@ const Trocas = () => {
                       <td>{t.horariosolicitante}</td>
                       <td>{t.diacolega}</td>
                       <td>{t.horariodestinatario}</td>
+                      <td>{t.situacao}</td>
                       <td>{t.motivo || "—"}</td>
                       <td>
-                        <button
-                          className="btn-aprovar"
-                          onClick={() => aceitarComoDestinatario(t.id)}
-                        >
-                          Aceitar
-                        </button>
-                        <button
-                          className="btn-rejeitar"
-                          onClick={() => rejeitarComoDestinatario(t.id)}
-                        >
-                          Rejeitar
-                        </button>
+                        {t.situacao == "Aguardando Destinatario" && (
+                          <>
+                            <button
+                              className="btn-aprovar"
+                              onClick={() => aceitarComoDestinatario(t.id)}
+                            >
+                              Aceitar
+                            </button>
+                            <button
+                              className="btn-rejeitar"
+                              onClick={() => rejeitarComoDestinatario(t.id)}
+                            >
+                              Rejeitar
+                            </button>
+                          </>
+                        )}
                       </td>
                     </tr>
                   ))}

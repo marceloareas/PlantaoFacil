@@ -133,3 +133,12 @@ nav ul li a:hover,
 }
 
 }
+.badge {
+  background-color: red;
+  color: white;
+  font-size: 13px;
+  font-weight: bold;
+  border-radius: 10px;
+  padding: 3px 6px;
+  position: absolute;
+}

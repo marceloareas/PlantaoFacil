@@ -158,7 +158,7 @@ const SignUpModal = ({ show, onClose }) => {
             <div className="modal-header">
               <h5 className="modal-title">
                 <CiLogin size={28} className="text-primary me-2" />
-                Sign Up
+                Cadastrar
               </h5>
               <button
                 type="button"
