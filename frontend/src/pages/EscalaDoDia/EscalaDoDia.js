@@ -3,14 +3,14 @@ import { useState, useEffect } from "react";
 import "./EscalaDoDia.css";
 
 const EscalaDoDia = () => {
-    const { data } = useParams(); // espera formato "DD-MM-YYYY"
+    const { data } = useParams(); 
 
     const [usuarios, setUsuarios] = useState([]);
     const [categorias, setCategorias] = useState([]);
-    const [escala, setEscala] = useState([]); // estrutura: [row][col] -> array de nomes
+    const [escala, setEscala] = useState([]); 
     const [nomesAusentes, setNomesAusentes] = useState([]);
     const [escalaExistente, setEscalaExistente] = useState([]);
-    const [escalaAnterior, setEscalaAnterior] = useState([]); // lista de objetos {Horario, Nome, Cargo}
+    const [escalaAnterior, setEscalaAnterior] = useState([]); 
     const [user, setUser] = useState(null);
 
     const horarios = ["07:00 - 19:00", "19:00 - 07:00"];
@@ -25,7 +25,7 @@ const EscalaDoDia = () => {
             try {
                 const res = await fetch("http://localhost:8000/usuario/");
                 const dataRes = await res.json();
-                setUsuarios(dataRes);
+                setUsuarios(dataRes.filter((u) => u.situacao === "Ativo" && u.cargo.toLowerCase() !== "coordenador"));
 
                 const uniqueCategorias = [...new Set(dataRes.map((u) => u.cargo))]
                     .filter((cargo) => cargo.toLowerCase() !== "coordenador");
@@ -63,7 +63,6 @@ const EscalaDoDia = () => {
         fetchEscala();
     }, [data]);
 
-    // Monta a escala a partir do objeto escalaExistente
     useEffect(() => {
         if (escalaExistente.length === 0 || categorias.length === 0) return;
 
@@ -82,15 +81,13 @@ const EscalaDoDia = () => {
         setEscala(novaEscala);
     }, [escalaExistente, categorias]);
 
-    // Busca escala do dia anterior (mesmo formato de resposta)
     useEffect(() => {
         const fetchEscalaAnterior = async () => {
             if (!data) return;
 
-            // data no formato DD-MM-YYYY
             const partes = data.split("-");
             const dia = parseInt(partes[0], 10);
-            const mes = parseInt(partes[1], 10) - 1; // month index
+            const mes = parseInt(partes[1], 10) - 1; 
             const ano = parseInt(partes[2], 10);
 
             const atual = new Date(ano, mes, dia);
@@ -101,7 +98,7 @@ const EscalaDoDia = () => {
             const mesA = String(anterior.getMonth() + 1).padStart(2, "0");
             const anoA = anterior.getFullYear();
 
-            const dataAnterior = `${diaA}-${mesA}-${anoA}`; // mantém formato DD-MM-YYYY
+            const dataAnterior = `${diaA}-${mesA}-${anoA}`; 
 
             try {
                 const res = await fetch(`http://localhost:8000/escaladodia/${dataAnterior}`);
@@ -205,11 +202,9 @@ const EscalaDoDia = () => {
         setEscala(novaEscala);
     };
 
-    // Monta um mapa de turnos considerando o dia anterior + dia atual
     const montaMapaTurnos = () => {
-        const mapa = {}; // { nome: [ {row, dia: 'anterior'|'atual'} ] }
+        const mapa = {}; 
 
-        // Escala anterior (vinda da API)
         escalaAnterior.forEach(item => {
             const row = horarios.indexOf(item.Horario);
             if (row >= 0) {
@@ -218,7 +213,6 @@ const EscalaDoDia = () => {
             }
         });
 
-        // Escala atual (estado 'escala' com estrutura matricial)
         escala.forEach((linha, rowIdx) => {
             linha.forEach((coluna) => {
                 coluna.forEach((nome) => {

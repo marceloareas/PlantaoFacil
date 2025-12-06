@@ -7,6 +7,7 @@ class UserCreate(BaseModel):
     cpf: str
     nome_completo: str
     cargo: str
+    situacao: str
 
 class UserLogin(BaseModel):
     email: str

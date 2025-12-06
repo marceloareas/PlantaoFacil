@@ -14,7 +14,8 @@ const LoginModal = ({ show, onClose }) => {
     id: 99999,
     crm: "99999-9",
     cpf: "000.000.000-00",
-    cargo: "Coordenador"
+    cargo: "Coordenador",
+    situacao: "Ativo"
   };
 
   const handleLogin = async (e) => {

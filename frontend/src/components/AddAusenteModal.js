@@ -117,7 +117,6 @@ const AddAusenteModal = ({ show, onClose, onSuccess }) => {
                 <div className="modal-dialog modal-dialog-centered">
                     <div className="modal-content">
 
-                        {/* Cabeçalho */}
                         <div className="modal-header">
                             <h5 className="modal-title d-flex align-items-center">
                                 <FaUserMinus className="text-primary me-2" />
@@ -126,14 +125,12 @@ const AddAusenteModal = ({ show, onClose, onSuccess }) => {
                             <button type="button" className="btn-close" onClick={onClose}></button>
                         </div>
 
-                        {/* Corpo */}
                         <div className="modal-body">
                             {error && <div className="alert alert-danger">{error}</div>}
                             {success && <div className="alert alert-success">{success}</div>}
 
                             <form onSubmit={handleSubmit}>
 
-                                {/* Cargo */}
                                 <div className="mb-3">
                                     <label className="form-label">Cargo</label>
                                     <select
@@ -150,7 +147,6 @@ const AddAusenteModal = ({ show, onClose, onSuccess }) => {
                                     </select>
                                 </div>
 
-                                {/* Nome */}
                                 <div className="mb-3">
                                     <label className="form-label">Nome</label>
                                     <select
@@ -168,7 +164,6 @@ const AddAusenteModal = ({ show, onClose, onSuccess }) => {
                                     </select>
                                 </div>
 
-                                {/* CPF */}
                                 <div className="mb-3">
                                     <label className="form-label">CPF</label>
                                     <input
@@ -180,7 +175,6 @@ const AddAusenteModal = ({ show, onClose, onSuccess }) => {
                                     />
                                 </div>
 
-                                {/* Data */}
                                 <div className="mb-3">
                                     <label className="form-label">Data</label>
                                     <input
@@ -193,7 +187,6 @@ const AddAusenteModal = ({ show, onClose, onSuccess }) => {
                                     />
                                 </div>
 
-                                {/* Horário */}
                                 <div className="mb-3">
                                     <label className="form-label">Horário</label>
                                     <select

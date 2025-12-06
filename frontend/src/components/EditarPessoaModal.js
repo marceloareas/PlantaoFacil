@@ -29,7 +29,6 @@ const EditarPessoaModal = ({ show, onClose, pessoa, onSave }) => {
     const handleChange = (e) => {
         const { name, value } = e.target;
 
-        // Se for CPF, aplicar máscara
         if (name === "cpf") {
             let val = value.replace(/\D/g, "");
             val = val.replace(/(\d{3})(\d)/, "$1.$2");
@@ -56,14 +55,12 @@ const EditarPessoaModal = ({ show, onClose, pessoa, onSave }) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        // Validação de campos obrigatórios
         const { nome_completo, email, password, crm, cpf, cargo } = formData;
         if (!nome_completo || !email || !password || !crm || !cpf || !cargo) {
             setError("Preencha todos os campos obrigatórios!");
             return;
         }
 
-        // Validação de CRM
         const crmValid = validateCrm(crm);
         if (!crmValid.valido) {
             setError(crmValid.mensagem);

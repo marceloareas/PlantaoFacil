@@ -14,6 +14,7 @@ import { IoPersonCircleSharp } from "react-icons/io5";
 import TrocasAprovacao from './pages/Trocas/TrocasAprovacao';
 import Trocas from './pages/Trocas/trocas';
 import Pessoas from './pages/Pessoas/Pessoas';
+import { Button } from 'bootstrap';
 
 function BackButton() {
   const navigate = useNavigate();
@@ -40,6 +41,8 @@ function App() {
     localStorage.removeItem('user');
     setUser(null);
     setShowMenu(false);
+    window.location.reload();
+    window.location.href = '/';
   };
 
   const handleLoginSuccess = (userData) => {
@@ -77,6 +80,7 @@ function App() {
 
   return (
     <Router>
+      
       {showMenu && (
         <div className="fullscreen-menu">
           <button className="close-button" onClick={() => setShowMenu(false)}>×</button>
@@ -143,14 +147,16 @@ function App() {
         </div>
       )}
 
+      {(!user || (user && user.situacao !== "Desativado")) && (
+      <>
       <Header
         onOpenMenu={() => setShowMenu(true)}
         user={user}
         onLogout={handleLogout}
-      />
+        />
 
       <div className='bgImage'>
-        <BackButton /> {/* Botão funcional */}
+        <BackButton /> 
 
         <div className='Container-App'>
           <Routes>
@@ -166,7 +172,24 @@ function App() {
           </Routes>
         </div>
       </div>
-
+        </>
+      )}
+      {( (user && user.situacao === "Desativado")) && (
+      <div style={{textAlign: "center"}}>
+        <h1 style={{ marginLeft: "20px" , color: "red"
+        , fontSize: "20px"
+        , fontWeight: "bold"
+        , textAlign: "center"
+        , fontFamily: "Arial, sans-serif"
+        , textShadow: "2px 2px 4px rgba(0, 0, 0, 0.3)"
+        , letterSpacing: "2px"
+        , textTransform: "uppercase"
+        , lineHeight: "1.5"
+        , wordSpacing: "4px"
+       }} onClick={handleLogout}> Você não tem permissão para acessar essa pagina</h1>
+      <button style ={{marginLeft: "20px", backgroundColor: "red", color: "white", padding: "10px 20px", border: "none", borderRadius: "5px", cursor: "pointer"}} onClick={handleLogout}>Voltar</button>
+      </div>
+      )}
       <LoginPage
         show={showLogin}
         onClose={() => setShowLogin(false)}

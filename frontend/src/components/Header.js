@@ -13,7 +13,6 @@ const Header = ({ onOpenMenu, user, onLogout }) => {
   const [showSignUp, setShowSignUp] = useState(false);
   const [notificacoesCount, setNotificacoesCount] = useState(0);
 
-  // Função para buscar trocas pendentes ou aguardando destinatário
   useEffect(() => {
     if (!user) return;
 
@@ -25,10 +24,8 @@ const Header = ({ onOpenMenu, user, onLogout }) => {
         let count = 0;
 
         if (user.cargo === "Coordenador") {
-          // Coordenador vê todas pendentes
           count = data.filter(t => t.situacao === "Pendente").length;
         } else {
-          // Usuário vê apenas solicitações para ele
           count = data.filter(
             t => t.destinatario === user.nome_completo &&
               (t.situacao === "Aguardando Destinatario" || t.situacao === "Aguardando Destinatário")
@@ -42,7 +39,7 @@ const Header = ({ onOpenMenu, user, onLogout }) => {
     };
 
     fetchNotificacoes();
-    const interval = setInterval(fetchNotificacoes, 30000); // Atualiza a cada 30s
+    const interval = setInterval(fetchNotificacoes, 30000);
 
     return () => clearInterval(interval);
   }, [user]);

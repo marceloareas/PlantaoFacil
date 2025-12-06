@@ -19,7 +19,8 @@ def create_user(user: UserCreate, db: Session = Depends(get_db)):
         crm=user.crm,
         cpf=user.cpf,
         nome_completo=user.nome_completo,
-        cargo=user.cargo
+        cargo=user.cargo,
+        situacao="Ativo"
     )
 
     db.add(new_user)
@@ -40,19 +41,19 @@ def update_user(user_id: int, user: UserCreate, db: Session = Depends(get_db)):
     if not db_user:
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
 
-    # Atualiza apenas os campos enviados
     db_user.email = user.email
     db_user.password = user.password
     db_user.crm = user.crm
     db_user.cpf = user.cpf
     db_user.nome_completo = user.nome_completo
     db_user.cargo = user.cargo
+    db_user.situacao = user.situacao
 
     db.commit()
     db.refresh(db_user)
 
     return {
-        "message": "Usuário atualizado com sucesso ✅",
+        "message": "Usuário atualizado com sucesso",
         "user": db_user
     }
 @LoginRouter.post("/")
@@ -62,13 +63,14 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
         raise HTTPException(status_code=401, detail="Email ou senha inválidos")
     
     return {
-        "message": "Login realizado com sucesso 🎉",
+        "message": "Login realizado com sucesso ",
         "user": {
             "id": db_user.id,
             "email": db_user.email,
             "nome_completo": db_user.nome_completo,
             "crm": db_user.crm,
             "cpf": db_user.cpf,
-            "cargo": db_user.cargo
+            "cargo": db_user.cargo,
+            "situacao": db_user.situacao
         }
     }

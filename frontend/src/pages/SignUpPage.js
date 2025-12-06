@@ -8,7 +8,7 @@ const SignUpModal = ({ show, onClose }) => {
   const [crms, setCrms] = useState('');
   const [cpf, setCpf] = useState('');
   const [name, setName] = useState('');
-  const [cargo, setCargo] = useState('');
+  const [cargo, setCargo] = useState('Tecnico');
   const [error, setError] = useState('');
   const [cpfValido, setCpfValido] = useState(null);
 
@@ -94,7 +94,8 @@ const SignUpModal = ({ show, onClose }) => {
       password,
       crm: crms,
       cpf,
-      cargo
+      cargo,
+      situacao: "Ativo"
     };
 
     try {
