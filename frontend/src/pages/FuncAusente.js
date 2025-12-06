@@ -53,7 +53,7 @@ const FuncionariosAusentes = () => {
 
     return (
         <div className="ausentes-page container mt-4">
-            <h2 className="mb-4">Funcionários Ausentes</h2>
+            <h2 className="mb-4">Funcionários Indisponíveis</h2>
             <div className="d-flex flex-wrap justify-content-between align-items-center mb-3">
                 <div className="d-flex gap-2 align-items-center">
                     <input

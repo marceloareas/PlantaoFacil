@@ -38,7 +38,7 @@ const Header = ({ onOpenMenu, user, onLogout }) => {
           {user && user.cargo === "Coordenador" && (
             <li>
               <button className="login-button" onClick={() => setShowSignUp(true)}>
-                SignUp
+                Cadastrar
               </button>
             </li>
           )}

@@ -420,7 +420,7 @@ const EscalaDoDia = () => {
                         </form>
                     </div>
                     <div className="ausentes-box">
-                        <h3>Colaboradores Ausentes</h3>
+                        <h3>Colaboradores Indisponíveis</h3>
                         <table className="colab-ausente">
                             <thead>
                                 <tr>

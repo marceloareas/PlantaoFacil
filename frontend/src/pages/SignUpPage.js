@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { CiLogin } from "react-icons/ci";
 import 'bootstrap/dist/css/bootstrap.min.css';
-import { Alert } from 'react-bootstrap';
 
 const SignUpModal = ({ show, onClose }) => {
   const [email, setEmail] = useState('');
@@ -11,13 +10,47 @@ const SignUpModal = ({ show, onClose }) => {
   const [name, setName] = useState('');
   const [cargo, setCargo] = useState('');
   const [error, setError] = useState('');
+  const [cpfValido, setCpfValido] = useState(null);
+
+  function validarCPF(cpf) {
+    cpf = cpf.replace(/\D/g, "");
+
+    if (cpf.length !== 11) return false;
+    if (/^(.)\1+$/.test(cpf)) return false;
+
+    let soma = 0;
+    for (let i = 0; i < 9; i++) {
+      soma += parseInt(cpf.charAt(i)) * (10 - i);
+    }
+    let dig1 = 11 - (soma % 11);
+    if (dig1 > 9) dig1 = 0;
+    if (dig1 !== parseInt(cpf.charAt(9))) return false;
+
+    soma = 0;
+    for (let i = 0; i < 10; i++) {
+      soma += parseInt(cpf.charAt(i)) * (11 - i);
+    }
+    let dig2 = 11 - (soma % 11);
+    if (dig2 > 9) dig2 = 0;
+
+    return dig2 === parseInt(cpf.charAt(10));
+  }
 
   const handleCpfChange = (e) => {
     let value = e.target.value.replace(/\D/g, "");
+
     value = value.replace(/(\d{3})(\d)/, "$1.$2");
     value = value.replace(/(\d{3})(\d)/, "$1.$2");
     value = value.replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+
     setCpf(value);
+
+    const cpfNumerico = value.replace(/\D/g, "");
+    if (cpfNumerico.length === 11) {
+      setCpfValido(validarCPF(cpfNumerico));
+    } else {
+      setCpfValido(null);
+    }
   };
 
   const handleCoren = (coren) => {
@@ -27,7 +60,7 @@ const SignUpModal = ({ show, onClose }) => {
     if (!regex.test(value)) {
       return {
         valido: false,
-        mensagem: "Formato inválido! Use o padrão: XXXXXX-YY/ZZZ"
+        mensagem: "Formato inválido! Use o padrão: XXXXXX-YY/ZZZZ"
       };
     }
 
@@ -36,6 +69,11 @@ const SignUpModal = ({ show, onClose }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (cpfValido === false) {
+      setError("CPF inválido!");
+      return;
+    }
 
     if (!email || !password || !cpf || !name || !crms || !cargo) {
       setError("Preencha todos os campos obrigatórios!");
@@ -89,11 +127,25 @@ const SignUpModal = ({ show, onClose }) => {
       setError('');
       onClose();
 
+      alert("Usuário criado com sucesso!");
+
     } catch (err) {
       setError("Erro de conexão com o servidor");
     }
-    alert("Usuário criado com sucesso!");
   };
+
+  const handleOnClose = async (e) => {
+    setEmail('');
+    setPassword('');
+    setCrms('');
+    setCpf('');
+    setName('');
+    setCargo('');
+    setError('');
+    setCpfValido('');
+    return;
+  }
+
 
   if (!show) return null;
 
@@ -111,7 +163,10 @@ const SignUpModal = ({ show, onClose }) => {
               <button
                 type="button"
                 className="btn-close"
-                onClick={onClose}
+                onClick={() => {
+                  handleOnClose();
+                  onClose();
+                }}
               ></button>
             </div>
 
@@ -119,6 +174,7 @@ const SignUpModal = ({ show, onClose }) => {
               {error && <div className="alert alert-danger">{error}</div>}
 
               <form onSubmit={handleSubmit}>
+
                 <div className="mb-3">
                   <label className="form-label">Email</label>
                   <input
@@ -131,7 +187,7 @@ const SignUpModal = ({ show, onClose }) => {
                 </div>
 
                 <div className="mb-3">
-                  <label className="form-label">Password</label>
+                  <label className="form-label">Senha</label>
                   <input
                     type="password"
                     className="form-control"
@@ -146,7 +202,7 @@ const SignUpModal = ({ show, onClose }) => {
                   <input
                     type="text"
                     className="form-control"
-                    placeholder=' Ex: 123456-RJ/ENF'
+                    placeholder='Ex: 123456-RJ/ENF'
                     value={crms}
                     onChange={(e) => setCrms(e.target.value)}
                     required
@@ -157,12 +213,15 @@ const SignUpModal = ({ show, onClose }) => {
                   <label className="form-label">CPF</label>
                   <input
                     type="text"
-                    className="form-control"
+                    className={`form-control ${cpfValido === false ? "is-invalid" : ""}`}
                     value={cpf}
                     onChange={handleCpfChange}
                     maxLength={14}
                     required
                   />
+                  {cpfValido === false && (
+                    <span className="text-danger">CPF inválido</span>
+                  )}
                 </div>
 
                 <div className="mb-3">
@@ -191,7 +250,7 @@ const SignUpModal = ({ show, onClose }) => {
                 </div>
 
                 <button type="submit" className="btn btn-primary w-100">
-                  Sign-Up
+                  Cadastrar
                 </button>
               </form>
             </div>
