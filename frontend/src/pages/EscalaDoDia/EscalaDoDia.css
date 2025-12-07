@@ -120,3 +120,31 @@
 .remove-btn:hover {
     background-color: #ff3b3b;
 }
+
+.modal-bg {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 999;
+}
+
+.modal-box {
+    background: white;
+    padding: 25px;
+    border-radius: 10px;
+    width: 380px;
+    box-shadow: 0 0 20px rgba(0,0,0,0.3);
+}
+
+.close-modal {
+    margin-top: 15px;
+    padding: 8px 15px;
+    background: #ff4444;
+    border: none;
+    color: white;
+    border-radius: 6px;
+    cursor: pointer;
+}

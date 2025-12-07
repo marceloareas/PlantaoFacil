@@ -10,7 +10,7 @@ const Trocas = () => {
   const [horariosColega, setHorariosColega] = useState([]);
   const [trocasUsuario, setTrocasUsuario] = useState([]);
   const [trocasParaMim, setTrocasParaMim] = useState([]);
-  const [erro, setErro] = useState(""); // <<<<<< NOVO
+  const [erro, setErro] = useState(""); 
   const [troca, setTroca] = useState({
     meuDia: "",
     meuHorario: "",
@@ -417,7 +417,7 @@ const Trocas = () => {
                       </td>
                       <td>{t.motivo}</td>
                       <td>
-                        {t.situacao === "Pendente" && (
+                        {(t.situacao === "Pendente" || t.situacao === "Aguardando Destinatario") && (
                           <button
                             className="delete-btn"
                             onClick={() => handleDelete(t.id, t.situacao)}

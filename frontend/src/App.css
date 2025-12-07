@@ -157,11 +157,10 @@
 }
 
 .back-button {
-  position: fixed;
-  top: 100px;
-  left: 20px;
   z-index: 10000;
   padding: 10px 15px;
+  left: -35%;
+  position: relative;
   background-color: #333;
   color: white;
   border: none;

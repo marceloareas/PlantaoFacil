@@ -13,22 +13,84 @@ const EscalaDoDia = () => {
     const [escalaAnterior, setEscalaAnterior] = useState([]);
     const [user, setUser] = useState(null);
 
+    const [trocasAprovadas, setTrocasAprovadas] = useState([]);
+
+    const [modalInfo, setModalInfo] = useState(null);
+
     const horarios = ["07:00 - 19:00", "19:00 - 07:00"];
 
     useEffect(() => {
-        const userData = localStorage.getItem('user');
+        const userData = localStorage.getItem("user");
         if (userData) setUser(JSON.parse(userData));
     }, []);
+
+    const converter = (d) => {
+        const [ano, mes, dia] = d.split("-");
+        return `${dia}-${mes}-${ano}`;
+    };
+
+    useEffect(() => {
+        if (!data) return;
+
+        const fetchTrocas = async () => {
+            try {
+                const res = await fetch("http://localhost:8000/trocas/");
+                const dataRes = await res.json();
+
+                const aprovadas = dataRes.filter(
+                    (t) =>
+                        t.situacao === "Aprovada" &&
+                        (converter(t.meudia) === data ||
+                            converter(t.diacolega) === data)
+                );
+
+                setTrocasAprovadas(aprovadas);
+            } catch (err) {
+                console.error("Erro ao buscar trocas aprovadas:", err);
+            }
+        };
+
+        fetchTrocas();
+    }, [data]);
+
+    const envolvidosEmTroca = trocasAprovadas.flatMap((t) => [
+        { nome: t.solicitante, turno: t.horariosolicitante },
+        { nome: t.destinatario, turno: t.horariodestinatario },
+    ]);
+
+    const estaEmTroca = (nome, turnoAtual) => {
+        return envolvidosEmTroca.some(
+            (e) => e.nome === nome && e.turno === turnoAtual
+        );
+    };
+
+    const getTrocaInfo = (nome, turnoAtual) => {
+        return trocasAprovadas.find(
+            (t) =>
+                (t.solicitante === nome &&
+                    t.horariosolicitante === turnoAtual) ||
+                (t.destinatario === nome &&
+                    t.horariodestinatario === turnoAtual)
+        );
+    };
 
     useEffect(() => {
         const fetchUsuarios = async () => {
             try {
                 const res = await fetch("http://localhost:8000/usuario/");
                 const dataRes = await res.json();
-                setUsuarios(dataRes.filter((u) => u.situacao === "Ativo" && u.cargo.toLowerCase() !== "coordenador"));
+                setUsuarios(
+                    dataRes.filter(
+                        (u) =>
+                            u.situacao === "Ativo" &&
+                            u.cargo.toLowerCase() !== "coordenador"
+                    )
+                );
 
-                const uniqueCategorias = [...new Set(dataRes.map((u) => u.cargo))]
-                    .filter((cargo) => cargo.toLowerCase() !== "coordenador");
+                const uniqueCategorias = [
+                    ...new Set(dataRes.map((u) => u.cargo)),
+                ].filter((cargo) => cargo.toLowerCase() !== "coordenador");
+
                 setCategorias(uniqueCategorias);
             } catch (err) {
                 console.error("Erro ao buscar usuários:", err);
@@ -51,7 +113,9 @@ const EscalaDoDia = () => {
         const fetchEscala = async () => {
             if (!data) return;
             try {
-                const res = await fetch(`http://localhost:8000/escaladodia/${data}`);
+                const res = await fetch(
+                    `http://localhost:8000/escaladodia/${data}`
+                );
                 if (!res.ok) return;
                 const dataRes = await res.json();
                 setEscalaExistente(dataRes.Escala || []);
@@ -101,7 +165,9 @@ const EscalaDoDia = () => {
             const dataAnterior = `${diaA}-${mesA}-${anoA}`;
 
             try {
-                const res = await fetch(`http://localhost:8000/escaladodia/${dataAnterior}`);
+                const res = await fetch(
+                    `http://localhost:8000/escaladodia/${dataAnterior}`
+                );
                 if (!res.ok) {
                     setEscalaAnterior([]);
                     return;
@@ -109,7 +175,6 @@ const EscalaDoDia = () => {
                 const dataRes = await res.json();
                 setEscalaAnterior(dataRes.Escala || []);
             } catch (err) {
-                console.error("Erro ao buscar escala anterior:", err);
                 setEscalaAnterior([]);
             }
         };
@@ -121,18 +186,22 @@ const EscalaDoDia = () => {
         const fetchAusentes = async () => {
             if (!data) return;
             try {
-                const dataFormatted = data.substring(6, 10) + "-" + data.substring(3, 5) + "-" + data.substring(0, 2);
-                console.log("Data formatada para busca de ausentes:", dataFormatted);
-                const res = await fetch(`http://localhost:8000/ausentes/${dataFormatted}`);
+                const dataFormatted =
+                    data.substring(6, 10) +
+                    "-" +
+                    data.substring(3, 5) +
+                    "-" +
+                    data.substring(0, 2);
+                const res = await fetch(
+                    `http://localhost:8000/ausentes/${dataFormatted}`
+                );
                 if (!res.ok) {
                     setNomesAusentes([]);
                     return;
                 }
                 const dataRes = await res.json();
                 setNomesAusentes(dataRes);
-            } catch (err) {
-                console.error("Erro ao buscar ausentes:", err);
-            }
+            } catch (err) {}
         };
 
         fetchAusentes();
@@ -172,7 +241,9 @@ const EscalaDoDia = () => {
         }
 
         if (usuario.cargo !== categoriaAlvo) {
-            alert(`Erro: ${nome} não pertence à categoria ${categoriaAlvo}`);
+            alert(
+                `Erro: ${nome} não pertence à categoria ${categoriaAlvo}`
+            );
             return;
         }
 
@@ -183,9 +254,10 @@ const EscalaDoDia = () => {
                 ausente.horario === horarioAlvo
         );
 
-
         if (estaAusente) {
-            alert(`Erro: ${nome} está ausente neste horário (${horarioAlvo})`);
+            alert(
+                `Erro: ${nome} está ausente neste horário (${horarioAlvo})`
+            );
             return;
         }
 
@@ -205,11 +277,11 @@ const EscalaDoDia = () => {
     const montaMapaTurnos = () => {
         const mapa = {};
 
-        escalaAnterior.forEach(item => {
+        escalaAnterior.forEach((item) => {
             const row = horarios.indexOf(item.Horario);
             if (row >= 0) {
                 if (!mapa[item.Nome]) mapa[item.Nome] = [];
-                mapa[item.Nome].push({ row, dia: 'anterior' });
+                mapa[item.Nome].push({ row, dia: "anterior" });
             }
         });
 
@@ -217,7 +289,7 @@ const EscalaDoDia = () => {
             linha.forEach((coluna) => {
                 coluna.forEach((nome) => {
                     if (!mapa[nome]) mapa[nome] = [];
-                    mapa[nome].push({ row: rowIdx, dia: 'atual' });
+                    mapa[nome].push({ row: rowIdx, dia: "atual" });
                 });
             });
         });
@@ -229,10 +301,12 @@ const EscalaDoDia = () => {
         const mapa = montaMapaTurnos();
 
         for (const [nome, dados] of Object.entries(mapa)) {
-            const ordenados = dados.slice().sort((a, b) => {
-                if (a.dia === b.dia) return a.row - b.row;
-                return a.dia === 'anterior' ? -1 : 1;
-            });
+            const ordenados = dados
+                .slice()
+                .sort((a, b) => {
+                    if (a.dia === b.dia) return a.row - b.row;
+                    return a.dia === "anterior" ? -1 : 1;
+                });
 
             let consecutivos = 1;
 
@@ -240,12 +314,14 @@ const EscalaDoDia = () => {
                 const atual = ordenados[i];
                 const anterior = ordenados[i - 1];
 
-                if (atual.dia === anterior.dia && atual.row === anterior.row + 1) {
+                if (
+                    atual.dia === anterior.dia &&
+                    atual.row === anterior.row + 1
+                ) {
                     consecutivos++;
-                }
-                else if (
-                    anterior.dia === 'anterior' &&
-                    atual.dia === 'atual' &&
+                } else if (
+                    anterior.dia === "anterior" &&
+                    atual.dia === "atual" &&
                     anterior.row === horarios.length - 1 &&
                     atual.row === 0
                 ) {
@@ -255,7 +331,9 @@ const EscalaDoDia = () => {
                 }
 
                 if (consecutivos >= 3) {
-                    alert(`Erro: ${nome} está escalado em ${consecutivos} turnos consecutivos!\nTotalizando mais de 24 horas seguidas de trabalho.`);
+                    alert(
+                        `Erro: ${nome} está escalado em ${consecutivos} turnos consecutivos!`
+                    );
                     return false;
                 }
             }
@@ -269,7 +347,7 @@ const EscalaDoDia = () => {
 
         const payload = {
             DataEscala: data,
-            Escala: []
+            Escala: [],
         };
 
         if (!validaTurnosSeguidos()) {
@@ -282,27 +360,28 @@ const EscalaDoDia = () => {
                     payload.Escala.push({
                         Horario: horario,
                         Nome: nome,
-                        Cargo: categoria
+                        Cargo: categoria,
                     });
                 });
             });
         });
 
         try {
-            const method = escalaExistente.length > 0 ? "PUT" : "POST";
-            const res = await fetch(`http://localhost:8000/escaladodia/${data}`, {
-                method,
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload)
-            });
+            const method =
+                escalaExistente.length > 0 ? "PUT" : "POST";
+            const res = await fetch(
+                `http://localhost:8000/escaladodia/${data}`,
+                {
+                    method,
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload),
+                }
+            );
 
             if (!res.ok) throw new Error("Erro ao enviar escala");
 
-            const dataRes = await res.json();
-            console.log("Escala enviada:", dataRes);
             alert("Escala enviada com sucesso!");
         } catch (err) {
-            console.error(err);
             alert("Erro ao enviar escala");
         }
     };
@@ -312,19 +391,21 @@ const EscalaDoDia = () => {
         2
     );
 
-
     const hoje = new Date();
     hoje.setHours(0, 0, 0, 0);
     const [dia, mes, ano] = data.split("-").map(Number);
     const dataSelecionada = new Date(ano, mes - 1, dia);
     dataSelecionada.setHours(0, 0, 0, 0);
-    const isDataPassada = dataSelecionada && dataSelecionada < hoje;
+    const isDataPassada =
+        dataSelecionada && dataSelecionada < hoje;
 
     return (
         <div className="escala-page">
             <h2>
-                Escala do Dia: {data ? data.replaceAll("-", "/") : "Nenhuma data selecionada"}
+                Escala do Dia:{" "}
+                {data ? data.replaceAll("-", "/") : "Nenhuma data selecionada"}
             </h2>
+
             {user && user.cargo === "Coordenador" && (
                 <div className="escala-layout">
                     <div className="nomes-box">
@@ -338,38 +419,85 @@ const EscalaDoDia = () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {Array.from({ length: maxRows }).map((_, rowIdx) => (
-                                    <tr key={rowIdx}>
-                                        {categorias.map((cat, colIdx) => {
-                                            const nomes = Array.from(
-                                                new Map(
-                                                    horarios.flatMap(h => nomesPorCategoria(cat, h))
-                                                        .map(u => [u.nome, u])
-                                                ).values()
-                                            ); return (
-                                                <td key={colIdx}>
-                                                    {nomes[rowIdx] && (
-                                                        <div
-                                                            draggable={!isDataPassada}
-                                                            onDragStart={(e) =>
-                                                                handleDragStart(e, nomes[rowIdx].nome)
-                                                            }
-                                                            className="nome-item"
-                                                        >
-                                                            {nomes[rowIdx].nome}
-                                                        </div>
-                                                    )}
-                                                </td>
-                                            );
-                                        })}
-                                    </tr>
-                                ))}
+                                {Array.from({ length: maxRows }).map(
+                                    (_, rowIdx) => (
+                                        <tr key={rowIdx}>
+                                            {categorias.map(
+                                                (cat, colIdx) => {
+                                                    const nomes =
+                                                        Array.from(
+                                                            new Map(
+                                                                horarios
+                                                                    .flatMap(
+                                                                        (
+                                                                            h
+                                                                        ) =>
+                                                                            nomesPorCategoria(
+                                                                                cat,
+                                                                                h
+                                                                            )
+                                                                    )
+                                                                    .map(
+                                                                        (
+                                                                            u
+                                                                        ) => [
+                                                                            u.nome,
+                                                                            u,
+                                                                        ]
+                                                                    )
+                                                            ).values()
+                                                        );
+
+                                                    return (
+                                                        <td key={colIdx}>
+                                                            {nomes[
+                                                                rowIdx
+                                                            ] && (
+                                                                <div
+                                                                    draggable={
+                                                                        !isDataPassada
+                                                                    }
+                                                                    onDragStart={(
+                                                                        e
+                                                                    ) =>
+                                                                        handleDragStart(
+                                                                            e,
+                                                                            nomes[
+                                                                                rowIdx
+                                                                            ]
+                                                                                .nome
+                                                                        )
+                                                                    }
+                                                                    className="nome-item"
+                                                                >
+                                                                    {
+                                                                        nomes[
+                                                                            rowIdx
+                                                                        ].nome
+                                                                    }
+                                                                </div>
+                                                            )}
+                                                        </td>
+                                                    );
+                                                }
+                                            )}
+                                        </tr>
+                                    )
+                                )}
                             </tbody>
                         </table>
                     </div>
+
                     <div className="escala-box">
                         <h3>Escala</h3>
-                        <form onSubmit={!isDataPassada ? handleSubmit : (e) => e.preventDefault()} className="form">
+                        <form
+                            onSubmit={
+                                !isDataPassada
+                                    ? handleSubmit
+                                    : (e) => e.preventDefault()
+                            }
+                            className="form"
+                        >
                             <table className="escala-table">
                                 <thead>
                                     <tr>
@@ -383,47 +511,128 @@ const EscalaDoDia = () => {
                                     {horarios.map((horario, rowIdx) => (
                                         <tr key={rowIdx}>
                                             <td>{horario}</td>
-                                            {categorias.map((_, colIdx) => (
-                                                <td
-                                                    key={colIdx}
-                                                    onDragOver={allowDrop}
-                                                    onDrop={(e) => handleDrop(e, rowIdx, colIdx)}
-                                                    className="escala-cell"
-                                                >
-                                                    {escala[rowIdx] &&
-                                                        escala[rowIdx][colIdx] &&
-                                                        escala[rowIdx][colIdx].length > 0 ? (
-                                                        escala[rowIdx][colIdx].map((nome, i) => (
-                                                            <div key={i} className="nome-escala">
-                                                                {nome}{" "}
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() =>
-                                                                        removerNome(rowIdx, colIdx, nome)
-                                                                    }
-                                                                    className="remove-btn"
-                                                                >
-                                                                    x
-                                                                </button>
-                                                            </div>
-                                                        ))
-                                                    ) : (
-                                                        "—"
-                                                    )}
-                                                </td>
-                                            ))}
+
+                                            {categorias.map(
+                                                (_, colIdx) => (
+                                                    <td
+                                                        key={colIdx}
+                                                        onDragOver={
+                                                            allowDrop
+                                                        }
+                                                        onDrop={(e) =>
+                                                            handleDrop(
+                                                                e,
+                                                                rowIdx,
+                                                                colIdx
+                                                            )
+                                                        }
+                                                        className="escala-cell"
+                                                    >
+                                                        {escala[rowIdx] &&
+                                                        escala[rowIdx][
+                                                            colIdx
+                                                        ] &&
+                                                        escala[rowIdx][colIdx]
+                                                            .length > 0 ? (
+                                                            escala[
+                                                                rowIdx
+                                                            ][
+                                                                colIdx
+                                                            ].map(
+                                                                (
+                                                                    nome,
+                                                                    i
+                                                                ) => {
+                                                                    const turnoAtual =
+                                                                        horarios[
+                                                                            rowIdx
+                                                                        ];
+                                                                    const trocado =
+                                                                        estaEmTroca(
+                                                                            nome,
+                                                                            turnoAtual
+                                                                        );
+                                                                    const info =
+                                                                        getTrocaInfo(
+                                                                            nome,
+                                                                            turnoAtual
+                                                                        );
+
+                                                                    return (
+                                                                        <div
+                                                                            key={
+                                                                                i
+                                                                            }
+                                                                            className="nome-escala"
+                                                                            style={{
+                                                                                color: trocado
+                                                                                    ? "orange"
+                                                                                    : "inherit",
+                                                                                fontWeight:
+                                                                                    trocado
+                                                                                        ? "bold"
+                                                                                        : "normal",
+                                                                                cursor: trocado
+                                                                                    ? "pointer"
+                                                                                    : "default",
+                                                                            }}
+                                                                            onClick={() => {
+                                                                                if (
+                                                                                    trocado &&
+                                                                                    info
+                                                                                ) {
+                                                                                    setModalInfo(
+                                                                                        info
+                                                                                    );
+                                                                                }
+                                                                            }}
+                                                                        >
+                                                                            {
+                                                                                nome
+                                                                            }{" "}
+                                                                            {!trocado && (
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={() =>
+                                                                                        removerNome(
+                                                                                            rowIdx,
+                                                                                            colIdx,
+                                                                                            nome
+                                                                                        )
+                                                                                    }
+                                                                                    className="remove-btn"
+                                                                                >
+                                                                                    x
+                                                                                </button>
+                                                                            )}
+                                                                        </div>
+                                                                    );
+                                                                }
+                                                            )
+                                                        ) : (
+                                                            "—"
+                                                        )}
+                                                    </td>
+                                                )
+                                            )}
                                         </tr>
                                     ))}
                                 </tbody>
                             </table>
-                            {(!isDataPassada && user && user.cargo === "Coordenador") && (
 
-                                <button type="submit" className="submit-button">
-                                    Enviar Escala
-                                </button>
-                            )}
+                            {!isDataPassada &&
+                                user &&
+                                user.cargo === "Coordenador" && (
+                                    <button
+                                        type="submit"
+                                        className="submit-button"
+                                    >
+                                        Enviar Escala
+                                    </button>
+                                )}
                         </form>
                     </div>
+
                     <div className="ausentes-box">
                         <h3>Colaboradores Indisponíveis</h3>
                         <table className="colab-ausente">
@@ -434,7 +643,10 @@ const EscalaDoDia = () => {
                             </thead>
                             <tbody>
                                 {nomesAusentes
-                                    .filter(item => item.ausente === "Sim")
+                                    .filter(
+                                        (item) =>
+                                            item.ausente === "Sim"
+                                    )
                                     .map((colab) => (
                                         <tr key={colab.id}>
                                             <td>{`${colab.nome} - ${colab.horario}`}</td>
@@ -445,8 +657,46 @@ const EscalaDoDia = () => {
                     </div>
                 </div>
             )}
+
             {user && user.cargo !== "Coordenador" && (
                 <h2>Você não tem permissão para acessar esta página.</h2>
+            )}
+
+            {modalInfo && (
+                <div className="modal-bg" onClick={() => setModalInfo(null)}>
+                    <div
+                        className="modal-box"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <h2>Troca Aprovada</h2>
+                        <p>
+                            <strong>Solicitante:</strong>{" "}
+                            {modalInfo.solicitante}
+                        </p>
+                        <p>
+                            <strong>Destinatário:</strong>{" "}
+                            {modalInfo.destinatario}
+                        </p>
+                        <p>
+                            <strong>Turno do Solicitante:</strong>{" "}
+                            {modalInfo.horariosolicitante}
+                        </p>
+                        <p>
+                            <strong>Turno do Destinatário:</strong>{" "}
+                            {modalInfo.horariodestinatario}
+                        </p>
+                        <p>
+                            <strong>Motivo:</strong> {modalInfo.motivo}
+                        </p>
+
+                        <button
+                            className="close-modal"
+                            onClick={() => setModalInfo(null)}
+                        >
+                            Fechar
+                        </button>
+                    </div>
+                </div>
             )}
         </div>
     );
