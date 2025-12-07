@@ -3,15 +3,19 @@ import { FaUserMinus } from "react-icons/fa";
 import "bootstrap/dist/css/bootstrap.min.css";
 
 const AddAusenteModal = ({ show, onClose, onSuccess }) => {
+
     const [formData, setFormData] = useState({
-        ausente: "Sim",
         nome: "",
         cpf: "",
+        cargo: "",
+        motivo: "",
         data: "",
         horario: "07:00 - 19:00",
-        cargo: "",
+        data_final: "",
+        horario_final: "07:00 - 07:00"
     });
 
+    const [tipoAusencia, setTipoAusencia] = useState("turno");
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
 
@@ -24,19 +28,22 @@ const AddAusenteModal = ({ show, onClose, onSuccess }) => {
                 const res = await fetch("http://localhost:8000/usuario/");
                 const data = await res.json();
                 setFuncionarios(data);
-                const cargosUnicos = [...new Set(data.map(u => u.cargo)
-                )].filter((cargo) => cargo.toLowerCase() !== "coordenador");
+
+                const cargosUnicos = [...new Set(data.map(u => u.cargo))]
+                    .filter((cargo) => cargo.toLowerCase() !== "coordenador");
+
                 setCargos(cargosUnicos);
             } catch (err) {
                 console.error(err);
                 setError("Erro ao buscar usuários. Tente novamente.");
             }
         };
+
         fetchUsuarios();
     }, []);
 
     const funcionariosFiltrados = formData.cargo
-        ? funcionarios.filter(f => f.cargo === formData.cargo)
+        ? funcionarios.filter((f) => f.cargo === formData.cargo)
         : [];
 
     const handleChange = (e) => {
@@ -49,52 +56,74 @@ const AddAusenteModal = ({ show, onClose, onSuccess }) => {
                 nome: value,
                 cpf: funcionario ? funcionario.cpf : "",
             });
-        } else {
-            setFormData({ ...formData, [name]: value });
+            return;
         }
+
+        setFormData({ ...formData, [name]: value });
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        if (!formData.nome || !formData.cpf || !formData.data || !formData.cargo) {
+        if (!formData.nome || !formData.cpf || !formData.cargo || !formData.motivo) {
             setError("Preencha todos os campos obrigatórios!");
+            return;
+        }
+
+        if (!formData.data) {
+            setError("Informe a data.");
+            return;
+        }
+        if (tipoAusencia === "intervalo" && !formData.data_final) {
+            setError("Informe a data final.");
             return;
         }
 
         setError("");
         setSuccess("");
 
+        let payload = {
+            ausente: "Sim",
+            nome: formData.nome,
+            cpf: formData.cpf,
+            cargo: formData.cargo,
+            motivo: formData.motivo,
+            data: formData.data,
+            horario: formData.horario
+        };
+
+        if (tipoAusencia === "intervalo") {
+            payload.data_final = formData.data_final;
+            payload.horario_final = formData.horario_final;
+        }
+
         try {
             const res = await fetch("http://localhost:8000/ausentes/", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(formData),
+                body: JSON.stringify(payload)
             });
 
             if (!res.ok) {
                 const data = await res.json();
-
-                if (data.detail) {
-                    const detailMsg = typeof data.detail === "string"
-                        ? data.detail
-                        : JSON.stringify(data.detail);
-                    setError(detailMsg);
-                } else {
-                    setError("Erro ao cadastrar ausente");
-                }
+                setError(data.detail || "Erro ao registrar ausente");
                 return;
             }
 
             setSuccess("Funcionário ausente registrado com sucesso!");
+
             setFormData({
-                ausente: "Sim",
                 nome: "",
                 cpf: "",
+                cargo: "",
+                motivo: "",
                 data: "",
                 horario: "07:00 - 19:00",
-                cargo: "",
+                data_final: "",
+                horario_final: "07:00 - 19:00"
             });
+
+            setTipoAusencia("turno");
 
             if (onSuccess) onSuccess();
 
@@ -154,12 +183,13 @@ const AddAusenteModal = ({ show, onClose, onSuccess }) => {
                                         name="nome"
                                         value={formData.nome}
                                         onChange={handleChange}
-                                        required
                                         disabled={!formData.cargo}
                                     >
                                         <option value="">Selecione o funcionário</option>
                                         {funcionariosFiltrados.map((f, idx) => (
-                                            <option key={idx} value={f.nome_completo}>{f.nome_completo}</option>
+                                            <option key={idx} value={f.nome_completo}>
+                                                {f.nome_completo}
+                                            </option>
                                         ))}
                                     </select>
                                 </div>
@@ -169,41 +199,129 @@ const AddAusenteModal = ({ show, onClose, onSuccess }) => {
                                     <input
                                         type="text"
                                         className="form-control"
-                                        name="cpf"
                                         value={formData.cpf}
                                         readOnly
                                     />
                                 </div>
 
                                 <div className="mb-3">
-                                    <label className="form-label">Data</label>
-                                    <input
-                                        type="date"
-                                        className="form-control"
-                                        name="data"
-                                        value={formData.data}
-                                        onChange={handleChange}
-                                        required
-                                    />
+                                    <label className="form-label">Tipo de ausência</label>
+                                    <div>
+                                        <div className="form-check form-check-inline">
+                                            <input
+                                                className="form-check-input"
+                                                type="radio"
+                                                name="tipoAusencia"
+                                                value="turno"
+                                                checked={tipoAusencia === "turno"}
+                                                onChange={(e) => setTipoAusencia(e.target.value)}
+                                            />
+                                            <label className="form-check-label">Um turno</label>
+                                        </div>
+
+                                        <div className="form-check form-check-inline">
+                                            <input
+                                                className="form-check-input"
+                                                type="radio"
+                                                name="tipoAusencia"
+                                                value="intervalo"
+                                                checked={tipoAusencia === "intervalo"}
+                                                onChange={(e) => setTipoAusencia(e.target.value)}
+                                            />
+                                            <label className="form-check-label">Um Período</label>
+                                        </div>
+                                    </div>
                                 </div>
 
+                                {tipoAusencia === "turno" && (
+                                    <>
+                                        <div className="mb-3">
+                                            <label className="form-label">Data</label>
+                                            <input
+                                                type="date"
+                                                className="form-control"
+                                                name="data"
+                                                value={formData.data}
+                                                onChange={handleChange}
+                                            />
+
+                                            <label className="form-label mt-2">Turno</label>
+                                            <select
+                                                className="form-select"
+                                                name="horario"
+                                                value={formData.horario}
+                                                onChange={handleChange}
+                                            >
+                                                <option value="07:00 - 19:00">07:00 - 19:00</option>
+                                                <option value="19:00 - 07:00">19:00 - 07:00</option>
+                                            </select>
+                                        </div>
+                                    </>
+                                )}
+
+                                {tipoAusencia === "intervalo" && (
+                                    <>
+                                        <div className="mb-3">
+                                            <label className="form-label">Data Inicial</label>
+                                            <input
+                                                type="date"
+                                                className="form-control"
+                                                name="data"
+                                                value={formData.data}
+                                                onChange={handleChange}
+                                            />
+
+                                            <label className="form-label mt-2">Turno Inicial</label>
+                                            <select
+                                                className="form-select"
+                                                name="horario"
+                                                value={formData.horario}
+                                                onChange={handleChange}
+                                            >
+                                                <option value="07:00 - 19:00">07:00 - 19:00</option>
+                                                <option value="19:00 - 07:00">19:00 - 07:00</option>
+                                            </select>
+                                        </div>
+
+                                        <div className="mb-3">
+                                            <label className="form-label">Data Final</label>
+                                            <input
+                                                type="date"
+                                                className="form-control"
+                                                name="data_final"
+                                                value={formData.data_final}
+                                                onChange={handleChange}
+                                            />
+
+                                            <label className="form-label mt-2">Turno Final</label>
+                                            <select
+                                                className="form-select"
+                                                name="horario_final"
+                                                value={formData.horario_final}
+                                                onChange={handleChange}
+                                            >
+                                                <option value="07:00 - 19:00">07:00 - 19:00</option>
+                                                <option value="19:00 - 07:00">19:00 - 07:00</option>
+                                            </select>
+                                        </div>
+                                    </>
+                                )}
+
                                 <div className="mb-3">
-                                    <label className="form-label">Horário</label>
-                                    <select
-                                        className="form-select"
-                                        name="horario"
-                                        value={"07:00 - 19:00"}
+                                    <label className="form-label">Motivo</label>
+                                    <input
+                                        type="text"
+                                        className="form-control"
+                                        name="motivo"
+                                        value={formData.motivo}
                                         onChange={handleChange}
-                                        required
-                                    >
-                                        <option value="07:00 - 19:00">07:00 - 19:00</option>
-                                        <option value="19:00 - 07:00">19:00 - 07:00</option>
-                                    </select>
+                                    />
                                 </div>
 
                                 <button type="submit" className="btn btn-primary w-100">
                                     Registrar Ausente
                                 </button>
+
                             </form>
                         </div>
 
