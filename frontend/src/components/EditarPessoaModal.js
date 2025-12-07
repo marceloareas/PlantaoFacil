@@ -9,6 +9,8 @@ const EditarPessoaModal = ({ show, onClose, pessoa, onSave }) => {
         crm: "",
         cpf: "",
         cargo: "",
+        horaEscala: "",
+        situacao: "",
     });
     const [error, setError] = useState("");
 
@@ -21,6 +23,8 @@ const EditarPessoaModal = ({ show, onClose, pessoa, onSave }) => {
                 crm: pessoa.crm || "",
                 cpf: pessoa.cpf || "",
                 cargo: pessoa.cargo || "",
+                horaEscala: pessoa.horaEscala || "",
+                situacao: pessoa.situacao,
             });
             setError("");
         }
@@ -55,8 +59,8 @@ const EditarPessoaModal = ({ show, onClose, pessoa, onSave }) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        const { nome_completo, email, password, crm, cpf, cargo } = formData;
-        if (!nome_completo || !email || !password || !crm || !cpf || !cargo) {
+        const { nome_completo, email, password, crm, cpf, cargo, horaEscala, situacao } = formData;
+        if (!nome_completo || !email || !password || !crm || !cpf || !cargo || !horaEscala) {
             setError("Preencha todos os campos obrigatórios!");
             return;
         }
@@ -174,6 +178,18 @@ const EditarPessoaModal = ({ show, onClose, pessoa, onSave }) => {
                             <option value="Tecnico">Técnico(a) de Enfermagem</option>
                             <option value="Enfermeiro">Enfermeiro(a)</option>
                             <option value="Coordenador">Coordenador</option>
+                        </Form.Select>
+                    </Form.Group>
+                    <Form.Group className="mb-3">
+                        <Form.Label>Hora de Escala</Form.Label>
+                        <Form.Select
+                            name="horaEscala"
+                            value={formData.horaEscala}
+                            onChange={handleChange}
+                            required
+                        >
+                            <option value="12x36">12x36</option>
+                            <option value="12x60">12x60</option>
                         </Form.Select>
                     </Form.Group>
 

@@ -114,7 +114,8 @@ const Pessoas = () => {
             user.crm?.toLowerCase().includes(termo) ||
             user.cargo?.toLowerCase().includes(termo) ||
             user.email?.toLowerCase().includes(termo) ||
-            user.situacao?.toLowerCase().includes(termo)
+            user.situacao?.toLowerCase().includes(termo) ||
+            user.horaEscala?.toLowerCase().includes(termo)
         );
     });
 
@@ -161,6 +162,7 @@ const Pessoas = () => {
                                 <tr>
                                     <th>Nome Completo</th>
                                     <th>Cargo</th>
+                                    <th>Escala</th>
                                     <th>Email</th>
                                     <th>CRM/COREN</th>
                                     <th>CPF</th>
@@ -174,6 +176,7 @@ const Pessoas = () => {
                                         <tr key={user.id}>
                                             <td>{user.nome_completo}</td>
                                             <td>{user.cargo}</td>
+                                            <td>{user.horaEscala}</td>
                                             <td>{user.email || "—"}</td>
                                             <td>{user.crm || "—"}</td>
                                             <td>{user.cpf || "—"}</td>
