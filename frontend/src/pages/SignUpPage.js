@@ -8,6 +8,7 @@ const SignUpModal = ({ show, onClose }) => {
   const [crms, setCrms] = useState('');
   const [cpf, setCpf] = useState('');
   const [name, setName] = useState('');
+  const [horaEscala, sethoraEscala] = useState('12x36');
   const [cargo, setCargo] = useState('Tecnico');
   const [error, setError] = useState('');
   const [cpfValido, setCpfValido] = useState(null);
@@ -75,7 +76,7 @@ const SignUpModal = ({ show, onClose }) => {
       return;
     }
 
-    if (!email || !password || !cpf || !name || !crms || !cargo) {
+    if (!email || !password || !cpf || !name || !crms || !cargo || !horaEscala) {
       setError("Preencha todos os campos obrigatórios!");
       return;
     }
@@ -95,6 +96,7 @@ const SignUpModal = ({ show, onClose }) => {
       crm: crms,
       cpf,
       cargo,
+      horaEscala: horaEscala,
       situacao: "Ativo"
     };
 
@@ -124,7 +126,8 @@ const SignUpModal = ({ show, onClose }) => {
       setCrms('');
       setCpf('');
       setName('');
-      setCargo('');
+      setCargo('Tecnico');
+      sethoraEscala('12x36');
       setError('');
       onClose();
 
@@ -141,7 +144,8 @@ const SignUpModal = ({ show, onClose }) => {
     setCrms('');
     setCpf('');
     setName('');
-    setCargo('');
+    setCargo('Tecnico');
+    sethoraEscala('12x36');
     setError('');
     setCpfValido('');
     return;
@@ -249,7 +253,18 @@ const SignUpModal = ({ show, onClose }) => {
                     <option value="Coordenador">Coordenador</option>
                   </select>
                 </div>
-
+                <div className="mb-3">
+                  <label className="form-label">Hora de Escala</label>
+                  <select
+                    className="form-control"
+                    value={horaEscala}
+                    onChange={(e) => sethoraEscala(e.target.value)}
+                    required
+                  >
+                    <option value="12x36">12x36</option>
+                    <option value="12x60">12x60</option>
+                  </select>
+                </div>
                 <button type="submit" className="btn btn-primary w-100">
                   Cadastrar
                 </button>

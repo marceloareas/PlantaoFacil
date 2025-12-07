@@ -20,6 +20,7 @@ def create_user(user: UserCreate, db: Session = Depends(get_db)):
         cpf=user.cpf,
         nome_completo=user.nome_completo,
         cargo=user.cargo,
+        horaEscala=user.horaEscala,
         situacao="Ativo"
     )
 
@@ -47,6 +48,7 @@ def update_user(user_id: int, user: UserCreate, db: Session = Depends(get_db)):
     db_user.cpf = user.cpf
     db_user.nome_completo = user.nome_completo
     db_user.cargo = user.cargo
+    db_user.horaEscala = user.horaEscala
     db_user.situacao = user.situacao
 
     db.commit()
@@ -71,6 +73,7 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
             "crm": db_user.crm,
             "cpf": db_user.cpf,
             "cargo": db_user.cargo,
+            "horaEscala": db_user.horaEscala,
             "situacao": db_user.situacao
         }
     }

@@ -11,4 +11,5 @@ class User(Base):
     cpf = Column(String(20), unique=True, nullable=True)
     nome_completo = Column(String(255), nullable=False)
     cargo = Column(String(100), nullable=False)
+    horaEscala = Column(String(50), nullable=False, default="12X36")
     situacao = Column(String(50), default="Ativo")
