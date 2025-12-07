@@ -15,6 +15,7 @@ import TrocasAprovacao from './pages/Trocas/TrocasAprovacao';
 import Trocas from './pages/Trocas/trocas';
 import Pessoas from './pages/Pessoas/Pessoas';
 import { Button } from 'bootstrap';
+import HelpPage from './pages/Help/HelpPage';
 
 function BackButton() {
   const navigate = useNavigate();
@@ -169,6 +170,7 @@ function App() {
             <Route path="/Trocas" element={<Trocas />} />
             <Route path="/TrocasAprovacao" element={<TrocasAprovacao />} />
             <Route path="/Pessoas" element={<Pessoas />} />
+            <Route path="/help" element={<HelpPage />} />
           </Routes>
         </div>
       </div>

@@ -1,0 +1,30 @@
+.help-container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 20px 25px;
+  line-height: 1.6;
+}
+
+.help-container h1 {
+  margin-bottom: 25px;
+  text-align: center;
+}
+
+.help-container h2 {
+  margin-top: 35px;
+  color: #333;
+}
+
+.help-container h3 {
+  margin-top: 20px;
+  color: #444;
+}
+
+.help-img {
+  width: 100%;
+  max-width: 750px;
+  display: block;
+  margin: 18px auto;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+}
