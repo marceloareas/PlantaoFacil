@@ -21,8 +21,11 @@ def create_ausente(ausente: AusentesCreate, db: Session = Depends(get_db)):
         nome=ausente.nome,
         cpf=ausente.cpf,
         data=ausente.data,
+        data_final=ausente.data_final,
         horario=ausente.horario,
-        cargo=ausente.cargo
+        horario_final=ausente.horario_final,
+        cargo=ausente.cargo,
+        motivo=ausente.motivo
     )
 
     db.add(novo_ausente)
@@ -35,8 +38,11 @@ def create_ausente(ausente: AusentesCreate, db: Session = Depends(get_db)):
             "cpf": novo_ausente.cpf,
             "nome": novo_ausente.nome,
             "data": novo_ausente.data,
+            "data_final": novo_ausente.data_final,
             "horario": novo_ausente.horario,
-            "cargo": novo_ausente.cargo
+            "horario_final": novo_ausente.horario_final,
+            "cargo": novo_ausente.cargo,
+            "motivo": novo_ausente.motivo
         }
     }
 

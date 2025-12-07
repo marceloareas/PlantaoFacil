@@ -11,8 +11,8 @@ const AddAusenteModal = ({ show, onClose, onSuccess }) => {
         motivo: "",
         data: "",
         horario: "07:00 - 19:00",
-        data_final: "",
-        horario_final: "07:00 - 07:00"
+        data_final: null,
+        horario_final: null
     });
 
     const [tipoAusencia, setTipoAusencia] = useState("turno");
@@ -89,8 +89,10 @@ const AddAusenteModal = ({ show, onClose, onSuccess }) => {
             cargo: formData.cargo,
             motivo: formData.motivo,
             data: formData.data,
-            horario: formData.horario
-        };
+            horario: formData.horario,
+            data_final: null,
+            horario_final: null
+        }
 
         if (tipoAusencia === "intervalo") {
             payload.data_final = formData.data_final;
@@ -119,8 +121,8 @@ const AddAusenteModal = ({ show, onClose, onSuccess }) => {
                 motivo: "",
                 data: "",
                 horario: "07:00 - 19:00",
-                data_final: "",
-                horario_final: "07:00 - 19:00"
+                data_final: null,
+                horario_final: null
             });
 
             setTipoAusencia("turno");

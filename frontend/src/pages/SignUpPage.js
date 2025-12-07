@@ -132,6 +132,7 @@ const SignUpModal = ({ show, onClose }) => {
       onClose();
 
       alert("Usuário criado com sucesso!");
+      window.location.reload();
 
     } catch (err) {
       setError("Erro de conexão com o servidor");
