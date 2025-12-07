@@ -130,9 +130,9 @@ function App() {
             {!showRelat && (
               <>
                 <li><a href="/Calendar" onClick={() => setShowMenu(false)}>Calendário</a></li>
-                <li><a href='/Ausentes' onClick={() => setShowMenu(false)}>Indisponibilidades</a></li>
                 {user?.cargo === "Coordenador" && (
                   <>
+                <li><a href='/Ausentes' onClick={() => setShowMenu(false)}>Indisponibilidades</a></li>
                     <li><a href="/Pessoas" onClick={() => setShowMenu(false)}>Funcionários</a></li>
                     <li><a href="/TrocasAprovacao" onClick={() => setShowMenu(false)}>Trocas para aprovação</a></li>
                   </>

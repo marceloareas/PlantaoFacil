@@ -10,6 +10,7 @@ const Trocas = () => {
   const [horariosColega, setHorariosColega] = useState([]);
   const [trocasUsuario, setTrocasUsuario] = useState([]);
   const [trocasParaMim, setTrocasParaMim] = useState([]);
+  const [erro, setErro] = useState(""); // <<<<<< NOVO
   const [troca, setTroca] = useState({
     meuDia: "",
     meuHorario: "",
@@ -57,6 +58,7 @@ const Trocas = () => {
   useEffect(() => {
     if (!troca.meuDia || !user) {
       setMeusHorarios([]);
+      setErro("");
       setTroca((prev) => ({ ...prev, meuHorario: "" }));
       return;
     }
@@ -73,10 +75,18 @@ const Trocas = () => {
           .map((e) => e.Horario);
 
         setMeusHorarios(horarios);
+
+        if (horarios.length === 0) {
+          setErro("Você não está escalado para esse dia.");
+        } else {
+          setErro("");
+        }
+
         setTroca((prev) => ({ ...prev, meuHorario: "" }));
       } catch (err) {
         console.error("Erro ao buscar meus horários:", err);
         setMeusHorarios([]);
+        setErro("Erro ao buscar seus horários.");
       }
     };
 
@@ -86,6 +96,7 @@ const Trocas = () => {
   useEffect(() => {
     if (!diaColega || !user) {
       setColegasDisponiveis([]);
+      setErro("");
       setTroca((prev) => ({ ...prev, destinatario: "" }));
       return;
     }
@@ -102,10 +113,18 @@ const Trocas = () => {
           .map((e) => ({ nome: e.Nome }));
 
         setColegasDisponiveis(colegas);
+
+        if (colegas.length === 0) {
+          setErro("Nenhum colega está escalado neste dia.");
+        } else {
+          setErro("");
+        }
+
         setTroca((prev) => ({ ...prev, destinatario: "" }));
       } catch (err) {
-        console.error("Erro ao buscar colegas do dia do colega:", err);
+        console.error("Erro ao buscar colegas:", err);
         setColegasDisponiveis([]);
+        setErro("Erro ao buscar colaboradores escalados.");
       }
     };
 
@@ -115,6 +134,7 @@ const Trocas = () => {
   useEffect(() => {
     if (!troca.destinatario || !diaColega) {
       setHorariosColega([]);
+      setErro("");
       setTroca((prev) => ({ ...prev, horarioColega: "" }));
       return;
     }
@@ -131,10 +151,18 @@ const Trocas = () => {
           .map((e) => e.Horario);
 
         setHorariosColega(horarios);
+
+        if (horarios.length === 0) {
+          setErro("Esse colaborador não tem horário nesse dia.");
+        } else {
+          setErro("");
+        }
+
         setTroca((prev) => ({ ...prev, horarioColega: "" }));
       } catch (err) {
         console.error("Erro ao buscar horários do colega:", err);
         setHorariosColega([]);
+        setErro("Erro ao buscar horários do colaborador.");
       }
     };
 
@@ -148,7 +176,7 @@ const Trocas = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!user) return alert("Usuário não autenticado.");
+
     if (
       !troca.meuDia ||
       !troca.meuHorario ||
@@ -156,8 +184,11 @@ const Trocas = () => {
       !troca.horarioColega ||
       !diaColega
     ) {
-      return alert("Preencha todos os campos obrigatórios.");
+      setErro("Preencha todos os campos obrigatórios.");
+      return;
     }
+
+    setErro("");
 
     const payload = {
       solicitante: user.nome_completo,
@@ -176,9 +207,13 @@ const Trocas = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
-      if (!res.ok) throw new Error("Erro ao enviar solicitação");
 
-      alert("Solicitação de troca enviada com sucesso!");
+      if (!res.ok) {
+        setErro("Não foi possível enviar a solicitação.");
+        return;
+      }
+
+      setErro("");
       setTroca({
         meuDia: "",
         meuHorario: "",
@@ -194,29 +229,31 @@ const Trocas = () => {
       carregarTrocas(user);
     } catch (err) {
       console.error(err);
-      alert("Erro ao enviar solicitação de troca.");
+      setErro("Erro ao enviar solicitação.");
     }
   };
 
   const handleDelete = async (id, situacao) => {
     if (situacao !== "Pendente") {
-      return alert("Só é possível deletar solicitações com situacao Pendente.");
+      setErro("Só é possível deletar solicitações com situação Pendente.");
+      return;
     }
-
-    if (!window.confirm("Tem certeza que deseja deletar esta solicitação?")) return;
 
     try {
       const res = await fetch(`${API}/trocas/${id}`, {
         method: "DELETE",
       });
 
-      if (!res.ok) throw new Error("Erro ao deletar solicitação");
+      if (!res.ok) {
+        setErro("Erro ao deletar solicitação.");
+        return;
+      }
 
-      alert("Solicitação deletada com sucesso!");
+      setErro("");
       setTrocasUsuario((prev) => prev.filter((t) => t.id !== id));
     } catch (err) {
       console.error(err);
-      alert("Erro ao deletar solicitação.");
+      setErro("Erro ao deletar solicitação.");
     }
   };
 
@@ -225,47 +262,53 @@ const Trocas = () => {
       const res = await fetch(`${API}/trocas/${id}/destinatario-aprovar`, {
         method: "PUT",
       });
-      if (!res.ok) throw new Error("Erro ao aceitar solicitação");
+      if (!res.ok) throw new Error();
+
+      setErro("");
       carregarTrocas(user);
-      alert("Você aceitou a solicitação. Agora está Pendente e aguardando coordenador.");
     } catch (err) {
       console.error(err);
-      alert("Erro ao aceitar solicitação.");
+      setErro("Erro ao aceitar solicitação.");
     }
   };
 
   const rejeitarComoDestinatario = async (id) => {
-    if (!window.confirm("Deseja recusar esta solicitação?")) return;
     try {
       const res = await fetch(`${API}/trocas/${id}/destinatario-rejeitar`, {
         method: "PUT",
       });
-      if (!res.ok) throw new Error("Erro ao rejeitar solicitação");
+
+      if (!res.ok) {
+        setErro("Erro ao rejeitar solicitação.");
+        return;
+      }
+
+      setErro("");
       carregarTrocas(user);
-      alert("Solicitação rejeitada pelo destinatário.");
     } catch (err) {
       console.error(err);
-      alert("Erro ao rejeitar solicitação.");
+      setErro("Erro ao rejeitar solicitação.");
     }
-  };
-
-  const carregar = () => {
-    carregarTrocas(user);
   };
 
   return (
     <div className="troca-container">
+      
+      {erro && <div className="erro-box">{erro}</div>}
+
       <h2>Solicitar Troca de Plantão</h2>
 
       {user && user.cargo !== "Coordenador" ? (
         <>
           <form onSubmit={handleSubmit} className="troca-form">
+
             <label>Dia do plantão:</label>
             <input
               type="date"
               name="meuDia"
               value={troca.meuDia}
               onChange={handleChange}
+              min={new Date().toLocaleDateString("en-CA")}
               required
             />
 
@@ -292,6 +335,7 @@ const Trocas = () => {
               name="diaColega"
               value={diaColega}
               onChange={(e) => setDiaColega(e.target.value)}
+              min={new Date().toLocaleDateString("en-CA")}
               required
             />
 
@@ -339,6 +383,7 @@ const Trocas = () => {
 
             <button type="submit" className="enviar-btn">Enviar Solicitação</button>
           </form>
+
           <div className="minhas-trocas">
             <h3>Minhas Solicitações de Troca</h3>
             {trocasUsuario.length === 0 ? (
@@ -370,9 +415,7 @@ const Trocas = () => {
                           {t.situacao || "Pendente"}
                         </span>
                       </td>
-                      <td>
-                        {t.motivo}
-                      </td>
+                      <td>{t.motivo}</td>
                       <td>
                         {t.situacao === "Pendente" && (
                           <button
@@ -380,27 +423,6 @@ const Trocas = () => {
                             onClick={() => handleDelete(t.id, t.situacao)}
                           >
                             Deletar
-                          </button>
-                        )}
-                        {t.situacao === "Aguardando Destinatario" && (
-                          <button
-                            className="delete-btn"
-                            onClick={() => {
-                              if (!window.confirm("Cancelar solicitação?")) return;
-                              fetch(`${API}/trocas/${t.id}`, { method: "DELETE" })
-                                .then(r => {
-                                  if (!r.ok) throw new Error("Não foi possível cancelar");
-                                  alert("Solicitação cancelada");
-                                  carregarTrocas(user);
-                                })
-                                .catch(err => {
-                                  console.error(err);
-                                  alert("Não foi possível cancelar (backend pode exigir outro estado).");
-                                  carregarTrocas(user);
-                                });
-                            }}
-                          >
-                            Cancelar
                           </button>
                         )}
                       </td>
@@ -442,7 +464,7 @@ const Trocas = () => {
                       <td>{t.situacao}</td>
                       <td>{t.motivo || "—"}</td>
                       <td>
-                        {t.situacao == "Aguardando Destinatario" && (
+                        {t.situacao === "Aguardando Destinatario" && (
                           <>
                             <button
                               className="btn-aprovar"
@@ -465,9 +487,10 @@ const Trocas = () => {
               </table>
             )}
           </div>
+
         </>
       ) : (
-        <p> Você não tem acesso a esta página</p>
+        <p>Você não tem acesso a esta página</p>
       )}
     </div>
   );

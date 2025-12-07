@@ -3,14 +3,14 @@ import { useState, useEffect } from "react";
 import "./EscalaDoDia.css";
 
 const EscalaDoDia = () => {
-    const { data } = useParams(); 
+    const { data } = useParams();
 
     const [usuarios, setUsuarios] = useState([]);
     const [categorias, setCategorias] = useState([]);
-    const [escala, setEscala] = useState([]); 
+    const [escala, setEscala] = useState([]);
     const [nomesAusentes, setNomesAusentes] = useState([]);
     const [escalaExistente, setEscalaExistente] = useState([]);
-    const [escalaAnterior, setEscalaAnterior] = useState([]); 
+    const [escalaAnterior, setEscalaAnterior] = useState([]);
     const [user, setUser] = useState(null);
 
     const horarios = ["07:00 - 19:00", "19:00 - 07:00"];
@@ -87,7 +87,7 @@ const EscalaDoDia = () => {
 
             const partes = data.split("-");
             const dia = parseInt(partes[0], 10);
-            const mes = parseInt(partes[1], 10) - 1; 
+            const mes = parseInt(partes[1], 10) - 1;
             const ano = parseInt(partes[2], 10);
 
             const atual = new Date(ano, mes, dia);
@@ -98,7 +98,7 @@ const EscalaDoDia = () => {
             const mesA = String(anterior.getMonth() + 1).padStart(2, "0");
             const anoA = anterior.getFullYear();
 
-            const dataAnterior = `${diaA}-${mesA}-${anoA}`; 
+            const dataAnterior = `${diaA}-${mesA}-${anoA}`;
 
             try {
                 const res = await fetch(`http://localhost:8000/escaladodia/${dataAnterior}`);
@@ -203,7 +203,7 @@ const EscalaDoDia = () => {
     };
 
     const montaMapaTurnos = () => {
-        const mapa = {}; 
+        const mapa = {};
 
         escalaAnterior.forEach(item => {
             const row = horarios.indexOf(item.Horario);
@@ -251,7 +251,7 @@ const EscalaDoDia = () => {
                 ) {
                     consecutivos++;
                 } else {
-                    consecutivos = 1; 
+                    consecutivos = 1;
                 }
 
                 if (consecutivos >= 3) {
@@ -312,6 +312,14 @@ const EscalaDoDia = () => {
         2
     );
 
+
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    const [dia, mes, ano] = data.split("-").map(Number);
+    const dataSelecionada = new Date(ano, mes - 1, dia);
+    dataSelecionada.setHours(0, 0, 0, 0);
+    const isDataPassada = dataSelecionada && dataSelecionada < hoje;
+
     return (
         <div className="escala-page">
             <h2>
@@ -342,7 +350,7 @@ const EscalaDoDia = () => {
                                                 <td key={colIdx}>
                                                     {nomes[rowIdx] && (
                                                         <div
-                                                            draggable
+                                                            draggable={!isDataPassada}
                                                             onDragStart={(e) =>
                                                                 handleDragStart(e, nomes[rowIdx].nome)
                                                             }
@@ -361,7 +369,7 @@ const EscalaDoDia = () => {
                     </div>
                     <div className="escala-box">
                         <h3>Escala</h3>
-                        <form onSubmit={handleSubmit} className="form">
+                        <form onSubmit={!isDataPassada ? handleSubmit : (e) => e.preventDefault()} className="form">
                             <table className="escala-table">
                                 <thead>
                                     <tr>
@@ -408,9 +416,12 @@ const EscalaDoDia = () => {
                                     ))}
                                 </tbody>
                             </table>
-                            <button type="submit" className="submit-button">
-                                Enviar Escala
-                            </button>
+                            {(!isDataPassada && user && user.cargo === "Coordenador") && (
+
+                                <button type="submit" className="submit-button">
+                                    Enviar Escala
+                                </button>
+                            )}
                         </form>
                     </div>
                     <div className="ausentes-box">
