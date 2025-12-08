@@ -87,8 +87,10 @@ const FuncionariosAusentes = () => {
                             <th>Nome</th>
                             <th>CPF</th>
                             <th>Cargo</th>
-                            <th>Data</th>
-                            <th>Horário</th>
+                            <th>Data (inicial)</th>
+                            <th>Horário(inicial)</th>
+                            <th>Data Final</th>
+                            <th>Horário Final</th>
                             {user && user.cargo === "Coordenador" && (
                             <th>Ações</th>
                             )}
@@ -102,6 +104,8 @@ const FuncionariosAusentes = () => {
                                 <td>{func.cargo || "—"}</td>
                                 <td>{func.data}</td>
                                 <td>{func.horario || "—"}</td>
+                                <td>{func.data_final || "—"}</td>
+                                <td>{func.horario_final || "—"}</td>
                                 {user && user.cargo === "Coordenador" && (
                                 <td>
                                     <button

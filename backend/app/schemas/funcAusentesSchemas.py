@@ -7,9 +7,9 @@ class AusentesCreate(BaseModel):
     nome: str
     cpf: str
     data: str
-    data_final: Optional[date] = None
+    data_final: Optional[str] = None
     horario: str
-    horario_final: Optional[time] = None
+    horario_final: Optional[str] = None
     cargo: str
     motivo: str
 
