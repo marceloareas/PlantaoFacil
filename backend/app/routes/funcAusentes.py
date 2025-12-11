@@ -54,12 +54,29 @@ def get_todos_ausentes(db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Nenhum funcionário ausente encontrado.")
     return ausentes
 
-
 @router.get("/{data}")
 def get_ausentes_por_data(data: str, db: Session = Depends(get_db)):
-    ausentes = db.query(Ausentes).filter(Ausentes.data == data).all()
+    from sqlalchemy import or_, and_
+
+    data_consulta = data 
+
+    ausentes = (
+        db.query(Ausentes)
+        .filter(
+            and_(
+                Ausentes.data <= data_consulta,
+                or_(
+                    Ausentes.data_final == None,
+                    Ausentes.data_final >= data_consulta
+                )
+            )
+        )
+        .all()
+    )
+
     if not ausentes:
-        raise HTTPException(status_code=404, detail="Nenhum funcionário ausente nessa data.")
+        return []
+
     return ausentes
 
 
