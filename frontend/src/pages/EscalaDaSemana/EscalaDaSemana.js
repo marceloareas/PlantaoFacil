@@ -7,8 +7,8 @@ const EscalaDaSemana = () => {
     const navigate = useNavigate();
     const [dataReferencia, setDataReferencia] = useState(new Date());
     const [diasSemana, setDiasSemana] = useState([]);
-    const [escalas, setEscalas] = useState({}); 
-    const [cargos, setCargos] = useState([]); 
+    const [escalas, setEscalas] = useState({});
+    const [cargos, setCargos] = useState([]);
 
     useEffect(() => {
         gerarDiasDaSemana(dataReferencia);
@@ -36,7 +36,7 @@ const EscalaDaSemana = () => {
 
         for (const dia of dias) {
             try {
-                const response = await fetch(`http://localhost:8000/escaladodia/${dia.data.split('-').join('-')}`);
+                const response = await fetch(`http://localhost:8000/escaladodia/${dia.data}`);
                 const data = await response.json();
 
                 const escalaDia = {};
@@ -62,7 +62,7 @@ const EscalaDaSemana = () => {
         const ano = data.getFullYear();
         const mes = String(data.getMonth() + 1).padStart(2, '0');
         const dia = String(data.getDate()).padStart(2, '0');
-        return `${dia}-${mes}-${ano}`; 
+        return `${dia}-${mes}-${ano}`;
     };
 
     const formatarLabel = (data) => {
@@ -72,8 +72,8 @@ const EscalaDaSemana = () => {
 
     const isMesmaData = (d1, d2) => {
         return d1.getFullYear() === d2.getFullYear() &&
-               d1.getMonth() === d2.getMonth() &&
-               d1.getDate() === d2.getDate();
+            d1.getMonth() === d2.getMonth() &&
+            d1.getDate() === d2.getDate();
     };
 
     const irParaDia = (data) => {
@@ -140,7 +140,7 @@ const EscalaDaSemana = () => {
                                     const turno = escalaDia[horario] || {};
                                     return cargos.map((cargo, cIdx) => (
                                         <td key={`cell-${rowIdx}-${colIdx}-${cIdx}`} className="text-start text-wrap">
-                                            {turno[cargo]?.map((nome, i) => <div key={i}>• {nome}</div>) || <span className="text-muted">—</span>}
+                                            {turno[cargo]?.map((nome, i) => <div  key={i}>• {nome}</div>) || <span className="text-muted">—</span>}
                                         </td>
                                     ));
                                 })}

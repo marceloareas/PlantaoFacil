@@ -98,6 +98,7 @@ const AddAusenteModal = ({ show, onClose, onSuccess }) => {
             payload.data_final = formData.data_final;
             payload.horario_final = formData.horario_final;
         }
+        const conflitos = await verificarConflitosEscala();
 
         try {
             const res = await fetch("http://localhost:8000/ausentes/", {
@@ -113,6 +114,16 @@ const AddAusenteModal = ({ show, onClose, onSuccess }) => {
             }
 
             setSuccess("Funcionário ausente registrado com sucesso!");
+
+            if (conflitos.length > 0) {
+                const lista = conflitos
+                    .map(c => `${c.data} - ${c.horario}`)
+                    .join("\n");
+
+                alert(
+                    `⚠️ O funcionário ${formData.nome} já está escalado no(s) seguinte(s) dia(s):\n\n${lista}`
+                );
+            }
 
             setFormData({
                 nome: "",
@@ -141,6 +152,95 @@ const AddAusenteModal = ({ show, onClose, onSuccess }) => {
     };
 
     if (!show) return null;
+
+    const verificarConflitosEscala = async () => {
+        const conflitos = [];
+
+        const adicionarConflito = (data, horario) => {
+            conflitos.push({
+                data,
+                horario
+            });
+        };
+
+        const formatarDataBR = (data) => {
+            const [y, m, d] = data.split("-");
+            return `${d}-${m}-${y}`;
+        };
+
+        if (tipoAusencia === "turno") {
+            const res = await fetch(`http://localhost:8000/escaladodia/${formatarDataBR(formData.data)}`);
+            if (res.ok) {
+                const data = await res.json();
+                data.Escala?.forEach(e => {
+                    if (e.Nome === formData.nome && e.Horario === formData.horario) {
+                        adicionarConflito(formatarDataBR(formData.data), e.Horario);
+                    }
+                });
+            }
+        }
+        if (tipoAusencia === "intervalo") {
+            const TURNOS = ["07:00 - 19:00", "19:00 - 07:00"];
+
+            const formatarDataURL = (dataISO) => {
+                const [y, m, d] = dataISO.split("-");
+                return `${d}-${m}-${y}`;
+            };
+
+            let atual = new Date(formData.data);
+            const fim = new Date(formData.data_final);
+
+            while (atual <= fim) {
+                const dataISO = atual.toISOString().split("T")[0];
+                const dataURL = formatarDataURL(dataISO);
+
+                let turnosParaVerificar = [];
+
+                if (formData.data === formData.data_final) {
+                    turnosParaVerificar = TURNOS.filter(
+                        t => t === formData.horario || t === formData.horario_final
+                    );
+                }
+
+                else if (dataISO === formData.data) {
+                    turnosParaVerificar = TURNOS.filter(
+                        t => t === formData.horario
+                    );
+                }
+
+                else if (dataISO === formData.data_final) {
+                    turnosParaVerificar = TURNOS.filter(
+                        t => t === formData.horario_final
+                    );
+                }
+
+                else {
+                    turnosParaVerificar = TURNOS;
+                }
+
+                const res = await fetch(`http://localhost:8000/escaladodia/${dataURL}`);
+                if (res.ok) {
+                    const data = await res.json();
+
+                    for (const turno of turnosParaVerificar) {
+                        const existeEscala = data.Escala?.some(
+                            e => e.Nome === formData.nome && e.Horario === turno
+                        );
+
+                        if (existeEscala) {
+                            adicionarConflito(formatarDataBR(dataISO), turno);
+                        }
+                    }
+                }
+
+                atual.setDate(atual.getDate() + 1);
+            }
+        }
+
+
+        return conflitos;
+    };
+
 
     return (
         <>
