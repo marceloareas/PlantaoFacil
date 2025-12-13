@@ -357,7 +357,7 @@ const Trocas = () => {
 
                       <td>{t.motivo || "—"}</td>
                       <td>
-                        {(t.situacao === "Pendente" || t.situacao === "Aguardando Destinatario") && (
+                        {(t.situacao === "Aguardando Destinatario") && (
                           <>
                             <button className="edit-btn" onClick={() => abrirEdicao(t)}>Editar</button>
                             <button className="delete-btn" onClick={() => handleDelete(t.id, t.situacao)}>Deletar</button>
