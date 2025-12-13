@@ -91,12 +91,11 @@
     background-color: #f7f7f7;
 }
 
-/* Cada nome dentro da escala */
 .nome-escala {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    background-color: #e0f7fa; /* Azul claro suave */
+    background-color: #e0f7fa; 
     padding: 4px 8px;
     margin: 2px 0;
     border-radius: 6px;
@@ -104,9 +103,8 @@
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
-/* Botão de remover */
 .remove-btn {
-    background-color: #ff6b6b; /* Vermelho claro */
+    background-color: #ff6b6b;
     border: none;
     color: white;
     font-weight: bold;

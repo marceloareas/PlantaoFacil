@@ -10,7 +10,12 @@ const Trocas = () => {
   const [horariosColega, setHorariosColega] = useState([]);
   const [trocasUsuario, setTrocasUsuario] = useState([]);
   const [trocasParaMim, setTrocasParaMim] = useState([]);
-  const [erro, setErro] = useState(""); 
+  const [erro, setErro] = useState("");
+
+  // 🔑 controle de edição
+  const [idEdicao, setIdEdicao] = useState(null);
+
+  const [diaColega, setDiaColega] = useState("");
   const [troca, setTroca] = useState({
     meuDia: "",
     meuHorario: "",
@@ -18,7 +23,6 @@ const Trocas = () => {
     horarioColega: "",
     motivo: ""
   });
-  const [diaColega, setDiaColega] = useState("");
 
   const formatarDataParaURL = (dataISO) => {
     if (!dataISO) return "";
@@ -31,164 +35,144 @@ const Trocas = () => {
     if (userData) setUser(JSON.parse(userData));
   }, []);
 
+
   const carregarTrocas = async (usuario) => {
     if (!usuario) return;
     try {
       const res = await fetch(`${API}/trocas/`);
       const data = await res.json();
 
-      const minhas = data.filter((t) => t.solicitante === usuario.nome_completo);
-      setTrocasUsuario(minhas);
-
-      const paraMim = data.filter(
-        (t) =>
-          t.destinatario === usuario.nome_completo
-      );
-      setTrocasParaMim(paraMim);
-    } catch (err) {
-      console.error("Erro ao carregar trocas:", err);
+      setTrocasUsuario(data.filter(t => t.solicitante === usuario.nome_completo));
+      setTrocasParaMim(data.filter(t => t.destinatario === usuario.nome_completo));
+    } catch {
+      setErro("Erro ao carregar trocas.");
     }
   };
 
   useEffect(() => {
-    if (!user) return;
-    carregarTrocas(user);
+    if (user) carregarTrocas(user);
   }, [user]);
 
   useEffect(() => {
     if (!troca.meuDia || !user) {
       setMeusHorarios([]);
-      setErro("");
-      setTroca((prev) => ({ ...prev, meuHorario: "" }));
       return;
     }
 
-    const fetchMeusHorarios = async () => {
+    const load = async () => {
       try {
-        const dataParaURL = formatarDataParaURL(troca.meuDia);
-        const res = await fetch(`${API}/escaladodia/${dataParaURL}`);
-        const dataRes = await res.json();
-        const escala = dataRes.Escala || [];
+        const res = await fetch(
+          `${API}/escaladodia/${formatarDataParaURL(troca.meuDia)}`
+        );
+        const data = await res.json();
 
-        const horarios = escala
-          .filter((e) => e.Nome === user.nome_completo)
-          .map((e) => e.Horario);
+        const horarios = (data.Escala || [])
+          .filter(e => e.Nome === user.nome_completo)
+          .map(e => e.Horario);
 
         setMeusHorarios(horarios);
-
-        if (horarios.length === 0) {
-          setErro("Você não está escalado para esse dia.");
-        } else {
-          setErro("");
-        }
-
-        setTroca((prev) => ({ ...prev, meuHorario: "" }));
-      } catch (err) {
-        console.error("Erro ao buscar meus horários:", err);
-        setMeusHorarios([]);
+        setErro(horarios.length ? "" : "Você não está escalado para esse dia.");
+      } catch {
         setErro("Erro ao buscar seus horários.");
       }
     };
 
-    fetchMeusHorarios();
+    load();
   }, [troca.meuDia, user]);
 
   useEffect(() => {
     if (!diaColega || !user) {
       setColegasDisponiveis([]);
-      setErro("");
-      setTroca((prev) => ({ ...prev, destinatario: "" }));
       return;
     }
 
-    const fetchColegasDoDiaColega = async () => {
+    const load = async () => {
       try {
-        const dataParaURL = formatarDataParaURL(diaColega);
-        const res = await fetch(`${API}/escaladodia/${dataParaURL}`);
-        const dataRes = await res.json();
-        const escala = dataRes.Escala || [];
+        const res = await fetch(
+          `${API}/escaladodia/${formatarDataParaURL(diaColega)}`
+        );
+        const data = await res.json();
 
-        const colegas = escala
-          .filter((e) => e.Cargo === user.cargo && e.Nome !== user.nome_completo)
-          .map((e) => ({ nome: e.Nome }));
+        const colegasUnicos = Array.from(
+          new Map(
+            (data.Escala || [])
+              .filter(e => e.Cargo === user.cargo && e.Nome !== user.nome_completo)
+              .map(e => [e.Nome, { nome: e.Nome }])
+          ).values()
+        );
 
-        setColegasDisponiveis(colegas);
-
-        if (colegas.length === 0) {
-          setErro("Nenhum colega está escalado neste dia.");
-        } else {
-          setErro("");
-        }
-
-        setTroca((prev) => ({ ...prev, destinatario: "" }));
-      } catch (err) {
-        console.error("Erro ao buscar colegas:", err);
-        setColegasDisponiveis([]);
-        setErro("Erro ao buscar colaboradores escalados.");
+        setColegasDisponiveis(colegasUnicos);
+        setErro(colegasUnicos.length ? "" : "Nenhum colega escalado neste dia.");
+      } catch {
+        setErro("Erro ao buscar colegas.");
       }
     };
 
-    fetchColegasDoDiaColega();
+    load();
   }, [diaColega, user]);
 
   useEffect(() => {
-    if (!troca.destinatario || !diaColega) {
+    if (!diaColega || !troca.destinatario) {
       setHorariosColega([]);
-      setErro("");
-      setTroca((prev) => ({ ...prev, horarioColega: "" }));
       return;
     }
 
-    const fetchHorariosColega = async () => {
+    const load = async () => {
       try {
-        const dataParaURL = formatarDataParaURL(diaColega);
-        const res = await fetch(`${API}/escaladodia/${dataParaURL}`);
-        const dataRes = await res.json();
-        const escala = dataRes.Escala || [];
+        const res = await fetch(
+          `${API}/escaladodia/${formatarDataParaURL(diaColega)}`
+        );
+        const data = await res.json();
 
-        const horarios = escala
-          .filter((e) => e.Nome === troca.destinatario)
-          .map((e) => e.Horario);
+        const horarios = (data.Escala || [])
+          .filter(e => e.Nome === troca.destinatario)
+          .map(e => e.Horario);
 
         setHorariosColega(horarios);
-
-        if (horarios.length === 0) {
-          setErro("Esse colaborador não tem horário nesse dia.");
-        } else {
-          setErro("");
-        }
-
-        setTroca((prev) => ({ ...prev, horarioColega: "" }));
-      } catch (err) {
-        console.error("Erro ao buscar horários do colega:", err);
-        setHorariosColega([]);
-        setErro("Erro ao buscar horários do colaborador.");
+        setErro(horarios.length ? "" : "Esse colaborador não tem horário.");
+      } catch {
+        setErro("Erro ao buscar horários do colega.");
       }
     };
 
-    fetchHorariosColega();
+    load();
   }, [troca.destinatario, diaColega]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setTroca((prev) => ({ ...prev, [name]: value }));
+    setTroca(prev => ({ ...prev, [name]: value }));
   };
 
+  const abrirEdicao = (t) => {
+    setIdEdicao(t.id);
+    setTroca({
+      meuDia: t.meudia,
+      meuHorario: t.horariosolicitante,
+      destinatario: t.destinatario,
+      horarioColega: t.horariodestinatario,
+      motivo: t.motivo || ""
+    });
+    setDiaColega(t.diacolega);
+  };
+
+  const cancelarEdicao = () => {
+    setIdEdicao(null);
+    setTroca({
+      meuDia: "",
+      meuHorario: "",
+      destinatario: "",
+      horarioColega: "",
+      motivo: ""
+    });
+    setDiaColega("");
+    setErro("");
+  };
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (
-      !troca.meuDia ||
-      !troca.meuHorario ||
-      !troca.destinatario ||
-      !troca.horarioColega ||
-      !diaColega
-    ) {
-      setErro("Preencha todos os campos obrigatórios.");
-      return;
+    if (!troca.meuDia || !troca.meuHorario || !diaColega || !troca.destinatario || !troca.horarioColega) {
+      return setErro("Preencha todos os campos obrigatórios.");
     }
-
-    setErro("");
 
     const payload = {
       solicitante: user.nome_completo,
@@ -197,112 +181,80 @@ const Trocas = () => {
       horariosolicitante: troca.meuHorario,
       diacolega: diaColega,
       horariodestinatario: troca.horarioColega,
-      motivo: troca.motivo,
-      situacao: "Aguardando Destinatario"
+      motivo: troca.motivo
     };
 
     try {
-      const res = await fetch(`${API}/trocas/`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
+      const res = await fetch(
+        idEdicao ? `${API}/trocas/${idEdicao}` : `${API}/trocas/`,
+        {
+          method: idEdicao ? "PUT" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(
+            idEdicao ? payload : { ...payload, situacao: "Aguardando Destinatario" }
+          )
+        }
+      );
 
-      if (!res.ok) {
-        setErro("Não foi possível enviar a solicitação.");
-        return;
-      }
+      if (!res.ok) throw new Error();
 
-      setErro("");
-      setTroca({
-        meuDia: "",
-        meuHorario: "",
-        destinatario: "",
-        horarioColega: "",
-        motivo: ""
-      });
-      setDiaColega("");
-      setMeusHorarios([]);
-      setColegasDisponiveis([]);
-      setHorariosColega([]);
-
+      cancelarEdicao();
       carregarTrocas(user);
-    } catch (err) {
-      console.error(err);
-      setErro("Erro ao enviar solicitação.");
+    } catch {
+      setErro("Erro ao salvar solicitação.");
     }
   };
 
   const handleDelete = async (id, situacao) => {
-    if (situacao !== "Pendente") {
-      setErro("Só é possível deletar solicitações com situação Pendente.");
-      return;
+  
+    const confirm = window.confirm(
+      "Tem certeza que deseja deletar esta solicitação? Esta ação não pode ser desfeita."
+    );
+    if (!confirm) return; 
+
+    if (situacao !== "Pendente" && situacao !== "Aguardando Destinatario") {
+      return setErro("Só é possível deletar solicitações pendentes ou aguardando destinatário.");
     }
 
     try {
-      const res = await fetch(`${API}/trocas/${id}`, {
-        method: "DELETE",
-      });
+      const res = await fetch(`${API}/trocas/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error();
 
-      if (!res.ok) {
-        setErro("Erro ao deletar solicitação.");
-        return;
-      }
-
-      setErro("");
-      setTrocasUsuario((prev) => prev.filter((t) => t.id !== id));
-    } catch (err) {
-      console.error(err);
-      setErro("Erro ao deletar solicitação.");
+      setTrocasUsuario(prev => prev.filter(t => t.id !== id));
+    } catch {
+      setErro("Erro ao deletar.");
     }
   };
 
   const aceitarComoDestinatario = async (id) => {
     try {
-      const res = await fetch(`${API}/trocas/${id}/destinatario-aprovar`, {
-        method: "PUT",
-      });
-      if (!res.ok) throw new Error();
-
-      setErro("");
+      await fetch(`${API}/trocas/${id}/destinatario-aprovar`, { method: "PUT" });
       carregarTrocas(user);
-    } catch (err) {
-      console.error(err);
+    } catch {
       setErro("Erro ao aceitar solicitação.");
     }
   };
 
   const rejeitarComoDestinatario = async (id) => {
     try {
-      const res = await fetch(`${API}/trocas/${id}/destinatario-rejeitar`, {
-        method: "PUT",
-      });
-
-      if (!res.ok) {
-        setErro("Erro ao rejeitar solicitação.");
-        return;
-      }
-
-      setErro("");
+      await fetch(`${API}/trocas/${id}/destinatario-rejeitar`, { method: "PUT" });
       carregarTrocas(user);
-    } catch (err) {
-      console.error(err);
+    } catch {
       setErro("Erro ao rejeitar solicitação.");
     }
   };
 
   return (
     <div className="troca-container">
-      
       {erro && <div className="erro-box">{erro}</div>}
 
-      <h2>Solicitar Troca de Plantão</h2>
+      <h2>{idEdicao ? "Editar Solicitação de Troca" : "Solicitar Troca de Plantão"}</h2>
 
       {user && user.cargo !== "Coordenador" ? (
         <>
           <form onSubmit={handleSubmit} className="troca-form">
 
-            <label>Dia do plantão:</label>
+            <label>Dia do seu plantão:</label>
             <input
               type="date"
               name="meuDia"
@@ -314,13 +266,8 @@ const Trocas = () => {
 
             {meusHorarios.length > 0 && (
               <>
-                <label>Meu horário:</label>
-                <select
-                  name="meuHorario"
-                  value={troca.meuHorario}
-                  onChange={handleChange}
-                  required
-                >
+                <label>Seu horário:</label>
+                <select name="meuHorario" value={troca.meuHorario} onChange={handleChange}>
                   <option value="">Selecione...</option>
                   {meusHorarios.map((h, i) => (
                     <option key={i} value={h}>{h}</option>
@@ -332,25 +279,19 @@ const Trocas = () => {
             <label>Dia do plantão do colega:</label>
             <input
               type="date"
-              name="diaColega"
               value={diaColega}
               onChange={(e) => setDiaColega(e.target.value)}
               min={new Date().toLocaleDateString("en-CA")}
               required
             />
 
-            {diaColega && colegasDisponiveis.length > 0 && (
+            {colegasDisponiveis.length > 0 && (
               <>
-                <label>Colaborador para trocar:</label>
-                <select
-                  name="destinatario"
-                  value={troca.destinatario}
-                  onChange={handleChange}
-                  required
-                >
+                <label>Colaborador:</label>
+                <select name="destinatario" value={troca.destinatario} onChange={handleChange}>
                   <option value="">Selecione...</option>
-                  {[...new Set(colegasDisponiveis.map(c => c.nome))].map((nome, i) => (
-                    <option key={i} value={nome}>{nome}</option>
+                  {colegasDisponiveis.map((c, i) => (
+                    <option key={i} value={c.nome}>{c.nome}</option>
                   ))}
                 </select>
               </>
@@ -359,12 +300,7 @@ const Trocas = () => {
             {horariosColega.length > 0 && (
               <>
                 <label>Horário do colega:</label>
-                <select
-                  name="horarioColega"
-                  value={troca.horarioColega}
-                  onChange={handleChange}
-                  required
-                >
+                <select name="horarioColega" value={troca.horarioColega} onChange={handleChange}>
                   <option value="">Selecione...</option>
                   {horariosColega.map((h, i) => (
                     <option key={i} value={h}>{h}</option>
@@ -374,18 +310,22 @@ const Trocas = () => {
             )}
 
             <label>Motivo (opcional):</label>
-            <textarea
-              name="motivo"
-              value={troca.motivo}
-              onChange={handleChange}
-              rows="3"
-            />
+            <textarea name="motivo" value={troca.motivo} onChange={handleChange} rows="3" />
 
-            <button type="submit" className="enviar-btn">Enviar Solicitação</button>
+            <button type="submit" className="enviar-btn">
+              {idEdicao ? "Salvar Alterações" : "Enviar Solicitação"}
+            </button>
+
+            {idEdicao && (
+              <button type="button" className="cancelar-btn" onClick={cancelarEdicao}>
+                Cancelar edição
+              </button>
+            )}
           </form>
 
           <div className="minhas-trocas">
-            <h3>Minhas Solicitações de Troca</h3>
+            <h3>Minhas Solicitações</h3>
+
             {trocasUsuario.length === 0 ? (
               <p>Você ainda não fez nenhuma solicitação.</p>
             ) : (
@@ -394,36 +334,34 @@ const Trocas = () => {
                   <tr>
                     <th>ID</th>
                     <th>Meu dia</th>
-                    <th>Horário</th>
+                    <th>Meu horário</th>
                     <th>Dia colega</th>
+                    <th>Horário colega</th>
                     <th>Destinatário</th>
                     <th>Situação</th>
                     <th>Motivo</th>
                     <th>Ações</th>
                   </tr>
                 </thead>
+
                 <tbody>
-                  {trocasUsuario.map((t) => (
+                  {trocasUsuario.map(t => (
                     <tr key={t.id}>
                       <td>{t.id}</td>
                       <td>{t.meudia}</td>
                       <td>{t.horariosolicitante}</td>
                       <td>{t.diacolega}</td>
+                      <td>{t.horariodestinatario}</td>
                       <td>{t.destinatario}</td>
-                      <td>
-                        <span className={`situacao-${(t.situacao || "Pendente").toLowerCase()}`}>
-                          {t.situacao || "Pendente"}
-                        </span>
-                      </td>
-                      <td>{t.motivo}</td>
+                      <td>{t.situacao}</td>
+
+                      <td>{t.motivo || "—"}</td>
                       <td>
                         {(t.situacao === "Pendente" || t.situacao === "Aguardando Destinatario") && (
-                          <button
-                            className="delete-btn"
-                            onClick={() => handleDelete(t.id, t.situacao)}
-                          >
-                            Deletar
-                          </button>
+                          <>
+                            <button className="edit-btn" onClick={() => abrirEdicao(t)}>Editar</button>
+                            <button className="delete-btn" onClick={() => handleDelete(t.id, t.situacao)}>Deletar</button>
+                          </>
                         )}
                       </td>
                     </tr>
@@ -433,17 +371,18 @@ const Trocas = () => {
             )}
           </div>
 
-          <div className="trocas-para-mim" style={{ marginTop: 28 }}>
+          <div className="trocas-para-mim">
             <h3>Solicitações de Terceiros</h3>
+
             {trocasParaMim.length === 0 ? (
-              <p>Não há solicitações.</p>
+              <p>Nenhuma solicitação para você.</p>
             ) : (
               <table className="tabela-trocas">
                 <thead>
                   <tr>
                     <th>ID</th>
                     <th>Solicitante</th>
-                    <th>Dia (solicitante)</th>
+                    <th>Dia</th>
                     <th>Horário</th>
                     <th>Dia (seu)</th>
                     <th>Horário (seu)</th>
@@ -453,7 +392,7 @@ const Trocas = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {trocasParaMim.map((t) => (
+                  {trocasParaMim.map(t => (
                     <tr key={t.id}>
                       <td>{t.id}</td>
                       <td>{t.solicitante}</td>
@@ -466,18 +405,8 @@ const Trocas = () => {
                       <td>
                         {t.situacao === "Aguardando Destinatario" && (
                           <>
-                            <button
-                              className="btn-aprovar"
-                              onClick={() => aceitarComoDestinatario(t.id)}
-                            >
-                              Aceitar
-                            </button>
-                            <button
-                              className="btn-rejeitar"
-                              onClick={() => rejeitarComoDestinatario(t.id)}
-                            >
-                              Rejeitar
-                            </button>
+                            <button className="btn-aprovar" onClick={() => aceitarComoDestinatario(t.id)}>Aceitar</button>
+                            <button className="btn-rejeitar" onClick={() => rejeitarComoDestinatario(t.id)}>Rejeitar</button>
                           </>
                         )}
                       </td>
@@ -487,10 +416,9 @@ const Trocas = () => {
               </table>
             )}
           </div>
-
         </>
       ) : (
-        <p>Você não tem acesso a esta página</p>
+        <p>Você não tem acesso a esta página.</p>
       )}
     </div>
   );

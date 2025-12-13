@@ -11,6 +11,15 @@ class TrocaCreate(BaseModel):
     situacao: str
 
 
+class TrocaUpdate(BaseModel):
+    destinatario: str
+    meudia: str
+    horariosolicitante: str
+    diacolega: str
+    horariodestinatario: str
+    motivo: str | None = None
+
+
 class TrocaResponse(TrocaCreate):
     id: int
 
