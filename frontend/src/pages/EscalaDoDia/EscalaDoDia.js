@@ -25,7 +25,7 @@ const EscalaDoDia = () => {
 
     const toISO = (dataBR) => {
         if (!dataBR) return null;
-        if (/^\d{4}-\d{2}-\d{2}$/.test(dataBR)) return dataBR; 
+        if (/^\d{4}-\d{2}-\d{2}$/.test(dataBR)) return dataBR;
         const [d, m, y] = dataBR.split("-");
         return `${y}-${m}-${d}`;
     };
@@ -65,7 +65,7 @@ const EscalaDoDia = () => {
 
     const estaEmTroca = (nome, turnoAtual) => {
         console.log("Checando troca para:", nome, turnoAtual, envolvidosEmTroca);
-        if(envolvidosEmTroca.some((e) => e.nome === nome && e.turno === turnoAtual)){
+        if (envolvidosEmTroca.some((e) => e.nome === nome && e.turno === turnoAtual)) {
             console.log("Encontrado em troca:", nome, turnoAtual);
         }
         return envolvidosEmTroca.some((e) => e.nome === nome && e.turno === turnoAtual);
@@ -85,7 +85,7 @@ const EscalaDoDia = () => {
                 const res = await fetch("http://localhost:8000/usuario/");
                 const dataRes = await res.json();
                 const ativos = dataRes.filter(
-                    (u) =>  u.cargo.toLowerCase() !== "coordenador"
+                    (u) => u.cargo.toLowerCase() !== "coordenador"
                 );
                 setUsuarios(ativos);
 
@@ -182,7 +182,7 @@ const EscalaDoDia = () => {
 
         const fetchAusentes = async () => {
             try {
-                const dataISO = toISO(data); 
+                const dataISO = toISO(data);
                 const res = await fetch(`http://localhost:8000/ausentes/${dataISO}`);
                 if (!res.ok) {
                     setNomesAusentes([]);
@@ -203,7 +203,7 @@ const EscalaDoDia = () => {
         if (!ausencia || !ausencia.data) return false;
 
         const inicioISO = ausencia.data;
-        const fimISO = ausencia.data_final || ausencia.data; 
+        const fimISO = ausencia.data_final || ausencia.data;
 
         const diaISO = toISO(dataBR);
 
@@ -228,7 +228,7 @@ const EscalaDoDia = () => {
 
         return nomesAusentes.some((a) => {
             if (a.ausente !== "Sim") return false;
-            if (a.nome !== nome && a.nome !== `${nome}`) return false; 
+            if (a.nome !== nome && a.nome !== `${nome}`) return false;
             return isTurnoBlockedByAusencia(data, turno, a);
         });
     };
@@ -350,9 +350,9 @@ const EscalaDoDia = () => {
                     const usuario = usuarios.find(
                         (u) => u.nome_completo === nome
                     );
-    
+
                     if (usuario && usuario.situacao === "Desativado") {
-                        return nome; 
+                        return nome;
                     }
                 }
             }
@@ -360,7 +360,7 @@ const EscalaDoDia = () => {
         return null;
     };
 
-    
+
     const handleSubmit = async (e) => {
         e.preventDefault();
 
@@ -370,7 +370,7 @@ const EscalaDoDia = () => {
             alert(`Erro: O usuário ${nomeDesativado} está desativado e não pode ser escalado.`);
             return;
         }
-        
+
         const payload = {
             DataEscala: data,
             Escala: [],
@@ -381,7 +381,7 @@ const EscalaDoDia = () => {
         horarios.forEach((horario, rowIdx) => {
             categorias.forEach((categoria, colIdx) => {
                 escala[rowIdx][colIdx].forEach((nome) => {
-                    payload.Escala.push({ Horario: horario, Nome: nome, Cargo: categoria, Cpf: usuarios.find((u) => u.nome_completo === nome)?.cpf});
+                    payload.Escala.push({ Horario: horario, Nome: nome, Cargo: categoria, Cpf: usuarios.find((u) => u.nome_completo === nome)?.cpf });
                 });
             });
         });
@@ -418,14 +418,38 @@ const EscalaDoDia = () => {
         );
     };
 
-    
+    const handleDiaAnterior = () => {
+        const formatarDataURL = (data) => data.toISOString().split("T")[0];
+        let dataAnterior = formatarDataURL(new Date(dataSelecionada.getTime() - 86400000));
+        dataAnterior = dataAnterior.split("-").reverse().join("-");
+        window.location.href = "/escaladodia/" + dataAnterior;
+    };
+
+    const handleDiaPosterior = () => {
+        const formatarDataURL = (data) => data.toISOString().split("T")[0];
+        let dataPosterior = formatarDataURL(new Date(dataSelecionada.getTime() + 86400000));
+        dataPosterior = dataPosterior.split("-").reverse().join("-");
+        window.location.href = "/escaladodia/" + dataPosterior;
+    };
+
     return (
         <div className="escala-page">
             {isDataPassada && (<h2 className="alert alert-danger"> Observando data passada </h2>)}
             <h2>
                 Escala do Dia: {data ? data.replaceAll("-", "/") : "Nenhuma data selecionada"}
             </h2>
-
+<div>
+    <table>
+        <td>
+            <button className="submit-button" style ={{width:"140%"}} onClick={handleDiaAnterior}>Dia Anterior</button>
+        </td>
+        <td style={{width: "100%"}}></td>
+        <td>
+            <button className="submit-button" style ={{width:"140%"}} onClick={handleDiaPosterior}>Dia Posterior</button>
+        </td>
+    </table>
+</div>
+            
             {user && user.cargo === "Coordenador" && (
                 <div className="escala-layout">
                     <div className="nomes-box">
@@ -502,12 +526,12 @@ const EscalaDoDia = () => {
                                                                         color: isUsuarioDesativado(nome)
                                                                             ? "red"
                                                                             : trocado
-                                                                            ? "orange"
-                                                                            : "inherit",
+                                                                                ? "orange"
+                                                                                : "inherit",
                                                                         fontWeight: trocado ? "bold" : "normal",
                                                                         cursor: trocado ? "pointer" : "default",
                                                                     }}
-                                                                
+
                                                                     onClick={() => {
                                                                         if (trocado && info) setModalInfo(info);
                                                                     }}
