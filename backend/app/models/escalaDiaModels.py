@@ -9,3 +9,4 @@ class Escala(Base):
     Horario = Column(String(20), nullable=False)
     Nome = Column(String(255), nullable=False)
     Cargo = Column(String(15), nullable=True)
+    Cpf = Column(String(14), nullable=False)

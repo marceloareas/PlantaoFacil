@@ -85,7 +85,7 @@ const EscalaDoDia = () => {
                 const res = await fetch("http://localhost:8000/usuario/");
                 const dataRes = await res.json();
                 const ativos = dataRes.filter(
-                    (u) => u.situacao === "Ativo" && u.cargo.toLowerCase() !== "coordenador"
+                    (u) =>  u.cargo.toLowerCase() !== "coordenador"
                 );
                 setUsuarios(ativos);
 
@@ -237,6 +237,7 @@ const EscalaDoDia = () => {
         usuarios
             .filter((u) => u.cargo === categoria)
             .filter((u) => !isUserAbsentForTurn(u.nome_completo, horario))
+            .filter((u) => u.situacao === "Ativo")
             .map((u) => ({ nome: u.nome_completo, cargo: u.cargo }));
 
     const handleDragStart = (e, nome) => {
@@ -342,9 +343,34 @@ const EscalaDoDia = () => {
         return true;
     };
 
+    const existeUsuarioDesativadoNaEscala = () => {
+        for (let row = 0; row < escala.length; row++) {
+            for (let col = 0; col < escala[row].length; col++) {
+                for (const nome of escala[row][col]) {
+                    const usuario = usuarios.find(
+                        (u) => u.nome_completo === nome
+                    );
+    
+                    if (usuario && usuario.situacao === "Desativado") {
+                        return nome; 
+                    }
+                }
+            }
+        }
+        return null;
+    };
+
+    
     const handleSubmit = async (e) => {
         e.preventDefault();
 
+        const nomeDesativado = existeUsuarioDesativadoNaEscala();
+
+        if (nomeDesativado) {
+            alert(`Erro: O usuário ${nomeDesativado} está desativado e não pode ser escalado.`);
+            return;
+        }
+        
         const payload = {
             DataEscala: data,
             Escala: [],
@@ -355,7 +381,7 @@ const EscalaDoDia = () => {
         horarios.forEach((horario, rowIdx) => {
             categorias.forEach((categoria, colIdx) => {
                 escala[rowIdx][colIdx].forEach((nome) => {
-                    payload.Escala.push({ Horario: horario, Nome: nome, Cargo: categoria });
+                    payload.Escala.push({ Horario: horario, Nome: nome, Cargo: categoria, Cpf: usuarios.find((u) => u.nome_completo === nome)?.cpf});
                 });
             });
         });
@@ -385,6 +411,14 @@ const EscalaDoDia = () => {
     if (dataSelecionada) dataSelecionada.setHours(0, 0, 0, 0);
     const isDataPassada = dataSelecionada && dataSelecionada < hoje;
 
+    const isUsuarioDesativado = (nome) => {
+        console.log("Verificando se usuário desativado:", nome);
+        return usuarios.some(
+            (u) => u.nome_completo === nome && u.situacao === "Desativado"
+        );
+    };
+
+    
     return (
         <div className="escala-page">
             {isDataPassada && (<h2 className="alert alert-danger"> Observando data passada </h2>)}
@@ -465,10 +499,15 @@ const EscalaDoDia = () => {
                                                                     key={i}
                                                                     className="nome-escala"
                                                                     style={{
-                                                                        color: trocado ? "orange" : "inherit",
+                                                                        color: isUsuarioDesativado(nome)
+                                                                            ? "red"
+                                                                            : trocado
+                                                                            ? "orange"
+                                                                            : "inherit",
                                                                         fontWeight: trocado ? "bold" : "normal",
                                                                         cursor: trocado ? "pointer" : "default",
                                                                     }}
+                                                                
                                                                     onClick={() => {
                                                                         if (trocado && info) setModalInfo(info);
                                                                     }}

@@ -9,7 +9,28 @@ const EscalaDaSemana = () => {
     const [diasSemana, setDiasSemana] = useState([]);
     const [escalas, setEscalas] = useState({});
     const [cargos, setCargos] = useState([]);
+    const [usuarios, setUsuarios] = useState([]);
 
+    useEffect(() => {
+        const fetchUsuarios = async () => {
+            try {
+                const res = await fetch("http://localhost:8000/usuario/");
+                const data = await res.json();
+                setUsuarios(data);
+            } catch (err) {
+                console.error("Erro ao buscar usuários:", err);
+            }
+        };
+    
+        fetchUsuarios();
+    }, []);
+
+    const isUsuarioDesativado = (nome) => {
+        return usuarios.some(
+            (u) => u.nome_completo === nome && u.situacao === "Desativado"
+        );
+    };
+    
     useEffect(() => {
         gerarDiasDaSemana(dataReferencia);
     }, [dataReferencia]);
@@ -140,7 +161,11 @@ const EscalaDaSemana = () => {
                                     const turno = escalaDia[horario] || {};
                                     return cargos.map((cargo, cIdx) => (
                                         <td key={`cell-${rowIdx}-${colIdx}-${cIdx}`} className="text-start text-wrap">
-                                            {turno[cargo]?.map((nome, i) => <div  key={i}>• {nome}</div>) || <span className="text-muted">—</span>}
+                                            {turno[cargo]?.map((nome, i) => <div  key={i}
+                                            style={{
+                                                color: isUsuarioDesativado(nome) ? "red" : "inherit",
+                                                fontWeight: isUsuarioDesativado(nome) ? "bold" : "normal"
+                                            }}>• {nome}</div>) || <span className="text-muted">—</span>}
                                         </td>
                                     ));
                                 })}

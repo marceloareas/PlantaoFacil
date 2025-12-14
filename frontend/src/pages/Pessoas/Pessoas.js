@@ -4,6 +4,50 @@ import { Spinner, Alert, Table, Button, Container, Row, Col, Form } from "react-
 import "bootstrap/dist/css/bootstrap.min.css";
 import "./Pessoas.css";
 
+const formatDateBR = (date) => {
+    const d = String(date.getDate()).padStart(2, "0");
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const y = date.getFullYear();
+    return `${d}-${m}-${y}`;
+};
+
+const addDays = (date, days) => {
+    const d = new Date(date);
+    d.setDate(d.getDate() + days);
+    return d;
+};
+
+const getEscalasFuturasDoUsuario = async (nomeCompleto, Cpf, diasBusca = 90) => {
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+
+    const datasComEscala = [];
+
+    for (let i = 1; i <= diasBusca; i++) {
+        const data = addDays(hoje, i);
+        const dataBR = formatDateBR(data);
+
+        try {
+            const res = await fetch(`http://localhost:8000/escaladodia/${dataBR}`);
+            if (!res.ok) continue;
+
+            const dataRes = await res.json();
+            const escala = dataRes?.Escala || [];
+
+            const estaEscalado = escala.some((e) => e.Nome === nomeCompleto && e.Cpf === Cpf);
+
+            if (estaEscalado) {
+                datasComEscala.push(dataBR);
+            }
+        } catch {
+            // ignora dias sem escala / Ñ Tirar
+            continue;
+        }
+    }
+
+    return datasComEscala;
+};
+
 const Pessoas = () => {
     const [usuarios, setUsuarios] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -22,31 +66,28 @@ const Pessoas = () => {
             if (parsedUser.cargo.toLowerCase() !== "coordenador") {
                 setErro("Você não tem permissão para acessar esta página.");
                 setLoading(false);
-                return;
             }
         } else {
             setErro("Usuário não autenticado. Faça login novamente.");
             setLoading(false);
-            return;
         }
     }, []);
 
-   useEffect(() => {
+    
+    useEffect(() => {
         const fetchUsuarios = async () => {
             if (!user || user.cargo.toLowerCase() !== "coordenador") return;
 
             try {
                 const token = localStorage.getItem("token");
                 const res = await fetch("http://localhost:8000/usuario/", {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
+                    headers: { Authorization: `Bearer ${token}` },
                 });
-                if (!res.ok) throw new Error("Erro ao buscar funcionários");
+
+                if (!res.ok) throw new Error();
                 const data = await res.json();
                 setUsuarios(data);
-            } catch (err) {
-                console.error(err);
+            } catch {
                 setErro("Não foi possível carregar os funcionários.");
             } finally {
                 setLoading(false);
@@ -67,12 +108,43 @@ const Pessoas = () => {
         );
     };
 
+    
     const alternarStatusUsuario = async (usuario) => {
         const novoStatus = usuario.situacao === "Ativo" ? "Desativado" : "Ativo";
 
-        if (!window.confirm(`Deseja realmente alterar o status de ${usuario.nome_completo} para ${novoStatus}?`)) {
-            return;
+        if (novoStatus === "Desativado") {
+            const datasEscaladas = await getEscalasFuturasDoUsuario(
+                usuario.nome_completo,
+                usuario.cpf,
+                90
+            );
+
+            if (datasEscaladas.length > 0) {
+                const listaDatas = datasEscaladas
+                    .map((d) => d.replaceAll("-", "/"))
+                    .join(", ");
+
+                const confirmar = window.confirm(
+                    `${usuario.nome_completo} está escalado nas seguintes datas:\n` +
+                    `${listaDatas}\n` +
+                    `Deseja realmente desativar este funcionário?`
+                );
+
+                if (!confirmar) return;
+            }
         }
+
+        const datasEscaladas = await getEscalasFuturasDoUsuario(
+            usuario.nome_completo,
+            usuario.cpf,
+            90
+        );
+        if (datasEscaladas.length == 0 && 
+            !window.confirm(
+                `Deseja realmente alterar o status de ${usuario.nome_completo} para ${novoStatus}?`
+            )
+        )
+            return;
 
         try {
             const token = localStorage.getItem("token");
@@ -99,13 +171,12 @@ const Pessoas = () => {
                     u.id === usuario.id ? { ...u, situacao: novoStatus } : u
                 )
             );
-
-        } catch (error) {
-            console.error(error);
+        } catch {
             alert("Erro de conexão com o servidor");
         }
     };
 
+    
     const usuariosFiltrados = usuarios.filter((user) => {
         const termo = filtro.toLowerCase();
         return (
@@ -122,7 +193,7 @@ const Pessoas = () => {
     if (loading)
         return (
             <Container className="text-center mt-5">
-                <Spinner animation="border" variant="primary" />
+                <Spinner animation="border" />
                 <p className="mt-2">Carregando funcionários...</p>
             </Container>
         );
@@ -138,88 +209,66 @@ const Pessoas = () => {
 
     return (
         <Container className="mt-4 pessoas-page">
-            <Row className="mb-4 align-items-center">
+            <Row className="mb-4">
                 <Col md={6}>
-                    <h2 className="text-center text-md-start mb-3 mb-md-0">
-                        Funcionários Cadastrados
-                    </h2>
+                    <h2>Funcionários Cadastrados</h2>
                 </Col>
                 <Col md={6}>
                     <Form.Control
                         type="text"
-                        placeholder="Nome, CPF, Coren, Cargo..."
+                        placeholder="Nome, CPF, Cargo..."
                         value={filtro}
                         onChange={(e) => setFiltro(e.target.value)}
                     />
                 </Col>
             </Row>
 
-            <Row>
-                <Col>
-                    <div className="table-responsive">
-                        <Table striped bordered hover className="align-middle">
-                            <thead className="table-dark">
-                                <tr>
-                                    <th>Nome Completo</th>
-                                    <th>Cargo</th>
-                                    <th>Escala</th>
-                                    <th>Email</th>
-                                    <th>CRM/COREN</th>
-                                    <th>CPF</th>
-                                    <th>Status</th>
-                                    <th>Ações</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {usuariosFiltrados.length > 0 ? (
-                                    usuariosFiltrados.map((user) => (
-                                        <tr key={user.id}>
-                                            <td>{user.nome_completo}</td>
-                                            <td>{user.cargo}</td>
-                                            <td>{user.horaEscala}</td>
-                                            <td>{user.email || "—"}</td>
-                                            <td>{user.crm || "—"}</td>
-                                            <td>{user.cpf || "—"}</td>
-
-                                            <td>
-                                                {user.situacao?.toLowerCase() === "ativo" ? (
-                                                    <Button variant="success" size="sm" 
-                                                        onClick={() => alternarStatusUsuario(user)}>
-                                                        Ativo
-                                                    </Button>
-                                                ) : (
-                                                    <Button variant="danger" size="sm"
-                                                        onClick={() => alternarStatusUsuario(user)}>
-                                                        Desativado
-                                                    </Button>
-                                                )}
-                                            </td>
-
-                                            <td>
-                                                {user.situacao === "Ativo" && (
-                                                    <Button
-                                                        variant="warning"
-                                                        size="sm"
-                                                        onClick={() => abrirModal(user)}
-                                                    >
-                                                        Editar
-                                                    </Button>
-                                                )}
-                                                </td>
-                                        </tr>
-                                    ))
-                                ) : (
-                                    <tr>
-                                        <td colSpan="7" className="text-center text-muted">
-                                            Nenhum funcionário encontrado.
-                                        </td>
-                                    </tr>
+            <Table striped bordered hover responsive>
+                <thead className="table-dark">
+                    <tr>
+                        <th>Nome</th>
+                        <th>Cargo</th>
+                        <th>Escala</th>
+                        <th>Email</th>
+                        <th>CRM/COREN</th>
+                        <th>CPF</th>
+                        <th>Status</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {usuariosFiltrados.map((user) => (
+                        <tr key={user.id}>
+                            <td>{user.nome_completo}</td>
+                            <td>{user.cargo}</td>
+                            <td>{user.horaEscala}</td>
+                            <td>{user.email || "—"}</td>
+                            <td>{user.crm || "—"}</td>
+                            <td>{user.cpf || "—"}</td>
+                            <td>
+                                <Button
+                                    size="sm"
+                                    variant={user.situacao === "Ativo" ? "success" : "danger"}
+                                    onClick={() => alternarStatusUsuario(user)}
+                                >
+                                    {user.situacao}
+                                </Button>
+                            </td>
+                            <td>
+                                {user.situacao === "Ativo" && (
+                                    <Button
+                                        size="sm"
+                                        variant="warning"
+                                        onClick={() => abrirModal(user)}
+                                    >
+                                        Editar
+                                    </Button>
                                 )}
-                            </tbody>
-                        </Table>
-                    </div>
-                </Col>
-            </Row>
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+            </Table>
 
             {pessoaSelecionada && (
                 <EditarPessoa

@@ -14,7 +14,8 @@ def create_escala_do_dia(data: str, escala_dia: EscalaDiaCreate, db: Session = D
             DataEscala=data,
             Horario=item.Horario,
             Nome=item.Nome,
-            Cargo=item.Cargo
+            Cargo=item.Cargo,
+            Cpf=item.Cpf
         )
         db.add(nova_escala)
         escalas_criadas.append(nova_escala)
@@ -34,7 +35,8 @@ def get_escala_do_dia(data: str, db: Session = Depends(get_db)):
         {
             "Horario": e.Horario,
             "Nome": e.Nome,
-            "Cargo": e.Cargo
+            "Cargo": e.Cargo,
+            "Cpf": e.Cpf
         }
         for e in escalas
     ]
@@ -58,7 +60,8 @@ def update_escala_do_dia(data: str, escala_dia: EscalaDiaCreate, db: Session = D
             DataEscala=data,
             Horario=item.Horario,
             Nome=item.Nome,
-            Cargo=item.Cargo
+            Cargo=item.Cargo,
+            Cpf=item.Cpf
         )
         db.add(nova_escala)
         novas_escalas.append(nova_escala)
@@ -71,7 +74,7 @@ def update_escala_do_dia(data: str, escala_dia: EscalaDiaCreate, db: Session = D
         "message": "Escala atualizada com sucesso",
         "DataEscala": data,
         "Escala": [
-            {"Horario": e.Horario, "Nome": e.Nome, "Cargo": e.Cargo}
+            {"Horario": e.Horario, "Nome": e.Nome, "Cargo": e.Cargo, "Cpf": e.Cpf}
             for e in novas_escalas
         ]
     }
