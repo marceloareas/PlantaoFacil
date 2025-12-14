@@ -102,9 +102,9 @@ const FuncionariosAusentes = () => {
 
             let turnosParaVerificar = [];
 
-            if (dataISO === func.data) {
+            if (dataURL === func.data) {
                 turnosParaVerificar = [func.horario];
-            } else if (dataISO === func.data_final) {
+            } else if (dataURL === func.data_final) {
                 turnosParaVerificar = [func.horario_final];
             } else {
                 turnosParaVerificar = TURNOS;
@@ -117,6 +117,13 @@ const FuncionariosAusentes = () => {
                 for (const turno of turnosParaVerificar) {
                     const existe = data.Escala?.some(
                         (e) => e.Nome === func.nome && e.Horario === turno
+                    );
+
+                    console.log(
+                        "Verificando conflito:",
+                        dataISO,
+                        turno,
+                        existe
                     );
 
                     if (existe) {
