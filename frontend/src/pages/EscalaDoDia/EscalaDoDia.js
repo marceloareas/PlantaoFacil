@@ -1,6 +1,7 @@
 import { useParams } from "react-router-dom";
 import { useState, useEffect } from "react";
 import "./EscalaDoDia.css";
+import buscarEscalasDoMes from "../../components/services/escalasMensaisService";
 
 const EscalaDoDia = () => {
     const { data } = useParams();
@@ -12,11 +13,59 @@ const EscalaDoDia = () => {
     const [escalaExistente, setEscalaExistente] = useState([]);
     const [escalaAnterior, setEscalaAnterior] = useState([]);
     const [user, setUser] = useState(null);
+    const [bloqueadosPorLimite, setBloqueadosPorLimite] = useState([]);
 
     const [trocasAprovadas, setTrocasAprovadas] = useState([]);
     const [modalInfo, setModalInfo] = useState(null);
 
     const horarios = ["07:00 - 19:00", "19:00 - 07:00"];
+
+    const validarLimiteMensal = async (usuario) => {
+        const resultado = await buscarEscalasDoMes(
+            data,
+            usuario.nome_completo,
+            usuario.cpf,
+            usuario.horaEscala
+        );
+
+        return resultado;
+    };
+
+    useEffect(() => {
+        if (!data || usuarios.length === 0) return;
+
+        const validarUsuariosPorLimite = async () => {
+            const bloqueados = [];
+
+            for (const usuario of usuarios) {
+                if (usuario.situacao !== "Ativo") continue;
+
+                try {
+                    const { excedeuLimite } = await buscarEscalasDoMes(
+                        data,
+                        usuario.nome_completo,
+                        usuario.cpf,
+                        usuario.horaEscala
+                    );
+
+                    if (excedeuLimite) {
+                        bloqueados.push(usuario.nome_completo);
+                    }
+                } catch (err) {
+                    console.error(
+                        "Erro ao validar limite mensal de",
+                        usuario.nome_completo,
+                        err
+                    );
+                }
+            }
+
+            setBloqueadosPorLimite(bloqueados);
+        };
+
+        validarUsuariosPorLimite();
+    }, [data, usuarios]);
+
 
     useEffect(() => {
         const userData = localStorage.getItem("user");
@@ -238,6 +287,7 @@ const EscalaDoDia = () => {
             .filter((u) => u.cargo === categoria)
             .filter((u) => !isUserAbsentForTurn(u.nome_completo, horario))
             .filter((u) => u.situacao === "Ativo")
+            .filter((u) => !bloqueadosPorLimite.includes(u.nome_completo))
             .map((u) => ({ nome: u.nome_completo, cargo: u.cargo }));
 
     const handleDragStart = (e, nome) => {
@@ -246,33 +296,35 @@ const EscalaDoDia = () => {
 
     const allowDrop = (e) => e.preventDefault();
 
-    const handleDrop = (e, row, col) => {
+    const handleDrop = async (e, row, col) => {
         e.preventDefault();
         const nome = e.dataTransfer.getData("nome");
-
-        const categoriaAlvo = categorias[col];
+    
+        if (bloqueadosPorLimite.includes(nome)) return;
+    
         const usuario = usuarios.find((u) => u.nome_completo === nome);
-        const horarioAlvo = horarios[row];
-
-        if (!usuario) {
-            alert("Usuário não encontrado!");
+        if (!usuario) return;
+    
+        const { totalTurnos, limite } = await validarLimiteMensal(usuario);
+    
+        if (totalTurnos >= limite) {
+            setBloqueadosPorLimite((prev) =>
+                prev.includes(nome) ? prev : [...prev, nome]
+            );
             return;
         }
-
-        if (usuario.cargo !== categoriaAlvo) {
-            alert(`Erro: ${nome} não pertence à categoria ${categoriaAlvo}`);
-            return;
-        }
-
-        if (isUserAbsentForTurn(usuario.nome_completo, horarioAlvo)) {
-            alert(`Erro: ${nome} está ausente neste horário (${horarioAlvo})`);
-            return;
-        }
-
-        const novaEscala = escala.map((linha) => linha.map((col) => [...col]));
-        if (!novaEscala[row][col].includes(nome)) novaEscala[row][col].push(nome);
+    
+        const novaEscala = escala.map((l) => l.map((c) => [...c]));
+        novaEscala[row][col].push(nome);
         setEscala(novaEscala);
+    
+        if (totalTurnos + 1 >= limite) {
+            setBloqueadosPorLimite((prev) =>
+                prev.includes(nome) ? prev : [...prev, nome]
+            );
+        }
     };
+    
 
     const removerNome = (row, col, nome) => {
         const novaEscala = escala.map((linha) => linha.map((col) => [...col]));
@@ -438,18 +490,18 @@ const EscalaDoDia = () => {
             <h2>
                 Escala do Dia: {data ? data.replaceAll("-", "/") : "Nenhuma data selecionada"}
             </h2>
-<div>
-    <table>
-        <td>
-            <button className="submit-button" style ={{width:"140%"}} onClick={handleDiaAnterior}>Dia Anterior</button>
-        </td>
-        <td style={{width: "100%"}}></td>
-        <td>
-            <button className="submit-button" style ={{width:"140%"}} onClick={handleDiaPosterior}>Dia Posterior</button>
-        </td>
-    </table>
-</div>
-            
+            <div>
+                <table>
+                    <td>
+                        <button className="submit-button" style={{ width: "140%" }} onClick={handleDiaAnterior}>Dia Anterior</button>
+                    </td>
+                    <td style={{ width: "100%" }}></td>
+                    <td>
+                        <button className="submit-button" style={{ width: "140%" }} onClick={handleDiaPosterior}>Dia Posterior</button>
+                    </td>
+                </table>
+            </div>
+
             {user && user.cargo === "Coordenador" && (
                 <div className="escala-layout">
                     <div className="nomes-box">
@@ -584,6 +636,11 @@ const EscalaDoDia = () => {
                                             </tr>
                                         );
                                     })}
+                                {bloqueadosPorLimite.map((nome, idx) => (
+                                    <tr key={`limite-${idx}`}>
+                                        <td>{nome} - Limite mensal excedido</td>
+                                    </tr>
+                                ))}
                             </tbody>
                         </table>
                     </div>
