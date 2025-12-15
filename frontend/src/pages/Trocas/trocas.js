@@ -96,7 +96,7 @@ const Trocas = () => {
         const colegasUnicos = Array.from(
           new Map(
             (data.Escala || [])
-              .filter(e => e.Cargo === user.cargo && e.Nome !== user.nome_completo)
+              .filter(e => e.Cargo === user.cargo && e.Nome !== user.nome_completo && e.situacao === "Ativo")
               .map(e => [e.Nome, { nome: e.Nome }])
           ).values()
         );
