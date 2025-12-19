@@ -251,40 +251,33 @@ const EscalaDoDia = () => {
     }, [data]);
 
 const isTurnoBlockedByAusencia = (dataBR, turno, ausencia) => {
-    const diaISO = toISO(dataBR); // Converte para "YYYY-MM-DD"
+    const diaISO = toISO(dataBR);
     const inicio = ausencia.data;
-    const fim = ausencia.data_final || ausencia.data; // Se não houver data_final, considera só o dia inicial
+    const fim = ausencia.data_final || ausencia.data;
 
-    // Índices do turno atual e dos turnos da ausência
     const idxTurno = horarios.indexOf(turno);
     const idxInicio = horarios.indexOf(ausencia.horario);
     const idxFim = horarios.indexOf(ausencia.horario_final || ausencia.horario);
 
-    // Se a data não estiver dentro do intervalo da ausência, retorna false
     if (diaISO < inicio || diaISO > fim) return false;
 
-    // Se for o mesmo dia de início e fim, bloqueia todos os turnos entre início e fim
     if (diaISO === inicio && diaISO === fim) {
         return idxTurno >= idxInicio && idxTurno <= idxFim;
     } 
     
-    // Se for o dia inicial da ausência
     if (diaISO === inicio) {
         return idxTurno >= idxInicio;
     }
 
-    // Se for o dia final da ausência
     if (diaISO === fim) {
         return idxTurno <= idxFim;
     }
 
-    // Se for um dia entre início e fim, todos os turnos estão bloqueados
     return true;
 };
     const geraListaTurnosOrdenados = (nome, turnoNovoRow = null) => {
         const turnos = [];
 
-        // dia anterior
         escalaAnterior.forEach((item) => {
             if (item.Nome === nome) {
                 const row = horarios.indexOf(item.Horario);
@@ -292,7 +285,6 @@ const isTurnoBlockedByAusencia = (dataBR, turno, ausencia) => {
             }
         });
 
-        // dia atual
         escala.forEach((linha, rowIdx) => {
             linha.forEach((coluna) => {
                 coluna.forEach((n) => {
@@ -301,12 +293,10 @@ const isTurnoBlockedByAusencia = (dataBR, turno, ausencia) => {
             });
         });
 
-        // simula novo turno
         if (turnoNovoRow !== null) {
             turnos.push({ dia: 0, row: turnoNovoRow });
         }
 
-        // ordena
         return turnos.sort((a, b) =>
             a.dia !== b.dia ? a.dia - b.dia : a.row - b.row
         );
@@ -506,12 +496,9 @@ const isTurnoBlockedByAusencia = (dataBR, turno, ausencia) => {
         window.location.href = "/escaladodia/" + dataPosterior;
     };
 
-    // Dentro do componente EscalaDoDia, depois de carregar nomesAusentes e horarios
-
 const ausentesAgora = nomesAusentes
     .filter((colab) => colab.ausente === "Sim")
     .map((colab) => {
-        // Para cada colaborador, verificamos quais turnos estão bloqueados
         const turnosBloqueados = horarios.filter((h) =>
             isTurnoBlockedByAusencia(
                 data,
@@ -529,7 +516,7 @@ const ausentesAgora = nomesAusentes
             turnosBloqueados
         };
     })
-    .filter((c) => c.turnosBloqueados.length > 0); // remove quem não tem bloqueios
+    .filter((c) => c.turnosBloqueados.length > 0);
 
 console.log("Ausentes agora:", ausentesAgora);
 
