@@ -32,72 +32,6 @@ const EscalaDoDia = () => {
         return resultado;
     };
 
-    const calcularBloqueiosPorTurnosSeguidos = () => {
-        const mapa = montaMapaTurnos();
-        const bloqueios = [];
-    
-        for (const [nome, dados] of Object.entries(mapa)) {
-            const ordenados = dados
-                .slice()
-                .sort((a, b) => {
-                    if (a.dia === b.dia) return a.row - b.row;
-                    return a.dia === "anterior" ? -1 : 1;
-                });
-    
-            let consecutivos = 1;
-    
-            for (let i = 1; i < ordenados.length; i++) {
-                const atual = ordenados[i];
-                const anterior = ordenados[i - 1];
-    
-                const ehSequencialMesmoDia =
-                    atual.dia === anterior.dia &&
-                    atual.row === anterior.row + 1;
-    
-                const ehViradaDia =
-                    anterior.dia === "anterior" &&
-                    atual.dia === "atual" &&
-                    anterior.row === horarios.length - 1 &&
-                    atual.row === 0;
-    
-                if (ehSequencialMesmoDia || ehViradaDia) {
-                    consecutivos++;
-                } else {
-                    consecutivos = 1;
-                }
-    
-                if (consecutivos === 2) {
-                    let proximoRow = atual.row + 1;
-                    let proximoDia = atual.dia;
-    
-                    if (proximoRow >= horarios.length) {
-                        proximoRow = 0;
-                        proximoDia = "atual";
-                    }
-    
-                    if (proximoDia === "atual") {
-                        bloqueios.push({
-                            nome,
-                            turno: horarios[proximoRow],
-                        });
-                    }
-                }
-            }
-        }
-    
-        return bloqueios;
-    };
-
-    useEffect(() => {
-        const bloqueios = calcularBloqueiosPorTurnosSeguidos();
-        setBloqueadosPorTurnosSeguidos(bloqueios);
-    }, [escala, escalaAnterior]);
-
-    const isBlockedByTurnosSeguidos = (nome, turno) =>
-        bloqueadosPorTurnosSeguidos.some(
-            (b) => b.nome === nome && b.turno === turno
-        );
-
 
     useEffect(() => {
         if (!data || usuarios.length === 0) return;
@@ -316,25 +250,92 @@ const EscalaDoDia = () => {
         fetchAusentes();
     }, [data]);
 
-    const isTurnoBlockedByAusencia = (dataBR, turno, ausencia) => {
-        if (!ausencia || !ausencia.data) return false;
+const isTurnoBlockedByAusencia = (dataBR, turno, ausencia) => {
+    const diaISO = toISO(dataBR); // Converte para "YYYY-MM-DD"
+    const inicio = ausencia.data;
+    const fim = ausencia.data_final || ausencia.data; // Se não houver data_final, considera só o dia inicial
 
-        const inicioISO = ausencia.data;
-        const fimISO = ausencia.data_final || ausencia.data;
+    // Índices do turno atual e dos turnos da ausência
+    const idxTurno = horarios.indexOf(turno);
+    const idxInicio = horarios.indexOf(ausencia.horario);
+    const idxFim = horarios.indexOf(ausencia.horario_final || ausencia.horario);
 
-        const diaISO = toISO(dataBR);
+    // Se a data não estiver dentro do intervalo da ausência, retorna false
+    if (diaISO < inicio || diaISO > fim) return false;
 
-        if (diaISO > inicioISO && diaISO < fimISO) {
-            return true;
+    // Se for o mesmo dia de início e fim, bloqueia todos os turnos entre início e fim
+    if (diaISO === inicio && diaISO === fim) {
+        return idxTurno >= idxInicio && idxTurno <= idxFim;
+    } 
+    
+    // Se for o dia inicial da ausência
+    if (diaISO === inicio) {
+        return idxTurno >= idxInicio;
+    }
+
+    // Se for o dia final da ausência
+    if (diaISO === fim) {
+        return idxTurno <= idxFim;
+    }
+
+    // Se for um dia entre início e fim, todos os turnos estão bloqueados
+    return true;
+};
+    const geraListaTurnosOrdenados = (nome, turnoNovoRow = null) => {
+        const turnos = [];
+
+        // dia anterior
+        escalaAnterior.forEach((item) => {
+            if (item.Nome === nome) {
+                const row = horarios.indexOf(item.Horario);
+                if (row >= 0) turnos.push({ dia: -1, row });
+            }
+        });
+
+        // dia atual
+        escala.forEach((linha, rowIdx) => {
+            linha.forEach((coluna) => {
+                coluna.forEach((n) => {
+                    if (n === nome) turnos.push({ dia: 0, row: rowIdx });
+                });
+            });
+        });
+
+        // simula novo turno
+        if (turnoNovoRow !== null) {
+            turnos.push({ dia: 0, row: turnoNovoRow });
         }
 
-        if (diaISO === inicioISO) {
-            return turno === (ausencia.horario || "");
-        }
+        // ordena
+        return turnos.sort((a, b) =>
+            a.dia !== b.dia ? a.dia - b.dia : a.row - b.row
+        );
+    };
 
-        if (diaISO === fimISO) {
-            const turnoFinal = ausencia.horario_final || ausencia.horario || "";
-            return turno === turnoFinal;
+    const ultrapassaLimiteTurnosSeguidos = (nome, turnoNovoRow) => {
+        const turnos = geraListaTurnosOrdenados(nome, turnoNovoRow);
+
+        let consecutivos = 1;
+
+        for (let i = 1; i < turnos.length; i++) {
+            const ant = turnos[i - 1];
+            const atual = turnos[i];
+
+            const mesmoDiaSequencial =
+                ant.dia === atual.dia && atual.row === ant.row + 1;
+
+            const viradaDia =
+                ant.dia === -1 &&
+                atual.dia === 0 &&
+                ant.row === horarios.length - 1 &&
+                atual.row === 0;
+
+            if (mesmoDiaSequencial || viradaDia) {
+                consecutivos++;
+                if (consecutivos >= 3) return true;
+            } else {
+                consecutivos = 1;
+            }
         }
 
         return false;
@@ -355,7 +356,6 @@ const EscalaDoDia = () => {
             .filter((u) => u.cargo === categoria)
             .filter((u) => !isUserAbsentForTurn(u.nome_completo, horario))
             .filter((u) => u.situacao === "Ativo")
-            .filter((u) => !isBlockedByTurnosSeguidos(u.nome_completo, horario))
             .filter((u) => !bloqueadosPorLimite.includes(u.nome_completo))
             .map((u) => ({ nome: u.nome_completo, cargo: u.cargo }));
 
@@ -368,19 +368,29 @@ const EscalaDoDia = () => {
     const handleDrop = async (e, row, col) => {
         e.preventDefault();
         const nome = e.dataTransfer.getData("nome");
-
+        const categoriaAlvo = categorias[col];
+        const horarioAlvo = horarios[row];
+        console.log("categoriaAlvo:", categoriaAlvo, "horarioAlvo:", horarioAlvo);
+        const usuario = usuarios.find((u) => u.nome_completo === nome);
+        if (!usuario) return;
+        if (usuario.cargo !== categoriaAlvo) {
+            alert(`Erro: ${nome} não pertence à categoria ${categoriaAlvo}`);
+            return;
+        }
         if (bloqueadosPorLimite.includes(nome)) return;
-
-        if (isBlockedByTurnosSeguidos(nome, horarios[row])) {
-            alert(
-                `Erro: ${nome} está bloqueado para o turno ${horarios[row]} por ter 3 turnos consecutivos!`
-            );
+        if (ultrapassaLimiteTurnosSeguidos(nome, row)) {
+            alert(`Erro: ${nome} não pode ser escalado em 3 turnos consecutivos.`);
             return;
         }
 
-        const usuario = usuarios.find((u) => u.nome_completo === nome);
-        if (!usuario) return;
 
+
+        if (isUserAbsentForTurn(usuario.nome_completo, horarios[row])) {
+            alert(
+                `Erro: ${usuario.nome_completo} está; ausente para o turno ${horarios[row]}!`
+            );
+            return;
+        }
         const { totalTurnos, limite } = await validarLimiteMensal(usuario);
 
         if (totalTurnos >= limite) {
@@ -408,68 +418,6 @@ const EscalaDoDia = () => {
         setEscala(novaEscala);
     };
 
-    const montaMapaTurnos = () => {
-        const mapa = {};
-
-        escalaAnterior.forEach((item) => {
-            const row = horarios.indexOf(item.Horario);
-            if (row >= 0) {
-                if (!mapa[item.Nome]) mapa[item.Nome] = [];
-                mapa[item.Nome].push({ row, dia: "anterior" });
-            }
-        });
-
-        escala.forEach((linha, rowIdx) => {
-            linha.forEach((coluna) => {
-                coluna.forEach((nome) => {
-                    if (!mapa[nome]) mapa[nome] = [];
-                    mapa[nome].push({ row: rowIdx, dia: "atual" });
-                });
-            });
-        });
-
-        return mapa;
-    };
-
-    const validaTurnosSeguidos = () => {
-        const mapa = montaMapaTurnos();
-
-        for (const [nome, dados] of Object.entries(mapa)) {
-            const ordenados = dados
-                .slice()
-                .sort((a, b) => {
-                    if (a.dia === b.dia) return a.row - b.row;
-                    return a.dia === "anterior" ? -1 : 1;
-                });
-
-            let consecutivos = 1;
-
-            for (let i = 1; i < ordenados.length; i++) {
-                const atual = ordenados[i];
-                const anterior = ordenados[i - 1];
-
-                if (atual.dia === anterior.dia && atual.row === anterior.row + 1) {
-                    consecutivos++;
-                } else if (
-                    anterior.dia === "anterior" &&
-                    atual.dia === "atual" &&
-                    anterior.row === horarios.length - 1 &&
-                    atual.row === 0
-                ) {
-                    consecutivos++;
-                } else {
-                    consecutivos = 1;
-                }
-
-                if (consecutivos >= 3) {
-                    alert(`Erro: ${nome} está escalado em ${consecutivos} turnos consecutivos!`);
-                    return false;
-                }
-            }
-        }
-
-        return true;
-    };
 
     const existeUsuarioDesativadoNaEscala = () => {
         for (let row = 0; row < escala.length; row++) {
@@ -503,8 +451,6 @@ const EscalaDoDia = () => {
             DataEscala: data,
             Escala: [],
         };
-
-        if (!validaTurnosSeguidos()) return;
 
         horarios.forEach((horario, rowIdx) => {
             categorias.forEach((categoria, colIdx) => {
@@ -559,6 +505,33 @@ const EscalaDoDia = () => {
         dataPosterior = dataPosterior.split("-").reverse().join("-");
         window.location.href = "/escaladodia/" + dataPosterior;
     };
+
+    // Dentro do componente EscalaDoDia, depois de carregar nomesAusentes e horarios
+
+const ausentesAgora = nomesAusentes
+    .filter((colab) => colab.ausente === "Sim")
+    .map((colab) => {
+        // Para cada colaborador, verificamos quais turnos estão bloqueados
+        const turnosBloqueados = horarios.filter((h) =>
+            isTurnoBlockedByAusencia(
+                data,
+                h,
+                {
+                    ...colab,
+                    data: colab.data,
+                    data_final: colab.data_final || colab.data
+                }
+            )
+        );
+
+        return {
+            nome: colab.nome,
+            turnosBloqueados
+        };
+    })
+    .filter((c) => c.turnosBloqueados.length > 0); // remove quem não tem bloqueios
+
+console.log("Ausentes agora:", ausentesAgora);
 
     return (
         <div className="escala-page">
@@ -701,29 +674,18 @@ const EscalaDoDia = () => {
                                     <th>Nome - Turnos bloqueados</th>
                                 </tr>
                             </thead>
-                            <tbody>
-                                {nomesAusentes
-                                    .filter((item) => item.ausente === "Sim")
-                                    .map((colab) => {
-                                        const bloqueios = horarios.filter((h) => isTurnoBlockedByAusencia(data, h, colab));
-                                        return (
-                                            <tr key={colab.id}>
-                                                <td>{`${colab.nome} - ${bloqueios.length > 0 ? bloqueios.join(", ") : colab.horario}`}</td>
-                                            </tr>
-                                        );
-                                    })}
+                            <tbody> {ausentesAgora.map((colab, idx) => (
+                <tr key={colab.nome + idx}>
+                    <td>{colab.nome} - {colab.turnosBloqueados.join(", ")}</td>
+                </tr>
+            ))}
+
                                 {bloqueadosPorLimite.map((nome, idx) => (
                                     <tr key={`limite-${idx}`}>
                                         <td>{nome} - Limite mensal excedido</td>
                                     </tr>
                                 ))}
-                                {bloqueadosPorTurnosSeguidos.map((b, idx) => (
-                                    <tr key={`seq-${idx}`}>
-                                        <td>
-                                            {b.nome} - Bloqueado por 3 turnos consecutivos ({b.turno})
-                                        </td>
-                                    </tr>
-                                ))}
+
 
                             </tbody>
                         </table>
