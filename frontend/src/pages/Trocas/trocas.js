@@ -12,7 +12,6 @@ const Trocas = () => {
   const [trocasParaMim, setTrocasParaMim] = useState([]);
   const [erro, setErro] = useState("");
 
-  // 🔑 controle de edição
   const [idEdicao, setIdEdicao] = useState(null);
 
   const [diaColega, setDiaColega] = useState("");
@@ -96,11 +95,12 @@ const Trocas = () => {
         const colegasUnicos = Array.from(
           new Map(
             (data.Escala || [])
-              .filter(e => e.Cargo === user.cargo && e.Nome !== user.nome_completo && e.situacao === "Ativo")
-              .map(e => [e.Nome, { nome: e.Nome }])
-          ).values()
-        );
-
+              .filter(e => e.Cargo === user.cargo && 
+                e.Nome !== user.nome_completo)
+                
+                .map(e => [e.Nome, { nome: e.Nome }])
+              ).values()
+            );
         setColegasDisponiveis(colegasUnicos);
         setErro(colegasUnicos.length ? "" : "Nenhum colega escalado neste dia.");
       } catch {
