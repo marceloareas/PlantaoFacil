@@ -1,0 +1,176 @@
+.App {
+  text-align: center;
+}
+
+.bgImage {
+  position: relative;
+  /* background-image: url("https://w0.peakpx.com/wallpaper/20/335/HD-wallpaper-my-little-med-diary-medical-school-motivation-medical-med-school-motivation-medical-study.jpg"); */
+  /* background-image: url("https://img.freepik.com/fotos-premium/vista-de-angulo-alto-de-plantas-em-mesa-contra-fundo-branco_1048944-21057526.jpg"); */
+  /* background-image: url("https://github.com/andressa-oliveira21051/Fotos/blob/main/Background_reduzida.png?raw=true"); */
+
+  background-position: center;
+  background-color: #d7f5ff;
+  background-repeat: no-repeat;
+  min-height: calc(100vh - 68px);
+  overflow: hidden;
+}
+
+.bgImage::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: inherit;
+  background-size: cover;
+  background-position: center;
+  filter: blur(10px);
+  transform: scale(1.05);
+  z-index: 1;
+  mask-image: linear-gradient(to bottom, black 50%, black 100%);
+  -webkit-mask-image: linear-gradient(to bottom, black 50%, black 100%);
+}
+
+.bgImage>* {
+  position: relative;
+  z-index: 2;
+}
+
+
+.App-logo {
+  height: 40vmin;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .App-logo {
+    animation: App-logo-spin infinite 20s linear;
+  }
+}
+
+.App-header {
+  background-color: #282c34;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(10px + 2vmin);
+  color: white;
+}
+
+.App-link {
+  color: #61dafb;
+}
+
+@keyframes App-logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.Cotainer-App {
+  text-align: center;
+}
+
+.bgImage {
+  display: grid;
+  place-items: center;
+}
+
+.fullscreen-menu {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 250px;
+  height: 100%;
+  background-color: #ffffff;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 40px 20px;
+  animation: slideInRight 0.3s ease-out;
+  box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(10%);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.fullscreen-menu ul {
+  list-style: none;
+  padding: 0;
+  width: 100%;
+}
+
+.fullscreen-menu ul li {
+  margin: 20px 0;
+  text-align: left;
+}
+
+.fullscreen-menu ul li a {
+  color: #333;
+  font-size: 20px;
+  text-decoration: none;
+  font-weight: bold;
+  transition: color 0.2s ease;
+}
+
+.fullscreen-menu ul li a:hover {
+  color: #007bff;
+}
+
+.close-button {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: none;
+  border: none;
+  font-size: 36px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.close-button:hover {
+  color: #007bff;
+}
+
+.menu-username {
+  font-size: 13px;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.back-button {
+  z-index: 10000;
+  padding: 10px 15px;
+  left: -35%;
+  position: relative;
+  background-color: #333;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  font-size: 16px;
+  cursor: pointer;
+  box-shadow: 0 3px 6px rgba(0,0,0,0.2);
+  transition: background-color 0.2s ease;
+}
+
+.back-button:hover {
+  background-color: #0056b3;
+}

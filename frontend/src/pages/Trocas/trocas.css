@@ -1,0 +1,138 @@
+.troca-container {
+    max-width: fit-content;
+    margin: 40px auto;
+    padding: 20px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    background-color: #f7f7f7;
+}
+
+.erro-box {
+    background-color: #ffe6e6;
+    border: 1px solid #ff4d4d;
+    color: #b30000;
+    padding: 10px 15px;
+    margin-bottom: 15px;
+    border-radius: 5px;
+    font-weight: bold;
+}
+
+.troca-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+label {
+    font-weight: bold;
+}
+
+input,
+select,
+textarea {
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+}
+
+.enviar-btn {
+    margin-top: 15px;
+    padding: 10px;
+    background-color: #1976d2;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.enviar-btn:hover {
+    background-color: #1565c0;
+}
+
+
+.trocas-aprovacao-container {
+    padding: 20px;
+    max-width: fit-content;
+    margin: 0 auto;
+}
+
+.tabela-trocas {
+    width: fit-content;
+    background-color: #fafafa;
+}
+
+.tabela-trocas th,
+.tabela-trocas td {
+    border: 1px solid #ccc;
+    padding: 10px;
+    text-align: center;
+}
+
+.status-pendente {
+    color: #f39c12;
+    font-weight: bold;
+}
+
+.status-aprovada {
+    color: #27ae60;
+    font-weight: bold;
+}
+
+.status-rejeitada {
+    color: #e74c3c;
+    font-weight: bold;
+}
+
+.btn-aprovar {
+    background-color: #27ae60;
+    color: white;
+    border: none;
+    padding: 6px 10px;
+    margin-right: 5px;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.btn-aprovar:hover {
+    background-color: #1e8449;
+}
+
+.btn-rejeitar {
+    background-color: #e74c3c;
+    color: white;
+    border: none;
+    padding: 6px 10px;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.btn-rejeitar:hover {
+    background-color: #c0392b;
+}
+
+.delete-btn {
+    background-color: #e74c3c;
+    margin-left: 5px;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+.edit-btn {
+    background-color: #f3ab38;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+.delete-btn:hover {
+    background-color: #c0392b;
+}
+
+.edit-btn:hover {
+    background-color: #f59c0d;
+}
