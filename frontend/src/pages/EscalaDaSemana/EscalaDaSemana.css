@@ -1,0 +1,53 @@
+.table th {
+  user-select: none;
+}
+
+.table th.bg-primary {
+  background-color: #007bff !important;
+  color: white !important;
+}
+
+.table th[colspan="2"]:hover {
+  background-color: #0056b3;
+  color: white;
+  transition: background-color 0.3s ease;
+  cursor: pointer;
+}
+
+.table tbody tr:hover {
+  background-color: #f8f9fa;
+  transition: background-color 0.2s ease;
+}
+
+.table tbody td div {
+  text-align: left;
+  padding-left: 6px;
+  margin-bottom: 2px;
+}
+
+.table-responsive {
+  overflow-x: auto;
+}
+
+.table thead th {
+  vertical-align: middle;
+  padding: 12px 8px;
+}
+
+.table {
+  box-shadow: 0 0 8px rgb(0 0 0 / 0.1);
+  border-radius: 4px;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.table td, .table th {
+  border: 1px solid #dee2e6;
+}
+
+.table tbody td.text-wrap {
+  max-width: 160px;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  hyphens: auto;
+}
