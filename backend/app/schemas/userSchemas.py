@@ -46,11 +46,20 @@ class UserCreate(BaseModel):
         -  2 a 4 letras
         """
 
-        pattern = r'^\d{4,6}-[A-Z]{2}/[A-Z]{2,4}$'
+        crm = v.strip().upper()
 
-        if not re.match(pattern, v):
+        regex = r'^\d{4,6}-[A-Z]{2}/[A-Z]{2,4}$'
+
+        if not re.match(regex, crm):
             raise ValueError("CRM deve estar no formato 123456-RJ/ENF")
 
+        return crm
+    
+    @field_validator("horaEscala")
+    @classmethod
+    def validar_hora_escala(cls, v):
+        if not v in ["12x36", "12x60"]:
+            raise ValueError("horaEscala deve ser '12x36' ou '12x60'")
         return v
 
 

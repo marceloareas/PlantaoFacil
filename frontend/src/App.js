@@ -16,15 +16,9 @@ import Trocas from './pages/Trocas/trocas';
 import Pessoas from './pages/Pessoas/Pessoas';
 import { Button } from 'bootstrap';
 import HelpPage from './pages/Help/HelpPage';
+import BackButton from './components/BackButton';
 
-function BackButton() {
-  const navigate = useNavigate();
-  return (
-    <button className="back-button" onClick={() => navigate(-1)}>
-      ← Voltar
-    </button>
-  );
-}
+
 
 function App() {
   const [showMenu, setShowMenu] = useState(false);
