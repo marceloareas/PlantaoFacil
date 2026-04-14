@@ -24,6 +24,7 @@ services:
         - CHOKIDAR_USEPOLLING=true
       depends_on:
         - backend
+      command: npm start
 
 
   db:

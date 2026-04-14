@@ -111,7 +111,7 @@ const EscalaDaSemana = () => {
         a.getDate() === b.getDate();
 
     const irParaDia = (data) =>
-        navigate(`/escalaDoDia/${data}`);
+        navigate(`/EscalaDoDia/${data}`);
 
     const trocaDaCelula = (turno, dataBR) => {
         const dataISO = normalizarData(toISO(dataBR));

@@ -4,9 +4,10 @@ import SignUpPage from './pages/SignUpPage';
 import Header from './components/Header';
 import { BrowserRouter as Router, Route, Routes, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import CalendarPage from './components/Caledar';
+import CalendarPage from './pages/Calendar/Calendar';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import EscalaDoDia from './pages/EscalaDoDia/EscalaDoDia';
+import EditarEscala from './pages/EditarEscala/EditarEscala';
 import EscalaDaSemana from './pages/EscalaDaSemana/EscalaDaSemana';
 import FuncionariosAusentes from './pages/FuncAusente';
 import ApiServer from './components/api/Api';
@@ -159,12 +160,13 @@ function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/SignUp" element={<SignUpPage />} />
             <Route path="/Calendar" element={<CalendarPage />} />
-            <Route path="/escalaDoDia/:data" element={<EscalaDoDia />} />
+            <Route path="/EscalaDoDia/:data" element={<EscalaDoDia />} />
             <Route path="/Ausentes" element={<FuncionariosAusentes />} />
             <Route path="/Trocas" element={<Trocas />} />
             <Route path="/TrocasAprovacao" element={<TrocasAprovacao />} />
             <Route path="/Pessoas" element={<Pessoas />} />
             <Route path="/help" element={<HelpPage />} />
+            <Route path="/EditarEscala/:data" element={<EditarEscala />} />
           </Routes>
         </div>
       </div>

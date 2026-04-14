@@ -5,7 +5,7 @@ from sqlalchemy.exc import OperationalError
 import sys, os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from database import engine, Base
-from routes import users, escalaDia, funcAusentes, trocas
+from routes import users, escalaDia, funcAusentes, trocas, escalaMes
 
 app = FastAPI(title="Plantão Fácil API")
 
@@ -29,6 +29,8 @@ app.include_router(users.LoginRouter)
 app.include_router(escalaDia.router)
 app.include_router(funcAusentes.router)
 app.include_router(trocas.router)
+app.include_router(escalaMes.router)
+
 
 @app.get("/")
 def root():

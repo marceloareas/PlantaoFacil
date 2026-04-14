@@ -1,9 +1,9 @@
-import React, { useState } from "react";
+import React, { useState , useEffect }   from "react";
 import { useNavigate } from "react-router-dom";
 import "./Calendar.css"; 
 import { FaArrowRight } from "react-icons/fa";
 import { FaArrowLeft } from "react-icons/fa";
-import EscalaDoDia from "../pages/EscalaDoDia/EscalaDoDia";
+
 
 const CalendarPage = () => {
   const navigate = useNavigate();
@@ -11,6 +11,9 @@ const CalendarPage = () => {
   const today = new Date();
   const [currentMonth, setCurrentMonth] = useState(today.getMonth());
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
+  const [diasEscalados, setDiasEscalados] = useState([]);
+
+  const user = JSON.parse(localStorage.getItem("user"));
 
   const daysOfWeek = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
@@ -47,6 +50,38 @@ const CalendarPage = () => {
     days.push(d);
   }
 
+  useEffect(() => {
+    if (!user) return;
+
+      const fetchEscalasMes = async () => {
+        try {
+          const res = await fetch(
+            `http://localhost:8000/escalaMes/?mes=${currentMonth + 1}&ano=${currentYear}&cpf=${user.cpf}`
+          );
+
+          const data = await res.json();
+          console.log("RESPOSTA API:", data);
+          setDiasEscalados(data);
+        } catch (err) {
+          console.error("Erro ao buscar escalas do mês:", err);
+        }
+      };
+
+      fetchEscalasMes();
+    }, [currentMonth, currentYear]);
+
+    const isDiaEscalado = (day) => {
+  if (!day) return false;
+
+    const dataFormatada = `${day.toString().padStart(2, "0")}-${(currentMonth + 1)
+      .toString()
+      .padStart(2, "0")}-${currentYear}`;
+
+    return diasEscalados.some(
+      (d) => d.data === dataFormatada && d.escalado
+    );
+  };
+
   return (
     <div className="calendar-container">
       <div className="calendar-header">
@@ -69,7 +104,7 @@ const CalendarPage = () => {
           <div
             key={index}
             onClick={() => 
-              day.toString().padStart(2, '0') && navigate(`/escalaDoDia/${day.toString().padStart(2, '0')}-${currentMonth + 1}-${currentYear}`)
+              day.toString().padStart(2, '0') && navigate(`/EscalaDoDia/${day.toString().padStart(2, '0')}-${(currentMonth + 1).toString().padStart(2, '0')}-${currentYear}`)
           }
                       className={`calendar-day ${
 
@@ -78,7 +113,7 @@ const CalendarPage = () => {
               currentYear === today.getFullYear()
                 ? "calendar-today"
                 : ""
-              }`}
+              }${isDiaEscalado(day) ? " calendar-escalado" : ""}`}
               ><b>
             {day || ""}
             </b>

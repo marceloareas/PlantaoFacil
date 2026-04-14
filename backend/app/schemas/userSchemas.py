@@ -6,7 +6,7 @@ cpf_validator = CPF()
 
 class UserCreate(BaseModel):
     email: EmailStr
-    password: str
+    password : str
     crm: str
     cpf: str
     nome_completo: constr(min_length=3, strip_whitespace=True)
@@ -65,3 +65,5 @@ class UserCreate(BaseModel):
 
 class UserLogin(BaseModel):
     email: str
+    password: str
+    
