@@ -25,6 +25,7 @@ services:
       depends_on:
         - backend
       command: npm start
+      platform: linux/amd64
 
 
   db:

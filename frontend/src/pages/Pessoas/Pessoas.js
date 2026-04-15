@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import EditarPessoa from "../../components/EditarPessoaModal";
+import AdicionarTurno from "../../components/AdicionarTurnoModal";
 import { Spinner, Alert, Table, Button, Container, Row, Col, Form } from "react-bootstrap";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "./Pessoas.css";
@@ -52,7 +53,8 @@ const Pessoas = () => {
     const [usuarios, setUsuarios] = useState([]);
     const [loading, setLoading] = useState(true);
     const [erro, setErro] = useState(null);
-    const [showModal, setShowModal] = useState(false);
+    const [showModalpessoa, setShowModalPessoa] = useState(false);
+    const [showModalTurnos, setShowModalTurnos] = useState(false);
     const [pessoaSelecionada, setPessoaSelecionada] = useState(null);
     const [filtro, setFiltro] = useState("");
     const [user, setUser] = useState(null);
@@ -97,10 +99,15 @@ const Pessoas = () => {
         fetchUsuarios();
     }, [user]);
 
-    const abrirModal = (pessoa) => {
+    const abrirModalpessoa = (pessoa) => {
         setPessoaSelecionada(pessoa);
-        setShowModal(true);
+        setShowModalPessoa(true);
     };
+
+    const abrirModalTurnos = (pessoa) => {
+        setPessoaSelecionada(pessoa);
+        setShowModalTurnos(true);
+    }
 
     const handleSave = (updatedPessoa) => {
         setUsuarios((prev) =>
@@ -233,7 +240,8 @@ const Pessoas = () => {
                         <th>CRM/COREN</th>
                         <th>CPF</th>
                         <th>Status</th>
-                        <th>Ações</th>
+                        <th>Editar</th>
+                        <th>Turnos</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -259,9 +267,20 @@ const Pessoas = () => {
                                     <Button
                                         size="sm"
                                         variant="warning"
-                                        onClick={() => abrirModal(user)}
+                                        onClick={() => abrirModalpessoa(user)}
                                     >
                                         Editar
+                                    </Button>
+                                )}
+                            </td>
+                            <td>
+                                {user.situacao === "Ativo" && (
+                                    <Button
+                                        size="sm"
+                                        variant="success"
+                                        onClick={() => abrirModalTurnos(user)}
+                                    >
+                                        Adicionar
                                     </Button>
                                 )}
                             </td>
@@ -272,8 +291,17 @@ const Pessoas = () => {
 
             {pessoaSelecionada && (
                 <EditarPessoa
-                    show={showModal}
-                    onClose={() => setShowModal(false)}
+                    show={showModalpessoa}
+                    onClose={() => setShowModalPessoa(false)}
+                    pessoa={pessoaSelecionada}
+                    onSave={handleSave}
+                />
+            )}
+
+            {pessoaSelecionada && (
+                <AdicionarTurno
+                    show={showModalTurnos}
+                    onClose={() => setShowModalTurnos(false)}
                     pessoa={pessoaSelecionada}
                     onSave={handleSave}
                 />
