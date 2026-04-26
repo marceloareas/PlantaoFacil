@@ -21,11 +21,13 @@ import BackButton from './components/BackButton';
 
 
 
+
 function App() {
   const [showMenu, setShowMenu] = useState(false);
   const [showRelat, setShowRelat] = useState(false);
   const [user, setUser] = useState(null);
   const [showLogin, setShowLogin] = useState(false);
+  const [showSignUp, setShowSignUp] = useState(false);
 
   useEffect(() => {
     const userData = localStorage.getItem('user');
@@ -88,29 +90,23 @@ function App() {
             ) : (
               <>
                 <li>
-                  <a className="menu-username"><IoPersonCircleSharp /> Logado como <strong>{user.nome_completo}</strong> ({user.cargo})</a>
-                </li>
-                <li>
-                  <a className="menu-link" onClick={handleLogout}>Logout</a>
+                  <a className="menu-username"><IoPersonCircleSharp /><strong>{user.nome_completo}</strong> ({user.cargo})</a>
                 </li>
               </>
             )}
 
-            <li>
-              {user?.cargo === "Coordenador" && (
+              {user && user.cargo === "Coordenador" && (
                 <>
-                  <a
-                    href="#"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setShowRelat((prev) => !prev);
+                  <li>
+                  <button className="menu-link"
+                    onClick={() => {setShowRelat((prev) => !prev);
                     }}
-                    className="menu-link"
+                    
                   >
                     Relatórios
-                  </a>
+                  </button>
                   {showRelat && (
-                    <ul className="submenu">
+                    <ul className="menu-link">
                       <li>
                         <a href="/relatorio1" onClick={() => setShowMenu(false)}>Relatório 1</a>
                       </li>
@@ -119,12 +115,23 @@ function App() {
                       </li>
                     </ul>
                   )}
+                  </li>
                 </>
               )}
-            </li>
-
+            
             {!showRelat && (
               <>
+
+                 {user && user.cargo === "Coordenador" && (
+                <>
+                  <li>
+                    <button className="menu-link" onClick={() => setShowSignUp(true)}>
+                      Cadastrar
+                    </button>
+                  </li>
+                </>
+              )}
+
                 <li><a href="/Calendar" onClick={() => setShowMenu(false)}>Calendário</a></li>
                 {user?.cargo === "Coordenador" && (
                   <>
@@ -137,6 +144,9 @@ function App() {
                   <li><a href="/Trocas" onClick={() => setShowMenu(false)}>Trocas</a></li>
                 )}
                 <li><a href="/help" onClick={() => setShowMenu(false)}>Ajuda</a></li>
+                <li>
+                  <a className="menu-link" style={{color: 'red'}} onClick={handleLogout}>Logout</a>
+                </li>
               </>
             )}
           </ul>
@@ -193,6 +203,11 @@ function App() {
         onClose={() => setShowLogin(false)}
         onLoginSuccess={handleLoginSuccess}
       />
+      <SignUpPage
+        show={showSignUp}
+        onClose={() => setShowSignUp(false)}
+      />
+
     </Router>
   );
 }

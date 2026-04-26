@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Date, Time
+from sqlalchemy import Column, Integer, String, Date, Time, ForeignKey
 from database import Base
 
 class Ausentes(Base):
@@ -7,7 +7,7 @@ class Ausentes(Base):
     id = Column(Integer, primary_key=True, index=True)
     ausente = Column(String, nullable=False)
     nome = Column(String, nullable=False)
-    cpf = Column(String, nullable=False)
+    cpf = Column(String(14),ForeignKey("users.cpf"), nullable=False)
     data = Column(Date, nullable=False)
     data_final = Column(Date, nullable=True)
     horario = Column(String, nullable=False)

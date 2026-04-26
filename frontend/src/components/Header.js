@@ -4,7 +4,8 @@ import { NavLink } from "react-router-dom";
 import LoginModal from '../pages/LoginPage';
 import SignUpModal from '../pages/SignUpPage';
 import { PiStethoscopeFill } from "react-icons/pi";
-import { IoNotifications } from "react-icons/io5";
+import { IoNotifications, IoHome } from "react-icons/io5";
+import { HiOutlineMenuAlt3 } from "react-icons/hi";
 
 const API = "http://localhost:8000";
 
@@ -54,13 +55,14 @@ const Header = ({ onOpenMenu, user, onLogout }) => {
 
       <nav>
         <ul>
-          <li><NavLink to="/" end>Home</NavLink></li>
+          <li><NavLink to="/" end> <IoHome /> </NavLink></li>
 
           <li>
             {user ? (
-              <button className="login-button" onClick={onLogout}>
-                Logout
-              </button>
+              <a className="login-button" onClick={onOpenMenu}>
+                <strong>{user.nome_completo.split(" ").slice(0, 2).join(" ")}</strong> 
+                ({user.cargo}) <HiOutlineMenuAlt3 />
+              </a>
             ) : (
               <button className="login-button" onClick={() => setShowLogin(true)}>
                 Login
@@ -68,38 +70,25 @@ const Header = ({ onOpenMenu, user, onLogout }) => {
             )}
           </li>
 
-          {user && user.cargo === "Coordenador" && (
-            <li>
-              <button className="login-button" onClick={() => setShowSignUp(true)}>
-                Cadastrar
-              </button>
-            </li>
-          )}
-
           {user && (
             <>
               <li>
-                <button className="login-button" onClick={onOpenMenu}>
-                  Menu
-                </button>
+                {user.cargo === "Coordenador" ? (
+                  <NavLink className="login-button notification-btn" to="/TrocasAprovacao">
+                    <IoNotifications />
+                    {notificacoesCount > 0 && (
+                      <span className="badge">{notificacoesCount}</span>
+                    )}
+                  </NavLink>
+                ) : (
+                  <NavLink className="login-button notification-btn" to="/Trocas">
+                    <IoNotifications />
+                    {notificacoesCount > 0 && (
+                      <span className="badge">{notificacoesCount}</span>
+                    )}
+                  </NavLink>
+                )}
               </li>
-
-              <li>
-                  {user.cargo === "Coordenador" && notificacoesCount > 0 && (
-                    <NavLink className="login-button" to="/TrocasAprovacao">
-                      <IoNotifications />
-                      <span className="badge">{notificacoesCount}</span>
-                    </NavLink>
-                  )}
-
-                  {user.cargo !== "Coordenador" && notificacoesCount > 0 && (
-                    <NavLink className="login-button" to="/Trocas">
-                      <IoNotifications />
-                      <span className="badge">{notificacoesCount}</span>
-                    </NavLink>
-                  )}
-                </li>
-
             </>
           )}
         </ul>

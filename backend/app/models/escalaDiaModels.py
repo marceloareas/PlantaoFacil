@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String
+from sqlalchemy import Column, Integer, String, ForeignKey
 from database import Base
 
 class Escala(Base):
@@ -9,4 +9,4 @@ class Escala(Base):
     Horario = Column(String(20), nullable=False)
     Nome = Column(String(255), nullable=False)
     Cargo = Column(String(15), nullable=True)
-    Cpf = Column(String(14), nullable=False)
+    Cpf = Column(String(14),ForeignKey("users.cpf"), nullable=False)
