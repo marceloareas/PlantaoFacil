@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Modal, Button, Form } from "react-bootstrap";
+import { api } from "./api/Api";
 
 const EditarPessoaModal = ({ show, onClose, pessoa, onSave }) => {
     const [formData, setFormData] = useState({
@@ -74,30 +75,13 @@ const EditarPessoaModal = ({ show, onClose, pessoa, onSave }) => {
         setError("");
 
         try {
-            const res = await fetch(`http://localhost:8000/usuario/${pessoa.id}`, {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(formData),
-            });
-
-            if (!res.ok) {
-                const errorData = await res.json();
-                if (Array.isArray(errorData.detail)) {
-                    const messages = errorData.detail.map(err => err.msg).join(", ");
-                    setError(messages);
-                } else {
-                    setError(errorData.detail || "Erro ao atualizar usuário");
-                }
-                return;
-            }
-
-            const data = await res.json();
+            const data = await api.put(`/users/${pessoa.id}`, formData);
             onSave(data);
             onClose();
 
         } catch (err) {
             console.error(err);
-            setError("Erro de conexão com o servidor");
+            setError(err.message || "Erro de conexão com o servidor");
         }
     };
 

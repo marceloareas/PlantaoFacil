@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import "./EditarEscala.css";
 import "bootstrap/dist/css/bootstrap.min.css";
 import buscarEscalasDoMes from "../../components/services/escalasMensaisService";
+import { api } from "../../components/api/Api";
 
 const EscalaDoDia = () => {
     const { data } = useParams();
@@ -87,8 +88,7 @@ const EscalaDoDia = () => {
 
         const fetchTrocas = async () => {
             try {
-                const res = await fetch("http://localhost:8000/trocas/");
-                const dataRes = await res.json();
+                const dataRes = await api.get("/trocas/");
 
                 const [dia, mes, ano] = data.split("-");
                 const dataISO = `${ano}-${mes}-${dia}`;
@@ -134,8 +134,7 @@ const EscalaDoDia = () => {
     useEffect(() => {
         const fetchUsuarios = async () => {
             try {
-                const res = await fetch("http://localhost:8000/usuario/");
-                const dataRes = await res.json();
+                const dataRes = await api.get("/users/");
                 const ativos = dataRes.filter(
                     (u) => u.cargo.toLowerCase() !== "coordenador"
                 );
@@ -166,12 +165,10 @@ const EscalaDoDia = () => {
         const fetchEscala = async () => {
             if (!data) return;
             try {
-                const res = await fetch(`http://localhost:8000/escaladodia/${data}`);
-                if (!res.ok) return;
-                const dataRes = await res.json();
+                const dataRes = await api.get(`/escaladodia/${data}`);
                 setEscalaExistente(dataRes.Escala || []);
             } catch (err) {
-                console.error("Erro ao buscar escala:", err);
+                if (err.status !== 404) console.error("Erro ao buscar escala:", err);
             }
         };
 
@@ -214,15 +211,12 @@ const EscalaDoDia = () => {
 
         const fetchEscalaAnterior = async () => {
             try {
-                const res = await fetch(`http://localhost:8000/escaladodia/${dataAnterior}`);
-                if (!res.ok) {
-                    setEscalaAnterior([]);
-                    return;
-                }
-                const dataRes = await res.json();
-                setEscalaAnterior(dataRes.Escala || []);
+                const dataISO = toISO(data);
+                const dataRes = await api.get(`/ausentes/${dataISO}`);
+                setNomesAusentes(dataRes || []);
             } catch (err) {
-                setEscalaAnterior([]);
+                if (err.status !== 404) console.error("Erro ao buscar ausentes:", err);
+                setNomesAusentes([]);
             }
         };
 
@@ -235,12 +229,7 @@ const EscalaDoDia = () => {
         const fetchAusentes = async () => {
             try {
                 const dataISO = toISO(data);
-                const res = await fetch(`http://localhost:8000/ausentes/${dataISO}`);
-                if (!res.ok) {
-                    setNomesAusentes([]);
-                    return;
-                }
-                const dataRes = await res.json();
+                const dataRes = await api.get(`/ausentes/${dataISO}`);
                 setNomesAusentes(dataRes || []);
             } catch (err) {
                 console.error("Erro ao buscar ausentes:", err);
@@ -453,18 +442,15 @@ const isTurnoBlockedByAusencia = (dataBR, turno, ausencia) => {
         });
 
         try {
-            const method = escalaExistente.length > 0 ? "PUT" : "POST";
-            const res = await fetch(`http://localhost:8000/escaladodia/${data}`, {
-                method,
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload),
-            });
-
-            if (!res.ok) throw new Error("Erro ao enviar escala");
+            if (escalaExistente.length > 0) {
+                await api.put(`/escaladodia/${data}`, payload);
+            } else {
+                await api.post(`/escaladodia/${data}`, payload);
+            }
             alert("Escala enviada com sucesso!");
         } catch (err) {
             console.error(err);
-            alert("Erro ao enviar escala");
+            alert(err.message || "Erro ao enviar escala");
         }
     };
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { FaUserMinus } from "react-icons/fa";
 import "bootstrap/dist/css/bootstrap.min.css";
+import { api } from "./api/Api";
 
 const AddAusenteModal = ({ show, onClose, onSuccess }) => {
 
@@ -25,8 +26,7 @@ const AddAusenteModal = ({ show, onClose, onSuccess }) => {
     useEffect(() => {
         const fetchUsuarios = async () => {
             try {
-                const res = await fetch("http://localhost:8000/usuario/");
-                const data = await res.json();
+                const data = await api.get("/users/");
                 setFuncionarios(data);
 
                 const cargosUnicos = [...new Set(data.map(u => u.cargo))]
@@ -37,7 +37,7 @@ const AddAusenteModal = ({ show, onClose, onSuccess }) => {
                 console.error(err);
                 setError("Erro ao buscar usuários. Tente novamente.");
             }
-        };
+        }
 
         fetchUsuarios();
     }, []);
@@ -101,17 +101,7 @@ const AddAusenteModal = ({ show, onClose, onSuccess }) => {
         const conflitos = await verificarConflitosEscala();
 
         try {
-            const res = await fetch("http://localhost:8000/ausentes/", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload)
-            });
-
-            if (!res.ok) {
-                const data = await res.json();
-                setError(data.detail || "Erro ao registrar ausente");
-                return;
-            }
+            await api.post("/ausentes/", payload);
 
             setSuccess("Funcionário ausente registrado com sucesso!");
 
@@ -147,7 +137,7 @@ const AddAusenteModal = ({ show, onClose, onSuccess }) => {
 
         } catch (err) {
             console.error(err);
-            setError("Erro de conexão. Tente novamente.");
+            setError(err.message || "Erro de conexão. Tente novamente.");
         }
     };
 
@@ -169,14 +159,15 @@ const AddAusenteModal = ({ show, onClose, onSuccess }) => {
         };
 
         if (tipoAusencia === "turno") {
-            const res = await fetch(`http://localhost:8000/escaladodia/${formatarDataBR(formData.data)}`);
-            if (res.ok) {
-                const data = await res.json();
+            try {
+                const data = await api.get(`/escaladodia/${formatarDataBR(formData.data)}`);
                 data.Escala?.forEach(e => {
                     if (e.Nome === formData.nome && e.Horario === formData.horario) {
                         adicionarConflito(formatarDataBR(formData.data), e.Horario);
                     }
                 });
+            } catch {
+                
             }
         }
         if (tipoAusencia === "intervalo") {
@@ -218,9 +209,8 @@ const AddAusenteModal = ({ show, onClose, onSuccess }) => {
                     turnosParaVerificar = TURNOS;
                 }
 
-                const res = await fetch(`http://localhost:8000/escaladodia/${dataURL}`);
-                if (res.ok) {
-                    const data = await res.json();
+                try {
+                    const data = await api.get(`/escaladodia/${dataURL}`);
 
                     for (const turno of turnosParaVerificar) {
                         const existeEscala = data.Escala?.some(
@@ -231,6 +221,8 @@ const AddAusenteModal = ({ show, onClose, onSuccess }) => {
                             adicionarConflito(formatarDataBR(dataISO), turno);
                         }
                     }
+                } catch {
+                    
                 }
 
                 atual.setDate(atual.getDate() + 1);

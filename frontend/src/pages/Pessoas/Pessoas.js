@@ -4,6 +4,7 @@ import AdicionarTurno from "../../components/AdicionarTurnoModal";
 import { Spinner, Alert, Table, Button, Container, Row, Col, Form } from "react-bootstrap";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "./Pessoas.css";
+import { api } from "../../components/api/Api";
 
 const formatDateBR = (date) => {
     const d = String(date.getDate()).padStart(2, "0");
@@ -29,10 +30,7 @@ const getEscalasFuturasDoUsuario = async (nomeCompleto, Cpf, diasBusca = 90) => 
         const dataBR = formatDateBR(data);
 
         try {
-            const res = await fetch(`http://localhost:8000/escaladodia/${dataBR}`);
-            if (!res.ok) continue;
-
-            const dataRes = await res.json();
+            const dataRes = await api.get(`/escaladodia/${dataBR}`);
             const escala = dataRes?.Escala || [];
 
             const estaEscalado = escala.some((e) => e.Nome === nomeCompleto && e.Cpf === Cpf);
@@ -81,13 +79,7 @@ const Pessoas = () => {
             if (!user || user.cargo.toLowerCase() !== "coordenador") return;
 
             try {
-                const token = localStorage.getItem("token");
-                const res = await fetch("http://localhost:8000/usuario/", {
-                    headers: { Authorization: `Bearer ${token}` },
-                });
-
-                if (!res.ok) throw new Error();
-                const data = await res.json();
+                const data = await api.get("/users/");
                 setUsuarios(data);
             } catch {
                 setErro("Não foi possível carregar os funcionários.");
@@ -154,30 +146,17 @@ const Pessoas = () => {
             return;
 
         try {
-            const token = localStorage.getItem("token");
-
-            const res = await fetch(`http://localhost:8000/usuario/${usuario.id}`, {
-                method: "PUT",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify({
-                    ...usuario,
-                    situacao: novoStatus,
-                }),
+            await api.put(`/users/${usuario.id}`, {
+                ...usuario,
+                situacao: novoStatus,
             });
-
-            if (!res.ok) {
-                alert("Erro ao atualizar status");
-                return;
-            }
 
             setUsuarios((prev) =>
                 prev.map((u) =>
                     u.id === usuario.id ? { ...u, situacao: novoStatus } : u
                 )
             );
+
         } catch {
             alert("Erro de conexão com o servidor");
         }

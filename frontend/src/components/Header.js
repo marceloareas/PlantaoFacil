@@ -6,8 +6,7 @@ import SignUpModal from '../pages/SignUpPage';
 import { PiStethoscopeFill } from "react-icons/pi";
 import { IoNotifications, IoHome } from "react-icons/io5";
 import { HiOutlineMenuAlt3 } from "react-icons/hi";
-
-const API = "http://localhost:8000";
+import { api } from "./api/Api";
 
 const Header = ({ onOpenMenu, user, onLogout }) => {
   const [showLogin, setShowLogin] = useState(false);
@@ -19,8 +18,7 @@ const Header = ({ onOpenMenu, user, onLogout }) => {
 
     const fetchNotificacoes = async () => {
       try {
-        const res = await fetch(`${API}/trocas/`);
-        const data = await res.json();
+        const data = await api.get(`/trocas/`);
 
         let count = 0;
 

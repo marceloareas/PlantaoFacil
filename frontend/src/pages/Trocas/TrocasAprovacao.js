@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import "./trocas.css";
+import { api } from "../../components/api/Api";
 
 const TrocasAprovacao = () => {
     const [user, setUser] = useState(null);
@@ -13,8 +14,7 @@ const TrocasAprovacao = () => {
     useEffect(() => {
         const fetchTrocas = async () => {
             try {
-                const res = await fetch("http://localhost:8000/trocas/");
-                const data = await res.json();
+                const data = await api.get("/trocas/");
                 setTrocas(data);
             } catch (err) {
                 console.error("Erro ao buscar trocas:", err);
@@ -25,13 +25,12 @@ const TrocasAprovacao = () => {
 
     const atualizarsituacao = async (id, novosituacao) => {
         try {
-            const endpoint =
+            const path =
                 novosituacao === "Aprovada"
-                    ? `http://localhost:8000/trocas/${id}/aprovar`
-                    : `http://localhost:8000/trocas/${id}/rejeitar`;
+                    ? `/trocas/${id}/aprovar`
+                    : `/trocas/${id}/rejeitar`;
 
-            const res = await fetch(endpoint, { method: "PUT" });
-            if (!res.ok) throw new Error("Erro ao atualizar troca");
+            await api.put(path);
 
             setTrocas((prev) =>
                 prev.map((t) =>
@@ -51,12 +50,7 @@ const TrocasAprovacao = () => {
 
     const desfazerTroca = async (t) => {
         try {
-            const res = await fetch(
-                `http://localhost:8000/trocas/${t.id}/desfazer`,
-                { method: "PUT" }
-            );
-
-            if (!res.ok) throw new Error("Erro ao desfazer troca");
+            await api.put(`/trocas/${t.id}/desfazer`);
 
             alert("Troca desfeita com sucesso!");
 
@@ -73,12 +67,7 @@ const TrocasAprovacao = () => {
 
     const refazerTroca = async (t) => {
         try {
-            const res = await fetch(
-                `http://localhost:8000/trocas/${t.id}/aprovar`,
-                { method: "PUT" }
-            );
-
-            if (!res.ok) throw new Error("Erro ao refazer troca");
+            await api.put(`/trocas/${t.id}/aprovar`);
 
             alert("Troca refeita com sucesso!");
 

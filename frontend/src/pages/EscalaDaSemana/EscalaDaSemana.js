@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { useEffect, useState, React } from "react";
 import "./EscalaDaSemana.css";
 import "bootstrap/dist/css/bootstrap.min.css";
+import { api } from "../../components/api/Api";
 
 const EscalaDaSemana = () => {
     const navigate = useNavigate();
@@ -18,8 +19,7 @@ const EscalaDaSemana = () => {
     const horarios = ["07:00 - 19:00", "19:00 - 07:00"];
 
     useEffect(() => {
-        fetch("http://localhost:8000/usuario/")
-            .then(res => res.json())
+        api.get("/users/")
             .then(setUsuarios)
             .catch(err => console.error("Erro usuários:", err));
     }, []);
@@ -30,8 +30,7 @@ const EscalaDaSemana = () => {
         );
 
     useEffect(() => {
-        fetch("http://localhost:8000/trocas/")
-            .then(res => res.json())
+        api.get("/trocas/")
             .then(data => setTrocasAprovadas(data.filter(t => t.situacao === "Aprovada")))
             .catch(err => console.error("Erro trocas:", err));
     }, []);
@@ -65,8 +64,7 @@ const EscalaDaSemana = () => {
 
         for (const dia of dias) {
             try {
-                const res = await fetch(`http://localhost:8000/escaladodia/${dia.data}`);
-                const data = await res.json();
+                const data = await api.get(`/escaladodia/${dia.data}`);
 
                 const escalaDia = {};
 

@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import "./Calendar.css"; 
 import { FaArrowRight } from "react-icons/fa";
 import { FaArrowLeft } from "react-icons/fa";
-
+import { api } from "../../components/api/Api";
 
 const CalendarPage = () => {
   const navigate = useNavigate();
@@ -55,11 +55,9 @@ const CalendarPage = () => {
 
       const fetchEscalasMes = async () => {
         try {
-          const res = await fetch(
-            `http://localhost:8000/escalaMes/?mes=${currentMonth + 1}&ano=${currentYear}&cpf=${user.cpf}`
+          const data = await api.get(
+            `/escalaMes/?mes=${currentMonth + 1}&ano=${currentYear}&cpf=${user.cpf}`
           );
-
-          const data = await res.json();
           console.log("RESPOSTA API:", data);
           setDiasEscalados(data);
         } catch (err) {

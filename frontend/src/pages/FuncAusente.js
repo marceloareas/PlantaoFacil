@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import AddAusenteModal from "../components/AddAusenteModal";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "./FuncAusente.css";
+import { api } from '../components/api/Api';
 
 const FuncionariosAusentes = () => {
     const [ausentes, setAusentes] = useState([]);
@@ -17,14 +18,11 @@ const FuncionariosAusentes = () => {
 
     const fetchAusentes = async (dataSelecionada = "") => {
         try {
-            const url = dataSelecionada
-                ? `http://localhost:8000/ausentes/${dataSelecionada}`
-                : "http://localhost:8000/ausentes/";
+            const path = dataSelecionada
+                ? `/ausentes/${dataSelecionada}`
+                : "/ausentes/";
 
-            const res = await fetch(url);
-            if (!res.ok) throw new Error("Erro ao buscar ausentes");
-
-            const data = await res.json();
+            const data = await api.get(path);
             setAusentes(Array.isArray(data) ? data : []);
         } catch (err) {
             console.error(err);
@@ -49,11 +47,7 @@ const FuncionariosAusentes = () => {
         if (!window.confirm("Deseja realmente remover este ausente?")) return;
 
         try {
-            const res = await fetch(`http://localhost:8000/ausentes/${cpf}`, {
-                method: "DELETE",
-            });
-
-            if (!res.ok) throw new Error("Erro ao excluir ausente");
+            await api.delete(`/ausentes/${cpf}`);
             await fetchAusentes(dataFiltro);
         } catch (err) {
             console.error(err);
@@ -75,12 +69,10 @@ const FuncionariosAusentes = () => {
         };
 
         if (!func.data_final) {
-            const res = await fetch(
-                `http://localhost:8000/escaladodia/${formatarDataURL(func.data)}`
-            );
-
-            if (res.ok) {
-                const data = await res.json();
+            try {
+                const data = await api.get(
+                    `/escaladodia/${formatarDataURL(func.data)}`
+                );
                 data.Escala?.forEach((e) => {
                     if (e.Nome === func.nome && e.Horario === func.horario) {
                         conflitos.push({
@@ -89,6 +81,8 @@ const FuncionariosAusentes = () => {
                         });
                     }
                 });
+            } catch {
+                
             }
             return conflitos;
         }
@@ -110,9 +104,8 @@ const FuncionariosAusentes = () => {
                 turnosParaVerificar = TURNOS;
             }
 
-            const res = await fetch(`http://localhost:8000/escaladodia/${dataURL}`);
-            if (res.ok) {
-                const data = await res.json();
+            try {
+                const data = await api.get(`/escaladodia/${dataURL}`);
 
                 for (const turno of turnosParaVerificar) {
                     const existe = data.Escala?.some(
@@ -133,6 +126,8 @@ const FuncionariosAusentes = () => {
                         });
                     }
                 }
+            } catch {
+                // sem escala nesse dia
             }
 
             atual.setDate(atual.getDate() + 1);

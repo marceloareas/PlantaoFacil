@@ -1,6 +1,7 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import "./EscalaDoDia.css";
+import { api } from "../../components/api/Api";
 
 const EscalaDoDia = () => {
     const { data } = useParams();
@@ -23,8 +24,7 @@ const EscalaDoDia = () => {
     useEffect(() => {
         const fetchUsuarios = async () => {
             try {
-                const res = await fetch("http://localhost:8000/usuario/");
-                const dataRes = await res.json();
+                const dataRes = await api.get("/users/");
 
                 const uniqueCategorias = [...new Set(dataRes.map((u) => u.cargo))]
                     .filter((cargo) => cargo && cargo.toLowerCase() !== "coordenador");
@@ -54,13 +54,12 @@ const EscalaDoDia = () => {
 
         const fetchEscala = async () => {
             try {
-                const res = await fetch(`http://localhost:8000/escaladodia/${data}`);
-                if (!res.ok) return;
-
-                const dataRes = await res.json();
+                const dataRes = await api.get(`/escaladodia/${data}`);
                 setEscalaExistente(dataRes.Escala || []);
             } catch (err) {
-                console.error("Erro ao buscar escala:", err);
+                if (err.status !== 404) {
+                    console.error("Erro ao buscar escala:", err);
+                }
             }
         };
 

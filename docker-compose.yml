@@ -10,7 +10,11 @@ services:
     depends_on:
       - db
     environment:
-      - DATABASE_URL=postgresql://postgres:postgres@db:5432/plantao-facil-db
+      - DATABASE_URL=${DATABASE_URL}
+      - JWT_SECRET=${JWT_SECRET}
+      - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES}
+      - CORS_ORIGINS=${CORS_ORIGINS}
+      - DEBUG=${DEBUG}
 
   frontend:
       build: ./frontend
@@ -22,6 +26,7 @@ services:
         - "3000:3000"
       environment:
         - CHOKIDAR_USEPOLLING=true
+        - REACT_APP_API_URL=${REACT_APP_API_URL}
       depends_on:
         - backend
       command: npm start

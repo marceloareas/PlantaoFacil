@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { CiLogin } from "react-icons/ci";
 import 'bootstrap/dist/css/bootstrap.min.css';
+import { api } from '../components/api/Api';
+
 
 const SignUpModal = ({ show, onClose }) => {
   const [email, setEmail] = useState('');
@@ -101,25 +103,7 @@ const SignUpModal = ({ show, onClose }) => {
     };
 
     try {
-      const response = await fetch("http://localhost:8000/usuario/", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(payload)
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-
-        if (Array.isArray(errorData.detail)) {
-          const messages = errorData.detail.map(err => err.msg).join(", ");
-          setError(messages);
-        } else {
-          setError(errorData.detail || "Erro ao criar usuário");
-        }
-        return;
-      }
+      await api.post('/auth/register', payload, { auth: false});
 
       setEmail('');
       setPassword('');

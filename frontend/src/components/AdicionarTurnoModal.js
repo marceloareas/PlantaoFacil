@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
+import { api } from "./api/Api";
 
 const AdicionarTurnoModal = ({ show, onClose, pessoa }) => {
 
@@ -37,24 +38,12 @@ const AdicionarTurnoModal = ({ show, onClose, pessoa }) => {
         setLoading(true);
 
         try {
-            const res = await fetch("http://localhost:8000/escalaLote", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    usuario_id: pessoa.id,
-                    horario: formData.horario,
-                    data_inicio: formData.data_inicio,
-                    quantidade_dias: Number(formData.quantidade_dias)
-                })
+            await api.post("/escalaLote", {
+                usuario_id: pessoa.id,
+                horario: formData.horario,
+                data_inicio: formData.data_inicio,
+                quantidade_dias: Number(formData.quantidade_dias)
             });
-
-            if (!res.ok) {
-                const data = await res.json();
-                setError(data.detail || "Erro ao criar escala.");
-                return;
-            }
 
             setSuccess("Turnos alocados com sucesso!");
 
@@ -65,7 +54,7 @@ const AdicionarTurnoModal = ({ show, onClose, pessoa }) => {
 
         } catch (err) {
             console.error(err);
-            setError("Erro de conexão com o servidor.");
+            setError(err.message || "Erro de conexão com o servidor.");
         } finally {
             setLoading(false);
         }

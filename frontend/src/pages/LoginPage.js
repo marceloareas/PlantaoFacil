@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { CiLogin } from "react-icons/ci";
 import 'bootstrap/dist/css/bootstrap.min.css';
+import { api } from '../components/api/Api';
 
 const LoginModal = ({ show, onClose }) => {
   const [email, setEmail] = useState('');
@@ -41,26 +42,9 @@ const LoginModal = ({ show, onClose }) => {
     }
     else {
       try {
-        const response = await fetch("http://localhost:8000/login/", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, password })
-        });
+        const data = await api.post('/auth/login', { email, password }, { auth:false });
 
-        if (!response.ok) {
-          const errorData = await response.json();
-
-          if (Array.isArray(errorData.detail)) {
-            setError(errorData.detail.map(err => err.msg).join(", "));
-          } else {
-            setError(errorData.detail || "Email ou senha inválidos");
-          }
-          return;
-        }
-
-        const data = await response.json();
-
-        localStorage.setItem('token', data.token); 
+        localStorage.setItem('token', data.access_token); 
         localStorage.setItem('user', JSON.stringify(data.user));
 
         setEmail('');

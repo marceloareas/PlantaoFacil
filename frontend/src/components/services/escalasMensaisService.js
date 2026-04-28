@@ -1,4 +1,5 @@
 import { validarTurnosMensais } from "../utils/validarTurnosMensais";
+import { api } from "../api/Api";
 
 export const buscarEscalasDoMes = async (
     dataReferencia,
@@ -15,12 +16,7 @@ export const buscarEscalasDoMes = async (
         const data = `${String(dia).padStart(2, "0")}-${mes}-${ano}`;
 
         try {
-            const res = await fetch(
-                `http://localhost:8000/escaladodia/${data}`
-            );
-            if (!res.ok) continue;
-
-            const json = await res.json();
+            const json = await api.get(`/escaladodia/${data}`);
             escalas.push({
                 data,
                 Escala: json.Escala || [],

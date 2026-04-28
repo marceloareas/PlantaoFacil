@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import "./trocas.css";
-
-const API = "http://localhost:8000";
+import { api } from "../../components/api/Api";
 
 const Trocas = () => {
   const [user, setUser] = useState(null);
@@ -38,8 +37,7 @@ const Trocas = () => {
   const carregarTrocas = async (usuario) => {
     if (!usuario) return;
     try {
-      const res = await fetch(`${API}/trocas/`);
-      const data = await res.json();
+      const data = await api.get(`/trocas/`);
 
       setTrocasUsuario(data.filter(t => t.solicitante === usuario.nome_completo));
       setTrocasParaMim(data.filter(t => t.destinatario === usuario.nome_completo));
@@ -60,10 +58,9 @@ const Trocas = () => {
 
     const load = async () => {
       try {
-        const res = await fetch(
-          `${API}/escaladodia/${formatarDataParaURL(troca.meuDia)}`
+        const data = await api.get(
+          `/escaladodia/${formatarDataParaURL(troca.meuDia)}`
         );
-        const data = await res.json();
 
         const horarios = (data.Escala || [])
           .filter(e => e.Nome === user.nome_completo)
@@ -87,10 +84,9 @@ const Trocas = () => {
 
     const load = async () => {
       try {
-        const res = await fetch(
-          `${API}/escaladodia/${formatarDataParaURL(diaColega)}`
+        const data = await api.get(
+          `/escaladodia/${formatarDataParaURL(diaColega)}`
         );
-        const data = await res.json();
 
         const colegasUnicos = Array.from(
           new Map(
@@ -119,10 +115,9 @@ const Trocas = () => {
 
     const load = async () => {
       try {
-        const res = await fetch(
-          `${API}/escaladodia/${formatarDataParaURL(diaColega)}`
+        const data = await api.get(
+          `/escaladodia/${formatarDataParaURL(diaColega)}`
         );
-        const data = await res.json();
 
         const horarios = (data.Escala || [])
           .filter(e => e.Nome === troca.destinatario)
@@ -185,18 +180,15 @@ const Trocas = () => {
     };
 
     try {
-      const res = await fetch(
-        idEdicao ? `${API}/trocas/${idEdicao}` : `${API}/trocas/`,
-        {
-          method: idEdicao ? "PUT" : "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(
-            idEdicao ? payload : { ...payload, situacao: "Aguardando Destinatario" }
-          )
-        }
-      );
+      const finalPayload = idEdicao
+        ? payload
+        : { ...payload, situacao: "Aguardando Destinatario" };
 
-      if (!res.ok) throw new Error();
+      if (idEdicao) {
+        await api.put(`/trocas/${idEdicao}`, finalPayload);
+      } else {
+        await api.post(`/trocas/`, finalPayload);
+      }
 
       cancelarEdicao();
       carregarTrocas(user);
@@ -217,9 +209,7 @@ const Trocas = () => {
     }
 
     try {
-      const res = await fetch(`${API}/trocas/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error();
-
+      await api.delete(`/trocas/${id}`);
       setTrocasUsuario(prev => prev.filter(t => t.id !== id));
     } catch {
       setErro("Erro ao deletar.");
@@ -228,7 +218,7 @@ const Trocas = () => {
 
   const aceitarComoDestinatario = async (id) => {
     try {
-      await fetch(`${API}/trocas/${id}/destinatario-aprovar`, { method: "PUT" });
+      await api.put(`/trocas/${id}/destinatario-aprovar`);
       carregarTrocas(user);
     } catch {
       setErro("Erro ao aceitar solicitação.");
@@ -237,7 +227,7 @@ const Trocas = () => {
 
   const rejeitarComoDestinatario = async (id) => {
     try {
-      await fetch(`${API}/trocas/${id}/destinatario-rejeitar`, { method: "PUT" });
+      await api.put(`/trocas/${id}/destinatario-rejeitar`);
       carregarTrocas(user);
     } catch {
       setErro("Erro ao rejeitar solicitação.");
