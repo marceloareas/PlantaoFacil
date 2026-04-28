@@ -66,4 +66,21 @@ class UserCreate(BaseModel):
 class UserLogin(BaseModel):
     email: str
     password: str
-    
+
+class UserPublic(BaseModel):
+    """Representação segura do usuário (sem senha)."""
+    id: int
+    email: str
+    nome_completo: str
+    crm: str | None = None
+    cpf: str | None = None
+    cargo: str
+    horaEscala: str
+    situacao: str
+
+    model_config = {"from_attributes": True}
+
+class Token(BaseModel):
+    access_token:str
+    token_type: str = "bearer"
+    user: UserPublic
