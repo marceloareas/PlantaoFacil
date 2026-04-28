@@ -29,7 +29,6 @@ class Settings(BaseSettings):
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
     def split_cors(cls, v):
-        """Permite definir CORS_ORIGINS no .env como string separada por vírgulas."""
         if isinstance(v, str):
             return [origin.strip() for origin in v.split(",") if origin.strip()]
         return v
