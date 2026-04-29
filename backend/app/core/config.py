@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Union
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -10,9 +10,9 @@ class Settings(BaseSettings):
 
     JWT_SECRET: str
     JWT_ALGORITHM: str = "HS256"
-    ACESS_TOKEN_EXPIRE_MINUTES: int = 60*24
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60*24
 
-    CORS_ORIGINS: List[str] = [
+    CORS_ORIGINS: Union[List[str], str] = [
         "http://localhost:3000",
         "http://127.0.0.1:3000",
     ]

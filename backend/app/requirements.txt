@@ -9,3 +9,4 @@ pydantic-settings==2.4.0
 bcrypt
 email-validator
 validate-docbr
+python-jose[cryptography]
