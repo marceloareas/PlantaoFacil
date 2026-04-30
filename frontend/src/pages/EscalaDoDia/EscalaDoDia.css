@@ -1,0 +1,46 @@
+.escala-page {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    
+}
+
+.escala-table {
+    width: 80%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+.escala-table th,
+.escala-table td {
+    border: 1px solid #000;
+    padding: 10px;
+    text-align: center;
+}
+
+.escala-table th {
+    background-color: #184068;
+    color: white;
+}
+
+.botao-editar {
+    margin-top: 30px;
+    margin-bottom: 20px;
+    padding: 12px 24px;
+    font-size: 16px;
+
+    background-color: rgba(25, 118, 210, 0.2); /* translúcido */
+    border: 2px solid #1976d2;
+    color: #1976d2;
+
+    border-radius: 8px;
+    cursor: pointer;
+
+    backdrop-filter: blur(4px); /* efeito vidro */
+    transition: all 0.3s ease;
+}
+
+.botao-editar:hover {
+    background-color: rgba(24, 64, 104, 0.5);
+    transform: scale(1.05);
+}

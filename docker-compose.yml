@@ -1,0 +1,50 @@
+services:
+  backend:
+    build: ./backend
+    container_name: fastapi-backend
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - ./backend/app:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - JWT_SECRET=${JWT_SECRET}
+      - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES}
+      - CORS_ORIGINS=${CORS_ORIGINS}
+      - DEBUG=${DEBUG}
+
+  frontend:
+      build: ./frontend
+      container_name: react-frontend
+      volumes:
+        - ./frontend:/app
+        - /app/node_modules
+      ports:
+        - "3000:3000"
+      environment:
+        - CHOKIDAR_USEPOLLING=true
+        - REACT_APP_API_URL=${REACT_APP_API_URL}
+      depends_on:
+        - backend
+      command: npm start
+      platform: linux/amd64
+
+
+  db:
+    image: postgres:16
+    container_name: postgres-db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: plantao-facil-db
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
