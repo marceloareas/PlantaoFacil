@@ -9,7 +9,7 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 import EscalaDoDia from './pages/EscalaDoDia/EscalaDoDia';
 import EditarEscala from './pages/EditarEscala/EditarEscala';
 import EscalaDaSemana from './pages/EscalaDaSemana/EscalaDaSemana';
-import FuncionariosAusentes from './pages/FuncAusente';
+import FuncionariosAusentes from './pages/indisponibilidade/FuncAusente';
 import ApiServer from './components/api/Api';
 import { IoPersonCircleSharp } from "react-icons/io5";
 import TrocasAprovacao from './pages/Trocas/TrocasAprovacao';

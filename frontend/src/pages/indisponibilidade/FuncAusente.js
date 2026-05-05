@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
-import AddAusenteModal from "../components/AddAusenteModal";
+import AddAusenteModal from "../../components/AddAusenteModal";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "./FuncAusente.css";
-import { api } from '../components/api/Api';
+import { api } from '../../components/api/Api';
+import ConflitoModal from "../../components/ConflitoModal";
+import MotivoModal from "../../components/MotivoModal";
 
 const FuncionariosAusentes = () => {
     const [ausentes, setAusentes] = useState([]);
@@ -13,6 +15,9 @@ const FuncionariosAusentes = () => {
     const [showConflitosModal, setShowConflitosModal] = useState(false);
     const [funcSelecionado, setFuncSelecionado] = useState(null);
     const [loadingConflitos, setLoadingConflitos] = useState(false);
+
+    const [showMotivoModal, setShowMotivoModal] = useState(false);
+    const [motivoSelecionado, setMotivoSelecionado] = useState("");
 
     const [user, setUser] = useState(null);
 
@@ -181,6 +186,7 @@ const FuncionariosAusentes = () => {
                             <th>Horário Inicial</th>
                             <th>Data Final</th>
                             <th>Horário Final</th>
+                            <th>Motivo</th>
                             <th>Conflitos</th>
                             {user?.cargo === "Coordenador" && <th>Ações</th>}
                         </tr>
@@ -195,7 +201,20 @@ const FuncionariosAusentes = () => {
                                 <td>{func.horario || "—"}</td>
                                 <td>{func.data_final || "—"}</td>
                                 <td>{func.horario_final || "—"}</td>
+                                <td>  
+                                    
+                                    <button
+                                        className="btn btn-sm btn-warning"
+                                        onClick={async () => {
+                                            setMotivoSelecionado(func.motivo);
+                                            setFuncSelecionado(func);
+                                            setShowMotivoModal(true);
+                                        }}
+                                    >
+                                        { "Ver Motivo"}
+                                    </button>   
 
+                                    </td>
                                 <td>
                                     <button
                                         className="btn btn-sm btn-warning"
@@ -208,7 +227,7 @@ const FuncionariosAusentes = () => {
                                             setShowConflitosModal(true);
                                         }}
                                     >
-                                        {loadingConflitos ? "..." : "Ver"}
+                                        {loadingConflitos ? "..." : "Ver Conflitos"}
                                     </button>
                                 </td>
 
@@ -228,62 +247,19 @@ const FuncionariosAusentes = () => {
                 </table>
             )}
 
-            {showConflitosModal && (
-                <>
-                    <div className="modal show fade d-block" tabIndex="-1">
-                        <div className="modal-dialog modal-dialog-centered modal-lg">
-                            <div className="modal-content">
+            <MotivoModal
+                show={showMotivoModal}
+                onClose={() => setShowMotivoModal(false)}
+                motivo={motivoSelecionado}
+                nome={funcSelecionado?.nome}
+            />
 
-                                <div className="modal-header">
-                                    <h5 className="modal-title">
-                                        ⚠️ Conflitos de Escala — {funcSelecionado?.nome}
-                                    </h5>
-                                    <button
-                                        className="btn-close"
-                                        onClick={() => setShowConflitosModal(false)}
-                                    />
-                                </div>
-
-                                <div className="modal-body">
-                                    {conflitos.length === 0 ? (
-                                        <div className="alert alert-success">
-                                            Nenhum conflito encontrado 🎉
-                                        </div>
-                                    ) : (
-                                        <table className="table table-bordered">
-                                            <thead>
-                                                <tr>
-                                                    <th>Data</th>
-                                                    <th>Turno</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {conflitos.map((c, i) => (
-                                                    <tr key={i}>
-                                                        <td>{c.data}</td>
-                                                        <td>{c.horario}</td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    )}
-                                </div>
-
-                                <div className="modal-footer">
-                                    <button
-                                        className="btn btn-secondary"
-                                        onClick={() => setShowConflitosModal(false)}
-                                    >
-                                        Fechar
-                                    </button>
-                                </div>
-
-                            </div>
-                        </div>
-                    </div>
-                    <div className="modal-backdrop fade show"></div>
-                </>
-            )}
+            <ConflitoModal
+                show={showConflitosModal}
+                onClose={() => setShowConflitosModal(false)}
+                conflitos={conflitos}
+                funcSelecionado={funcSelecionado}
+            />
 
             <AddAusenteModal
                 show={showModal}
