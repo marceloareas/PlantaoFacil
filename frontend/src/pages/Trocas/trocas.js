@@ -17,7 +17,7 @@ const Trocas = () => {
   const [troca, setTroca] = useState({
     meuDia: "",
     meuHorario: "",
-    destinatario: "",
+    cpfDestinatario: "",
     horarioColega: "",
     motivo: ""
   });
@@ -39,8 +39,8 @@ const Trocas = () => {
     try {
       const data = await api.get(`/trocas/`);
 
-      setTrocasUsuario(data.filter(t => t.solicitante === usuario.nome_completo));
-      setTrocasParaMim(data.filter(t => t.destinatario === usuario.nome_completo));
+      setTrocasUsuario(data.filter(t => t.cpfSolicitante === usuario.cpf));
+      setTrocasParaMim(data.filter(t => t.cpfDestinatario === usuario.cpf));
     } catch {
       setErro("Erro ao carregar trocas.");
     }
@@ -63,7 +63,7 @@ const Trocas = () => {
         );
 
         const horarios = (data.Escala || [])
-          .filter(e => e.Nome === user.nome_completo)
+          .filter(e => e.Cpf === user.cpf)
           .map(e => e.Horario);
 
         setMeusHorarios(horarios);
@@ -92,9 +92,9 @@ const Trocas = () => {
           new Map(
             (data.Escala || [])
               .filter(e => e.Cargo === user.cargo && 
-                e.Nome !== user.nome_completo)
+                e.Cpf !== user.cpf)
                 
-                .map(e => [e.Nome, { nome: e.Nome }])
+                .map(e => [e.Cpf,{nome: e.Nome, cpf: e.Cpf }])
               ).values()
             );
         setColegasDisponiveis(colegasUnicos);
@@ -108,7 +108,7 @@ const Trocas = () => {
   }, [diaColega, user]);
 
   useEffect(() => {
-    if (!diaColega || !troca.destinatario) {
+    if (!diaColega || !troca.cpfDestinatario) {
       setHorariosColega([]);
       return;
     }
@@ -120,7 +120,7 @@ const Trocas = () => {
         );
 
         const horarios = (data.Escala || [])
-          .filter(e => e.Nome === troca.destinatario)
+          .filter(e => e.Cpf === troca.cpfDestinatario)
           .map(e => e.Horario);
 
         setHorariosColega(horarios);
@@ -131,7 +131,7 @@ const Trocas = () => {
     };
 
     load();
-  }, [troca.destinatario, diaColega]);
+  }, [troca.cpfDestinatario, diaColega]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -143,7 +143,7 @@ const Trocas = () => {
     setTroca({
       meuDia: t.meudia,
       meuHorario: t.horariosolicitante,
-      destinatario: t.destinatario,
+      cpfDestinatario: t.cpfDestinatario,
       horarioColega: t.horariodestinatario,
       motivo: t.motivo || ""
     });
@@ -155,7 +155,7 @@ const Trocas = () => {
     setTroca({
       meuDia: "",
       meuHorario: "",
-      destinatario: "",
+      cpfDestinatario: "",
       horarioColega: "",
       motivo: ""
     });
@@ -165,13 +165,13 @@ const Trocas = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!troca.meuDia || !troca.meuHorario || !diaColega || !troca.destinatario || !troca.horarioColega) {
+    if (!troca.meuDia || !troca.meuHorario || !diaColega || !troca.cpfDestinatario || !troca.horarioColega) {
       return setErro("Preencha todos os campos obrigatórios.");
     }
 
     const payload = {
-      solicitante: user.nome_completo,
-      destinatario: troca.destinatario,
+      cpfSolicitante: user.cpf,
+      cpfDestinatario: troca.cpfDestinatario,
       meudia: troca.meuDia,
       horariosolicitante: troca.meuHorario,
       diacolega: diaColega,
@@ -278,10 +278,10 @@ const Trocas = () => {
             {colegasDisponiveis.length > 0 && (
               <>
                 <label>Colaborador:</label>
-                <select name="destinatario" value={troca.destinatario} onChange={handleChange}>
+                <select name="cpfDestinatario" value={troca.cpfDestinatario} onChange={handleChange}>
                   <option value="">Selecione...</option>
                   {colegasDisponiveis.map((c, i) => (
-                    <option key={i} value={c.nome}>{c.nome}</option>
+                    <option key={i} value={c.cpf}>{c.nome}</option>
                   ))}
                 </select>
               </>
@@ -342,7 +342,7 @@ const Trocas = () => {
                       <td>{t.horariosolicitante}</td>
                       <td>{t.diacolega}</td>
                       <td>{t.horariodestinatario}</td>
-                      <td>{t.destinatario}</td>
+                      <td>{t.nomeDestinatario}</td>
                       <td>{t.situacao}</td>
 
                       <td>{t.motivo || "—"}</td>
@@ -385,7 +385,7 @@ const Trocas = () => {
                   {trocasParaMim.map(t => (
                     <tr key={t.id}>
                       <td>{t.id}</td>
-                      <td>{t.solicitante}</td>
+                      <td>{t.nomeSolicitante}</td>
                       <td>{t.meudia}</td>
                       <td>{t.horariosolicitante}</td>
                       <td>{t.diacolega}</td>

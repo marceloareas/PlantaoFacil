@@ -16,3 +16,6 @@ class User(Base):
     situacao = Column(String(50), default="Ativo")
     ausentes = relationship("Ausentes", back_populates="user")
     escalas = relationship("Escala", back_populates="user")
+
+    trocas_solicitadas = relationship("Troca", foreign_keys="Troca.cpfSolicitante", back_populates="solicitante_user")
+    trocas_recebidas = relationship("Troca", foreign_keys="Troca.cpfDestinatario", back_populates="destinatario_user")  

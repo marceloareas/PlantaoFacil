@@ -111,8 +111,8 @@ const EscalaDoDia = () => {
     }, [data]);
 
     const envolvidosEmTroca = trocasAprovadas.flatMap((t) => [
-        { nome: t.solicitante, turno: t.horariodestinatario },
-        { nome: t.destinatario, turno: t.horariosolicitante },
+        { nome: t.cpfSolicitante, turno: t.horariodestinatario },
+        { nome: t.cpfDestinatario, turno: t.horariosolicitante },
     ]);
 
     const estaEmTroca = (nome, turnoAtual) => {
@@ -126,8 +126,8 @@ const EscalaDoDia = () => {
     const getTrocaInfo = (nome, turnoAtual) => {
         return trocasAprovadas.find(
             (t) =>
-                (t.solicitante === nome && t.horariodestinatario === turnoAtual) ||
-                (t.destinatario === nome && t.horariosolicitante === turnoAtual)
+                (t.cpfSolicitante === nome && t.horariodestinatario === turnoAtual) ||
+                (t.cpfDestinatario === nome && t.horariosolicitante === turnoAtual)
         );
     };
 
@@ -676,10 +676,10 @@ console.log("Ausentes agora:", ausentesAgora);
                     <div className="modal-box" onClick={(e) => e.stopPropagation()}>
                         <h2>Troca Aprovada</h2>
                         <p>
-                            <strong>Solicitante:</strong> {modalInfo.solicitante}
+                            <strong>Solicitante:</strong> {modalInfo.nomeSolicitante}
                         </p>
                         <p>
-                            <strong>Destinatário:</strong> {modalInfo.destinatario}
+                            <strong>Destinatário:</strong> {modalInfo.nomeDestinatario}
                         </p>
                         <p>
                             <strong>Turno do Solicitante:</strong> {modalInfo.horariosolicitante}

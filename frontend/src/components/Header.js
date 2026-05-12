@@ -26,7 +26,7 @@ const Header = ({ onOpenMenu, user, onLogout }) => {
           count = data.filter(t => t.situacao === "Pendente").length;
         } else {
           count = data.filter(
-            t => t.destinatario === user.nome_completo &&
+            t => t.cpfDestinatario === user.cpf &&
               (t.situacao === "Aguardando Destinatario" || t.situacao === "Aguardando Destinatário")
           ).length;
         }

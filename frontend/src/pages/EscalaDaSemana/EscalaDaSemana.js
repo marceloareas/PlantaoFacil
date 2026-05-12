@@ -242,8 +242,8 @@ const EscalaDaSemana = () => {
                 <div className="modal-bg" onClick={() => setModalInfo(null)}>
                     <div className="modal-box" onClick={e => e.stopPropagation()}>
                         <h4>Troca Aprovada</h4>
-                        <p><strong>Solicitante:</strong> {modalInfo.solicitante}</p>
-                        <p><strong>Destinatário:</strong> {modalInfo.destinatario}</p>
+                        <p><strong>Solicitante:</strong> {modalInfo.nomeSolicitante}</p>
+                        <p><strong>Destinatário:</strong> {modalInfo.nomeDestinatario}</p>
                         <p><strong>Turno solicitante:</strong> {modalInfo.horariosolicitante}</p>
                         <p><strong>Turno destinatário:</strong> {modalInfo.horariodestinatario}</p>
                         <p><strong>Motivo:</strong> {modalInfo.motivo}</p>

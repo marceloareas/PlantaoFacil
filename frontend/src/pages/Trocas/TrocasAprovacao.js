@@ -106,13 +106,13 @@ const TrocasAprovacao = () => {
                         {trocas.map((t) => (
                             <tr key={t.id}>
                                 <td>{t.id}</td>
-                                <td>{t.solicitante}</td>
+                                <td>{t.nomeSolicitante}</td>
                                 <td>{t.meudia} - {t.horariosolicitante}</td>
-                                <td>{t.destinatario}</td>
+                                <td>{t.nomeDestinatario}</td>
                                 <td>{t.diacolega} - {t.horariodestinatario}</td>
                                 <td>{t.motivo || "—"}</td>
                                 <td>
-                                    <span className={`situacao-${t.situacao.toLowerCase()}`}>
+                                    <span className={`situacao-${t.situacao?.toLowerCase()}`}>
                                         {t.situacao}
                                     </span>
                                 </td>
