@@ -55,7 +55,7 @@ const LoginModal = ({ show, onClose }) => {
         console.log("Login successful:", data);
         window.location.reload();
       } catch (err) {
-        setError("Erro de conexão com o servidor");
+        setError(err.message || "Erro de conexão com o servidor");
       }
     }
   };

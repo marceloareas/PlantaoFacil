@@ -1,3 +1,4 @@
+from validators.turnosConsecutivos import verificar_turnos_consecutivos
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import get_db
@@ -39,9 +40,45 @@ def troca_response(troca: Troca):
             if troca.destinatario_user else ""
     }
 
+def validar_troca(db,cpf_solicitante,cpf_destinatario,data_solicitante,horario_solicitante,
+    data_destinatario,
+    horario_destinatario
+):
+
+    data_solicitante_dt = datetime.strptime(data_solicitante,"%d-%m-%Y")
+
+    data_destinatario_dt = datetime.strptime(  data_destinatario,"%d-%m-%Y")
+    solicitante_invalido = verificar_turnos_consecutivos(db=db,cpf=cpf_solicitante,nova_data=data_destinatario_dt,
+        novo_horario=horario_destinatario,
+        remover_data=data_solicitante_dt,
+        remover_horario=horario_solicitante
+    )
+
+    destinatario_invalido = verificar_turnos_consecutivos(db=db,cpf=cpf_destinatario,nova_data=data_solicitante_dt,
+        novo_horario=horario_solicitante,
+        remover_data=data_destinatario_dt,
+        remover_horario=horario_destinatario
+    )
+
+    if solicitante_invalido:
+        raise HTTPException(status_code=400,detail="Troca inválida: solicitante ficaria com 3 plantões consecutivos"       )
+    if destinatario_invalido:
+        raise HTTPException(status_code=400, detail="Troca inválida: destinatário ficaria com 3 plantões consecutivos"        )
+
 
 @router.post("/", response_model=TrocaResponse)
 def criar_troca(troca: TrocaCreate, db: Session = Depends(get_db)):
+
+    validar_troca(
+        db=db,
+        cpf_solicitante=troca.cpfSolicitante,
+        cpf_destinatario=troca.cpfDestinatario,
+        data_solicitante=converter_data(troca.meudia),
+        horario_solicitante=troca.horariosolicitante,
+        data_destinatario=converter_data(troca.diacolega),
+        horario_destinatario=troca.horariodestinatario
+    )
+
     nova_troca = Troca(
         cpfSolicitante=troca.cpfSolicitante,
         cpfDestinatario=troca.cpfDestinatario,
@@ -71,6 +108,8 @@ def editar_troca(troca_id: int, dados: TrocaUpdate, db: Session = Depends(get_db
             status_code=400,
             detail="Só é possível editar trocas em situação Pendente ou Aguardando Destinatario"
         )
+    
+
 
     troca.cpfDestinatario = dados.cpfDestinatario
     troca.meudia = dados.meudia
@@ -164,6 +203,16 @@ def aprovar_troca(troca_id: int, db: Session = Depends(get_db)):
 
     if not escala_destinatario:
         raise HTTPException(status_code=404, detail="Escala do destinatário não encontrada")
+    
+    validar_troca(
+        db=db,
+        cpf_solicitante=troca.cpfSolicitante,
+        cpf_destinatario=troca.cpfDestinatario,
+        data_solicitante=converter_data(troca.meudia),
+        horario_solicitante=troca.horariosolicitante,
+        data_destinatario=converter_data(troca.diacolega),
+        horario_destinatario=troca.horariodestinatario
+    )   
 
     escala_solicitante.cpf = troca.cpfDestinatario
     escala_destinatario.cpf = troca.cpfSolicitante

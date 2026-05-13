@@ -9,7 +9,8 @@ const Trocas = () => {
   const [horariosColega, setHorariosColega] = useState([]);
   const [trocasUsuario, setTrocasUsuario] = useState([]);
   const [trocasParaMim, setTrocasParaMim] = useState([]);
-  const [erro, setErro] = useState("");
+  const [erroApi, setErroApi] = useState("");
+  const [erroFormulario, setErroFormulario] = useState("");
 
   const [idEdicao, setIdEdicao] = useState(null);
 
@@ -42,7 +43,7 @@ const Trocas = () => {
       setTrocasUsuario(data.filter(t => t.cpfSolicitante === usuario.cpf));
       setTrocasParaMim(data.filter(t => t.cpfDestinatario === usuario.cpf));
     } catch {
-      setErro("Erro ao carregar trocas.");
+      setErroApi("Erro ao carregar trocas.");
     }
   };
 
@@ -67,9 +68,9 @@ const Trocas = () => {
           .map(e => e.Horario);
 
         setMeusHorarios(horarios);
-        setErro(horarios.length ? "" : "Você não está escalado para esse dia.");
+        setErroFormulario(horarios.length ? "" : "Você não está escalado para esse dia.");
       } catch {
-        setErro("Erro ao buscar seus horários.");
+        setErroApi("Erro ao buscar seus horários.");
       }
     };
 
@@ -98,9 +99,9 @@ const Trocas = () => {
               ).values()
             );
         setColegasDisponiveis(colegasUnicos);
-        setErro(colegasUnicos.length ? "" : "Nenhum colega escalado neste dia.");
+        setErroFormulario(colegasUnicos.length ? "" : "Nenhum colega escalado neste dia.");
       } catch {
-        setErro("Erro ao buscar colegas.");
+        setErroApi("Erro ao buscar colegas.");
       }
     };
 
@@ -124,9 +125,9 @@ const Trocas = () => {
           .map(e => e.Horario);
 
         setHorariosColega(horarios);
-        setErro(horarios.length ? "" : "Esse colaborador não tem horário.");
+        setErroFormulario(horarios.length ? "" : "Esse colaborador não tem horário.");
       } catch {
-        setErro("Erro ao buscar horários do colega.");
+        setErroApi("Erro ao buscar horários do colega.");
       }
     };
 
@@ -160,13 +161,13 @@ const Trocas = () => {
       motivo: ""
     });
     setDiaColega("");
-    setErro("");
+    setErroFormulario("");
   };
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!troca.meuDia || !troca.meuHorario || !diaColega || !troca.cpfDestinatario || !troca.horarioColega) {
-      return setErro("Preencha todos os campos obrigatórios.");
+      return setErroFormulario("Preencha todos os campos obrigatórios.");
     }
 
     const payload = {
@@ -178,6 +179,8 @@ const Trocas = () => {
       horariodestinatario: troca.horarioColega,
       motivo: troca.motivo
     };
+    
+    setErroApi("");
 
     try {
       const finalPayload = idEdicao
@@ -192,8 +195,9 @@ const Trocas = () => {
 
       cancelarEdicao();
       carregarTrocas(user);
-    } catch {
-      setErro("Erro ao salvar solicitação.");
+    } catch(error) {
+      setErroApi(error.message || "Erro ao salvar solicitação.");
+      console.error(error);
     }
   };
 
@@ -205,14 +209,14 @@ const Trocas = () => {
     if (!confirm) return; 
 
     if (situacao !== "Pendente" && situacao !== "Aguardando Destinatario") {
-      return setErro("Só é possível deletar solicitações pendentes ou aguardando destinatário.");
+      return setErroFormulario("Só é possível deletar solicitações pendentes ou aguardando destinatário.");
     }
 
     try {
       await api.delete(`/trocas/${id}`);
       setTrocasUsuario(prev => prev.filter(t => t.id !== id));
-    } catch {
-      setErro("Erro ao deletar.");
+    } catch (error) {
+      setErroApi(error.message || "Erro ao deletar.");
     }
   };
 
@@ -220,8 +224,8 @@ const Trocas = () => {
     try {
       await api.put(`/trocas/${id}/destinatario-aprovar`);
       carregarTrocas(user);
-    } catch {
-      setErro("Erro ao aceitar solicitação.");
+    } catch (error) {
+      setErroApi(error.message || "Erro ao aceitar solicitação.");
     }
   };
 
@@ -229,14 +233,15 @@ const Trocas = () => {
     try {
       await api.put(`/trocas/${id}/destinatario-rejeitar`);
       carregarTrocas(user);
-    } catch {
-      setErro("Erro ao rejeitar solicitação.");
+    } catch (error) {
+      setErroApi(error.message || "Erro ao rejeitar solicitação.");
     }
   };
 
   return (
     <div className="troca-container">
-      {erro && <div className="erro-box">{erro}</div>}
+      {erroApi && <div className="erro-box">{erroApi}</div>}
+      {erroFormulario && <div className="erro-box">{erroFormulario}</div>}
 
       <h2>{idEdicao ? "Editar Solicitação de Troca" : "Solicitar Troca de Plantão"}</h2>
 

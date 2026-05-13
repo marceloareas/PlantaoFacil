@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from models.escalaDiaModels import Escala
 
 
-def verificar_turnos_consecutivos(db, cpf, nova_data, novo_horario):
+def verificar_turnos_consecutivos(db, cpf, nova_data, novo_horario, remover_data=None, remover_horario=None):
 
     escalas = db.query(Escala).filter(
         Escala.Cpf == cpf
@@ -19,6 +19,15 @@ def verificar_turnos_consecutivos(db, cpf, nova_data, novo_horario):
 
     # existentes
     for e in escalas:
+
+        if (
+        remover_data and
+        remover_horario and
+        e.DataEscala == remover_data.strftime("%d-%m-%Y") and
+        e.Horario == remover_horario
+        ):
+            continue
+        
         data = datetime.strptime(e.DataEscala, "%d-%m-%Y")
         if abs((data - nova_data).days) <= 3:
          turnos.append(gerar_indice(data, e.Horario))
