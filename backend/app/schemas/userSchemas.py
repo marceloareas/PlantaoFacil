@@ -61,6 +61,17 @@ class UserCreate(BaseModel):
         if not v in ["12x36", "12x60"]:
             raise ValueError("horaEscala deve ser '12x36' ou '12x60'")
         return v
+    
+
+class UserUpdate(BaseModel):
+    email: EmailStr
+    password: str | None = None
+    crm: str
+    cpf: str
+    nome_completo: constr(min_length=3, strip_whitespace=True)
+    cargo: str
+    horaEscala: str
+    situacao: str
 
 
 class UserLogin(BaseModel):

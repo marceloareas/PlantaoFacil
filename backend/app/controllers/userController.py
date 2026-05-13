@@ -1,7 +1,7 @@
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
-from schemas.userSchemas import UserCreate
+from schemas.userSchemas import UserCreate, UserUpdate
 from services import userService
 
 def list_users(db: Session) -> list[dict]:
@@ -19,7 +19,7 @@ def list_users(db: Session) -> list[dict]:
         for user in userService.list_users(db)
     ]
 
-def update_user(db: Session, user_id: int, payload: UserCreate) -> dict:
+def update_user(db: Session, user_id: int, payload: UserUpdate) -> dict:
     db_user = userService.update_user(db, user_id, payload)
     if not db_user:
         raise HTTPException(

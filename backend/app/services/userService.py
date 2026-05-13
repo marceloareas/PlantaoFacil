@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from core.security import hash_password
 from models.userModels import User
-from schemas.userSchemas import UserCreate
+from schemas.userSchemas import UserCreate, UserUpdate
 from validators.user_validations import validar_usuario_existente
 
 
@@ -29,7 +29,7 @@ def create_user(db: Session, payload: UserCreate) -> User:
     return novo_usuario
 
 
-def update_user(db: Session, user_id: int, payload: UserCreate) -> User | None:
+def update_user(db: Session, user_id: int, payload: UserUpdate) -> User | None:
     db_user = db.query(User).filter(User.id == user_id).first()
     if not db_user:
         return None

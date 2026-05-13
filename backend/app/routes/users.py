@@ -5,7 +5,7 @@ from controllers import userController
 from core.dependencies import get_current_user
 from database import get_db
 from models.userModels import User
-from schemas.userSchemas import UserCreate
+from schemas.userSchemas import UserCreate, UserUpdate
 
 
 router = APIRouter(
@@ -21,5 +21,5 @@ def list_users(db: Session = Depends(get_db)):
 
 
 @router.put("/{user_id}")
-def update_user(user_id: int, payload: UserCreate, db: Session = Depends(get_db)):
+def update_user(user_id: int, payload: UserUpdate, db: Session = Depends(get_db)):
     return userController.update_user(db, user_id, payload)

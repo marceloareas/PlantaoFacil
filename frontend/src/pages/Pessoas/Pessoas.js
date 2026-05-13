@@ -157,7 +157,8 @@ const Pessoas = () => {
                 )
             );
 
-        } catch {
+        } catch(err) {
+            console.log(err)
             alert("Erro de conexão com o servidor");
         }
     };
