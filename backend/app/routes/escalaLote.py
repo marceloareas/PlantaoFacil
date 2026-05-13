@@ -21,7 +21,7 @@ def criar_lote(dados: EscalaLoteSchemas, db: Session = Depends(get_db)):
 
     pulos = {
         "12x36": 2, # para cada dia alocado, pula 2 dia (total 3 turnos)
-        "24x60": 3, # para cada dia alocado, pula 3 dias (total 5 turnos)
+        "12x60": 3, # para cada dia alocado, pula 3 dias (total 5 turnos)
     }
 
     data_atual = datetime.strptime(dados.data_inicio, "%Y-%m-%d")
@@ -37,7 +37,7 @@ def criar_lote(dados: EscalaLoteSchemas, db: Session = Depends(get_db)):
         #VERIFICA SE USUÁRIO JÁ ESTÁ NO DIA (QUALQUER TURNO)
         existe_usuario = db.query(Escala).filter(
             Escala.DataEscala == data_formatada,
-            Escala.Horario == user.horaEscala,
+            Escala.Horario == dados.horario,
             Escala.Cpf == user.cpf
         ).first()
 
