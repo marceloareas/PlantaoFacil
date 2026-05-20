@@ -16,6 +16,7 @@ const EscalaDaSemana = () => {
     const [trocasAprovadas, setTrocasAprovadas] = useState([]);
     const [modalInfo, setModalInfo] = useState(null);
 
+
     const horarios = ["07:00 - 19:00", "19:00 - 07:00"];
 
     useEffect(() => {
@@ -71,7 +72,7 @@ const EscalaDaSemana = () => {
                 data.Escala?.forEach(item => {
                     if (!escalaDia[item.Horario]) escalaDia[item.Horario] = {};
                     if (!escalaDia[item.Horario][item.Cargo]) escalaDia[item.Horario][item.Cargo] = [];
-                    escalaDia[item.Horario][item.Cargo].push(item.Nome);
+                    escalaDia[item.Horario][item.Cargo].push({ nome: item.Nome, cpf: item.Cpf });
                     cargosSet.add(item.Cargo);
                 });
 
@@ -82,7 +83,16 @@ const EscalaDaSemana = () => {
         }
 
         setEscalas(novasEscalas);
-        setCargos(Array.from(cargosSet).sort());
+        setCargos(
+            Array.from(cargosSet).sort((a, b) => {
+                const ordem = {
+                    "Técnico": 1,
+                    "Enfermeiro": 2
+                };
+
+                return ordem[a] - ordem[b];
+            })
+);
     };
 
     const formatarDataURL = (data) => {
@@ -144,6 +154,25 @@ const EscalaDaSemana = () => {
     const voltarParaHoje = () =>
         setDataReferencia(new Date());
 
+
+    const nomeSobrenome = (nomeCompleto) => {           // retorna nome e sobrenome para melhorar visualização na tabela
+        const partes = nomeCompleto.trim().split(" ");
+
+        if (partes.length === 1) return partes[0];
+
+        return `${partes[0]} ${partes[1][0].toUpperCase()}`;
+    };
+
+    const funcionarioNaTroca = (cpf, troca) => {   // verifica se funcionario participou da troca
+    if (!troca) return false;
+
+    return (
+        troca.cpfSolicitante === cpf ||
+        troca.cpfDestinatario === cpf
+    );
+
+};
+
     return (
         <div className="container mt-4">
             <h2 className="mb-4">Escala da Semana</h2>
@@ -200,21 +229,25 @@ const EscalaDaSemana = () => {
                                             key={`${r}-${c}-${k}`}
                                         >
                                             {escalaDia[cargo]?.length ? (
-                                                escalaDia[cargo].map((nome, i) => (
+                                                escalaDia[cargo].map((funcionario, i) => {
+                                                    const participanteTroca = funcionarioNaTroca(funcionario.cpf, troca);
+                                                    return (
                                                     <div
                                                         key={i}
                                                         style={{
-                                                            color: isUsuarioDesativado(nome)
+                                                            
+                                                            color: isUsuarioDesativado(funcionario.nome)
                                                                 ? "red"
-                                                                : troca ? "#d39e00" : "inherit",
-                                                            fontWeight: troca ? "bold" : "normal",
-                                                            cursor: troca ? "pointer" : "default"
+                                                                : participanteTroca ? "#d39e00" : "inherit",
+                                                            fontWeight: participanteTroca ? "bold" : "normal",
+                                                            cursor: participanteTroca ? "pointer" : "default"
                                                         }}
-                                                        onClick={() => troca && setModalInfo(troca)}
+                                                        onClick={() => participanteTroca && setModalInfo(troca)}
                                                     >
-                                                        • {nome}
+                                                        • {nomeSobrenome(funcionario.nome)}
                                                     </div>
-                                                ))
+                                                    );
+                                                    })
                                             ) : troca ? (
                                                 <div
                                                     style={{
@@ -229,6 +262,7 @@ const EscalaDaSemana = () => {
                                             ) : (
                                                 <span className="text-muted">—</span>
                                             )}
+            
                                         </td>
                                     ));
                                 })}

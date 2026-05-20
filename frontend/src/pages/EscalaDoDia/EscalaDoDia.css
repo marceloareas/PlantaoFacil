@@ -44,3 +44,8 @@
     background-color: rgba(24, 64, 104, 0.5);
     transform: scale(1.05);
 }
+
+.nome-funcionario {
+  font-weight: bold;
+  margin-bottom: 4px;
+}

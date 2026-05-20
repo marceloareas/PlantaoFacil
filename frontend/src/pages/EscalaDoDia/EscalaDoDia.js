@@ -109,9 +109,15 @@ const EscalaDoDia = () => {
 
                             {categorias.map((_, colIdx) => (
                                 <td key={colIdx}>
-                                    {escala[rowIdx]?.[colIdx]?.length > 0
-                                        ? escala[rowIdx][colIdx].join(", ")
-                                        : "—"}
+                                    {escala[rowIdx]?.[colIdx]?.length > 0 ? (
+                                        escala[rowIdx][colIdx].map((nome, i) => (
+                                            <div key={i} className="nome-funcionario">
+                                                {nome}
+                                            </div>
+                                        ))
+                                    ) : (
+                                        "—"
+                                    )}
                                 </td>
                             ))}
                         </tr>
