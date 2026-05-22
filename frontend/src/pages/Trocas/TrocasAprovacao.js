@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
 import "./trocas.css";
 import { api } from "../../components/api/Api";
+import TrocaModal from "../../components/TrocaModal";
 
 const TrocasAprovacao = () => {
     const [user, setUser] = useState(null);
     const [trocas, setTrocas] = useState([]);
+    const [showModal, setShowModal] = useState(false);
+    const [trocaSelecionada, setTrocaSelecionada] = useState(null);
 
     useEffect(() => {
         const userData = localStorage.getItem("user");
@@ -121,6 +124,14 @@ const TrocasAprovacao = () => {
                                     {t.situacao === "Pendente" && (
                                         <>
                                             <button
+                                                className="btm-ver"
+                                                onClick={()=> {
+                                                    setTrocaSelecionada(t);     // passar a troca como parametro
+                                                    setShowModal(true)}}
+                                                >
+                                                    ver
+                                                </button>
+                                            <button
                                                 className="btn-aprovar"
                                                 onClick={() => atualizarsituacao(t.id, "Aprovada")}
                                             >
@@ -158,6 +169,12 @@ const TrocasAprovacao = () => {
                     </tbody>
                 </table>
             )}
+
+            <TrocaModal
+                show={showModal}
+                onClose={() => setShowModal(false)}
+                troca={trocaSelecionada}
+            />
         </div>
     );
 };
