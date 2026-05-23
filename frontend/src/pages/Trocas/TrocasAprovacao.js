@@ -131,18 +131,6 @@ const TrocasAprovacao = () => {
                                                 >
                                                     ver
                                                 </button>
-                                            <button
-                                                className="btn-aprovar"
-                                                onClick={() => atualizarsituacao(t.id, "Aprovada")}
-                                            >
-                                                Aprovar
-                                            </button>
-                                            <button
-                                                className="btn-rejeitar"
-                                                onClick={() => atualizarsituacao(t.id, "Rejeitada")}
-                                            >
-                                                Rejeitar
-                                            </button>
                                         </>
                                     )}
 
@@ -157,10 +145,11 @@ const TrocasAprovacao = () => {
 
                                     {t.situacao === "Desfeita" && (
                                         <button
-                                            className="btn-aprovar"
-                                            onClick={() => refazerTroca(t)}
+                                            className="btn-ver"
+                                            onClick={() => {setTrocaSelecionada(t);     // passar a troca como parametro
+                                                                setShowModal(true)}}
                                         >
-                                            Refazer
+                                            ver
                                         </button>
                                     )}
                                 </td>
@@ -174,6 +163,7 @@ const TrocasAprovacao = () => {
                 show={showModal}
                 onClose={() => setShowModal(false)}
                 troca={trocaSelecionada}
+                atualizarsituacao={atualizarsituacao}
             />
         </div>
     );
