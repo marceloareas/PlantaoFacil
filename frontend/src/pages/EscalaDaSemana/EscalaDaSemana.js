@@ -7,14 +7,110 @@ import { api } from "../../components/api/Api";
 const EscalaDaSemana = () => {
     const navigate = useNavigate();
 
+    const usuarioLogado = { cargo: "Coordenador" }; 
+    const isCoordenador = usuarioLogado?.cargo === "Coordenador";
+
     const [dataReferencia, setDataReferencia] = useState(new Date());
     const [diasSemana, setDiasSemana] = useState([]);
     const [escalas, setEscalas] = useState({});
     const [cargos, setCargos] = useState([]);
     const [usuarios, setUsuarios] = useState([]);
+    const [semanaCopiada, setSemanaCopiada] = useState(null);
 
     const [trocasAprovadas, setTrocasAprovadas] = useState([]);
     const [modalInfo, setModalInfo] = useState(null);
+    
+    
+    
+    const copiarSemanaAtual = async () => {
+        try {
+            const dadosSemana = [];
+
+            const inicio = diasSemana[0].data;
+            const fim = diasSemana[diasSemana.length - 1].data;
+
+            for (const dia of diasSemana) {
+                const response = await api.get(`/escaladodia/${dia.data}`);
+                dadosSemana.push({
+                    dataOrigem: dia.data,
+                    escala: response.Escala || []
+                });
+            }
+
+            setSemanaCopiada(dadosSemana);
+
+            alert("Semana copiada com sucesso!");
+
+        } catch (err) {
+            console.error(err);
+            alert("Erro ao copiar semana");
+        }
+    };
+
+    const colarSemana = async () => {
+
+        if (!semanaCopiada) {
+            alert("Nenhuma semana copiada");
+            return;
+        }
+
+        try {
+
+            // verifica se semana atual está vazia
+            let semanaVazia = true;
+
+            for (const dia of diasSemana) {
+                try {
+                    const data = await api.get(`/escaladodia/${dia.data}`);
+
+                    if (data.Escala && data.Escala.length > 0) {
+                        semanaVazia = false;
+                        break;
+                    }
+                } catch (err) {
+                    continue; // se der erro, considera dia vazio
+                }
+            }
+
+            if (!semanaVazia) {
+                alert("Erro: A semana destino não está vazia");
+                return;
+            }
+
+            // copia os dias
+            for (let i = 0; i < 7; i++) {
+
+                const diaDestino = diasSemana[i]?.data;
+                if (!diaDestino) continue;
+
+                const escalasOrigem = semanaCopiada[i]?.escala || [];
+
+                
+
+                for (const item of escalasOrigem) {
+
+                    await api.post(`/escaladodia/${diaDestino}`, {
+                        DataEscala: diaDestino,
+                        Escala:[
+                            {
+                                Horario: item.Horario,
+                                Nome: item.Nome,
+                                Cargo: item.Cargo,
+                                Cpf: item.Cpf}
+                            ]
+                    });
+                }
+            }
+
+            alert("Semana colada com sucesso!");
+
+            gerarDiasDaSemana(dataReferencia);
+
+        } catch (err) {
+            console.error(err);
+            alert("Erro ao colar semana");
+        }
+    };
 
 
     const horarios = ["07:00 - 19:00", "19:00 - 07:00"];
@@ -43,9 +139,14 @@ const EscalaDaSemana = () => {
     const gerarDiasDaSemana = async (referencia) => {
         const dias = [];
 
-        for (let i = -3; i <= 3; i++) {
-            const d = new Date(referencia);
-            d.setDate(referencia.getDate() + i);
+        const diaDaSemana = referencia.getDay();
+
+        const primeiroDiaDaSemana = new Date(referencia);
+        primeiroDiaDaSemana.setDate(referencia.getDate() - diaDaSemana);
+
+        for (let i = 0; i < 7; i++) {
+            const d = new Date(primeiroDiaDaSemana);
+            d.setDate(primeiroDiaDaSemana.getDate() + i);
 
             dias.push({
                 label: d.toLocaleDateString("pt-BR", {
@@ -269,7 +370,22 @@ const EscalaDaSemana = () => {
                             </tr>
                         ))}
                     </tbody>
+
                 </table>
+
+                {isCoordenador && (
+                <div className="mb-3 d-flex justify-content-center" >
+                    <button className="btn btn-outline-success" style={{ textAlign: "center", margin: "0 5px" }} onClick={copiarSemanaAtual}>
+                        Copiar Semana
+                    </button>
+                    {semanaCopiada && (
+                        <button className="btn btn-outline-success" style={{ textAlign: "center" }} onClick={colarSemana}>
+                            Colar Semana
+                        </button>
+                    )}
+                </div>
+                )}
+
             </div>
 
             {modalInfo && (
