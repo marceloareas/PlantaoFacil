@@ -3,11 +3,11 @@ import { useState, useEffect } from "react";
 import "./EscalaDoDia.css";
 import { api } from "../../components/api/Api";
 
+const categorias = ["Enfermeiro", "Tecnico"];
+
 const EscalaDoDia = () => {
     const { data } = useParams();
     const navigate = useNavigate();
-
-    const [categorias, setCategorias] = useState([]);
     const [escala, setEscala] = useState([]);
     const [escalaExistente, setEscalaExistente] = useState([]);
     const [user, setUser] = useState(null);
@@ -20,23 +20,7 @@ const EscalaDoDia = () => {
         if (userData) setUser(JSON.parse(userData));
     }, []);
 
-    // Pegar categorias
-    useEffect(() => {
-        const fetchUsuarios = async () => {
-            try {
-                const dataRes = await api.get("/users/");
-
-                const uniqueCategorias = [...new Set(dataRes.map((u) => u.cargo))]
-                    .filter((cargo) => cargo && cargo.toLowerCase() !== "coordenador");
-
-                setCategorias(uniqueCategorias);
-            } catch (err) {
-                console.error("Erro ao buscar usuários:", err);
-            }
-        };
-
-        fetchUsuarios();
-    }, []);
+    
 
     // Criar estrutura vazia da escala
     useEffect(() => {

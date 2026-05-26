@@ -6,19 +6,24 @@ import { api } from "../../components/api/Api";
 
 const EscalaDaSemana = () => {
     const navigate = useNavigate();
-
-    const usuarioLogado = { cargo: "Coordenador" }; 
-    const isCoordenador = usuarioLogado?.cargo === "Coordenador";
-
     const [dataReferencia, setDataReferencia] = useState(new Date());
     const [diasSemana, setDiasSemana] = useState([]);
     const [escalas, setEscalas] = useState({});
     const [cargos, setCargos] = useState([]);
     const [usuarios, setUsuarios] = useState([]);
     const [semanaCopiada, setSemanaCopiada] = useState(null);
+    const [user, setUser] = useState(null);
 
     const [trocasAprovadas, setTrocasAprovadas] = useState([]);
     const [modalInfo, setModalInfo] = useState(null);
+
+    useEffect(() => {
+    const userData = localStorage.getItem("user");
+
+    if (userData) {
+        setUser(JSON.parse(userData));
+    }
+    }, []);
     
     
     
@@ -187,8 +192,8 @@ const EscalaDaSemana = () => {
         setCargos(
             Array.from(cargosSet).sort((a, b) => {
                 const ordem = {
-                    "Técnico": 1,
-                    "Enfermeiro": 2
+                    "Técnico": 2,
+                    "Enfermeiro": 1
                 };
 
                 return ordem[a] - ordem[b];
@@ -275,7 +280,7 @@ const EscalaDaSemana = () => {
 };
 
     return (
-        <div className="container mt-4">
+        <div className="container-fluid px-4 mt-4">
             <h2 className="mb-4">Escala da Semana</h2>
 
             <div className="mb-3 d-flex justify-content-between">
@@ -373,7 +378,7 @@ const EscalaDaSemana = () => {
 
                 </table>
 
-                {isCoordenador && (
+                {user?.cargo?.toLowerCase() === "coordenador" && (
                 <div className="mb-3 d-flex justify-content-center" >
                     <button className="btn btn-outline-success" style={{ textAlign: "center", margin: "0 5px" }} onClick={copiarSemanaAtual}>
                         Copiar Semana
@@ -393,8 +398,10 @@ const EscalaDaSemana = () => {
                     <div className="modal-box" onClick={e => e.stopPropagation()}>
                         <h4>Troca Aprovada</h4>
                         <p><strong>Solicitante:</strong> {modalInfo.nomeSolicitante}</p>
-                        <p><strong>Destinatário:</strong> {modalInfo.nomeDestinatario}</p>
+                        <p><strong>Data solicitante:</strong> {new Date(modalInfo.meudia).toLocaleDateString("pt-BR")}</p>
                         <p><strong>Turno solicitante:</strong> {modalInfo.horariosolicitante}</p>
+                        <p><strong>Destinatário:</strong> {modalInfo.nomeDestinatario}</p>
+                        <p><strong>Data destinatário:</strong> {new Date(modalInfo.diacolega).toLocaleDateString("pt-BR")}</p>
                         <p><strong>Turno destinatário:</strong> {modalInfo.horariodestinatario}</p>
                         <p><strong>Motivo:</strong> {modalInfo.motivo}</p>
 

@@ -382,7 +382,13 @@ const isTurnoBlockedByAusencia = (dataBR, turno, ausencia) => {
         }
 
         const novaEscala = escala.map((l) => l.map((c) => [...c]));
-        novaEscala[row][col].push(nome);
+
+        const jaExiste = novaEscala[row].some((coluna) => coluna.includes(nome));
+        if (jaExiste) {
+            alert(`Erro: ${nome} já está escalado para o turno ${horarios[row]}!`);
+            return;
+        }
+            novaEscala[row][col].push(nome);
         setEscala(novaEscala);
 
         if (totalTurnos + 1 >= limite) {

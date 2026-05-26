@@ -61,7 +61,7 @@ const EditarPessoaModal = ({ show, onClose, pessoa, onSave }) => {
         e.preventDefault();
 
         const { nome_completo, email, password, crm, cpf, cargo, horaEscala, situacao } = formData;
-        if (!nome_completo || !email || !password || !crm || !cpf || !cargo || !horaEscala) {
+        if (!nome_completo || !email || !crm || !cpf || !cargo || !horaEscala) {
             setError("Preencha todos os campos obrigatórios!");
             return;
         }
@@ -118,11 +118,10 @@ const EditarPessoaModal = ({ show, onClose, pessoa, onSave }) => {
                     <Form.Group className="mb-3">
                         <Form.Label>Senha</Form.Label>
                         <Form.Control
-                            type="text"
+                            type="password"
                             name="password"
                             value={formData.password}
                             onChange={handleChange}
-                            required
                         />
                     </Form.Group>
 

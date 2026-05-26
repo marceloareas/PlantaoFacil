@@ -214,8 +214,8 @@ def aprovar_troca(troca_id: int, db: Session = Depends(get_db)):
         horario_destinatario=troca.horariodestinatario
     )   
 
-    escala_solicitante.cpf = troca.cpfDestinatario
-    escala_destinatario.cpf = troca.cpfSolicitante
+    escala_solicitante.Cpf = troca.cpfDestinatario
+    escala_destinatario.Cpf = troca.cpfSolicitante
 
     escala_solicitante.Nome = troca.destinatario_user.nome_completo
     escala_destinatario.Nome = troca.solicitante_user.nome_completo
@@ -276,12 +276,14 @@ def desfazer_troca(troca_id: int, db: Session = Depends(get_db)):
 
     escala_solicitante = db.query(Escala).filter(
         Escala.DataEscala == data_solicitante,
-        Escala.Horario == troca.horariosolicitante
+        Escala.Horario == troca.horariosolicitante,
+        Escala.Cpf == troca.cpfDestinatario
     ).first()
 
     escala_destinatario = db.query(Escala).filter(
         Escala.DataEscala == data_destinatario,
-        Escala.Horario == troca.horariodestinatario
+        Escala.Horario == troca.horariodestinatario,
+        Escala.Cpf == troca.cpfSolicitante
     ).first()
 
     escala_solicitante.Cpf = troca.cpfSolicitante
@@ -291,6 +293,7 @@ def desfazer_troca(troca_id: int, db: Session = Depends(get_db)):
     escala_destinatario.Nome = troca.destinatario_user.nome_completo
 
     troca.situacao = "Desfeita"
+
 
     db.commit()
     db.refresh(troca)
