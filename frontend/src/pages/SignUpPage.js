@@ -119,7 +119,16 @@ const SignUpModal = ({ show, onClose }) => {
       window.location.reload();
 
     } catch (err) {
-      setError("Erro de conexão com o servidor");
+      //setError("Erro de conexão com o servidor");
+      console.log("ERRO COMPLETO:", err);
+      console.log("RESPONSE:", err.response);
+      console.log("DATA:", err.response?.data);
+
+      setError(
+        err.response?.data?.detail ||
+        JSON.stringify(err.response?.data) ||
+        err.message
+      );
     }
   };
 

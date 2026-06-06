@@ -10,6 +10,9 @@ import EscalaDoDia from './pages/EscalaDoDia/EscalaDoDia';
 import EditarEscala from './pages/EditarEscala/EditarEscala';
 import EscalaDaSemana from './pages/EscalaDaSemana/EscalaDaSemana';
 import FuncionariosAusentes from './pages/indisponibilidade/FuncAusente';
+import RelatorioSemanal from './pages/RelatorioSemanal/RelatorioSemanal';
+import RelatorioPeronalizado from './pages/RelatorioPersonalizado/RelatorioPersonalizado';
+import RelatorioMensal from './pages/RelatorioMensal/RelatorioMensal';
 import ApiServer from './components/api/Api';
 import { IoPersonCircleSharp } from "react-icons/io5";
 import TrocasAprovacao from './pages/Trocas/TrocasAprovacao';
@@ -108,10 +111,13 @@ function App() {
                   {showRelat && (
                     <ul className="menu-link">
                       <li>
-                        <a href="/relatorio1" onClick={() => setShowMenu(false)}>Relatório 1</a>
-                      </li>
+                        <a href="/RelatorioSemanal" onClick={() => setShowMenu(false)}>RelatórioSemanal</a>
+                      </li> 
                       <li>
-                        <a href="/relatorio2" onClick={() => setShowMenu(false)}>Relatório 2</a>
+                        <a href="/RelatorioMensal" onClick={() => setShowMenu(false)}>RelatórioMensal</a>
+                      </li>  
+                      <li>
+                        <a href="/RelatorioPersonalizado" onClick={() => setShowMenu(false)}>RelatórioPersonalizado</a>
                       </li>
                     </ul>
                   )}
@@ -176,6 +182,9 @@ function App() {
             <Route path="/TrocasAprovacao" element={<TrocasAprovacao />} />
             <Route path="/Pessoas" element={<Pessoas />} />
             <Route path="/help" element={<HelpPage />} />
+            <Route path="/RelatorioSemanal" element={<RelatorioSemanal />} />
+            <Route path="/RelatorioMensal" element={<RelatorioMensal/>} />
+            <Route path="/RelatorioPersonalizado" element={<RelatorioPeronalizado/>} />
             <Route path="/EditarEscala/:data" element={<EditarEscala />} />
           </Routes>
         </div>

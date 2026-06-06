@@ -1,0 +1,78 @@
+.area-impressao {
+    margin-top: 20px;
+}
+
+/* Tabela normal */
+.area-impressao table {
+    font-size: 12px;
+}
+
+.area-impressao th {
+    background-color: #f8f9fa;
+    text-align: center;
+}
+
+.area-impressao td {
+    vertical-align: top;
+    min-width: 150px;
+}
+
+/* Impressão */
+@media print {
+
+    body * {
+        visibility: hidden;
+    }
+
+    .area-impressao,
+    .area-impressao * {
+        visibility: visible;
+    }
+
+    .area-impressao {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+    }
+
+    .btn,
+    input,
+    label,
+    h2 {
+        display: none !important;
+    }
+
+    table {
+        width: 100% !important;
+        border-collapse: collapse;
+        page-break-inside: avoid;
+        font-size: 10px;
+    }
+
+    th,
+    td {
+        border: 1px solid black !important;
+        padding: 4px !important;
+    }
+
+    .table-responsive {
+        overflow: visible !important;
+    }
+
+    .resumo-funcionarios {
+        margin-top: 20px;
+        page-break-inside: avoid;
+    }
+
+    .resumo-funcionarios table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .resumo-funcionarios th,
+    .resumo-funcionarios td {
+        border: 1px solid black;
+        padding: 5px;
+    }
+}

@@ -1,0 +1,36 @@
+@media print {
+
+    body * {
+        visibility: hidden;
+    }
+
+    .area-impressao,
+    .area-impressao * {
+        visibility: visible;
+    }
+
+    .area-impressao {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+    }
+
+    .btn,
+    input,
+    label,
+    h2 {
+        display: none !important;
+    }
+
+    table {
+        width: 100% !important;
+        border-collapse: collapse;
+    }
+
+    th,
+    td {
+        border: 1px solid black !important;
+        padding: 6px !important;
+    }
+}
