@@ -7,26 +7,17 @@ export const buscarEscalasDoMes = async (
     cpf,
     horaEscala
 ) => {
+
     const [, mes, ano] = dataReferencia.split("-");
-    const escalas = [];
 
-    const ultimoDia = new Date(ano, mes, 0).getDate();
+    const escalasMes = await api.get(
+        `/escalaMes/?mes=${parseInt(mes)}&ano=${ano}&cpf=${cpf}`
+    );
 
-    for (let dia = 1; dia <= ultimoDia; dia++) {
-        const data = `${String(dia).padStart(2, "0")}-${mes}-${ano}`;
-
-        try {
-            const json = await api.get(`/escaladodia/${data}`);
-            escalas.push({
-                data,
-                Escala: json.Escala || [],
-            });
-        } catch {
-            continue;
-        }
-    }
-
-    return validarTurnosMensais(escalas, nome, cpf, horaEscala);
+    return validarTurnosMensais(
+        escalasMes,
+        horaEscala
+    );
 };
 
 export default buscarEscalasDoMes;

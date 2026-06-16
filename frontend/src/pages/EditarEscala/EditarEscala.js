@@ -13,10 +13,9 @@ const EscalaDoDia = () => {
     const [escala, setEscala] = useState([]);
     const [nomesAusentes, setNomesAusentes] = useState([]);
     const [escalaExistente, setEscalaExistente] = useState([]);
-    const [escalaAnterior, setEscalaAnterior] = useState([]);
     const [user, setUser] = useState(null);
     const [bloqueadosPorLimite, setBloqueadosPorLimite] = useState([]);
-    const [bloqueadosPorTurnosSeguidos, setBloqueadosPorTurnosSeguidos] = useState([]);
+    
 
     const [trocasAprovadas, setTrocasAprovadas] = useState([]);
     const [modalInfo, setModalInfo] = useState(null);
@@ -191,37 +190,7 @@ const EscalaDoDia = () => {
         setEscala(novaEscala);
     }, [escalaExistente, categorias]);
 
-    useEffect(() => {
-        if (!data) return;
-
-        const partes = data.split("-");
-        const dia = parseInt(partes[0], 10);
-        const mes = parseInt(partes[1], 10) - 1;
-        const ano = parseInt(partes[2], 10);
-
-        const atual = new Date(ano, mes, dia);
-        const anterior = new Date(atual);
-        anterior.setDate(anterior.getDate() - 1);
-
-        const diaA = String(anterior.getDate()).padStart(2, "0");
-        const mesA = String(anterior.getMonth() + 1).padStart(2, "0");
-        const anoA = anterior.getFullYear();
-
-        const dataAnterior = `${diaA}-${mesA}-${anoA}`;
-
-        const fetchEscalaAnterior = async () => {
-            try {
-                const dataISO = toISO(data);
-                const dataRes = await api.get(`/ausentes/${dataISO}`);
-                setNomesAusentes(dataRes || []);
-            } catch (err) {
-                if (err.status !== 404) console.error("Erro ao buscar ausentes:", err);
-                setNomesAusentes([]);
-            }
-        };
-
-        fetchEscalaAnterior();
-    }, [data]);
+    
 
     useEffect(() => {
         if (!data) return;
@@ -266,61 +235,9 @@ const isTurnoBlockedByAusencia = (dataBR, turno, ausencia) => {
 
     return true;
 };
-    const geraListaTurnosOrdenados = (nome, turnoNovoRow = null) => {
-        const turnos = [];
+    
 
-        escalaAnterior.forEach((item) => {
-            if (item.Nome === nome) {
-                const row = horarios.indexOf(item.Horario);
-                if (row >= 0) turnos.push({ dia: -1, row });
-            }
-        });
-
-        escala.forEach((linha, rowIdx) => {
-            linha.forEach((coluna) => {
-                coluna.forEach((n) => {
-                    if (n === nome) turnos.push({ dia: 0, row: rowIdx });
-                });
-            });
-        });
-
-        if (turnoNovoRow !== null) {
-            turnos.push({ dia: 0, row: turnoNovoRow });
-        }
-
-        return turnos.sort((a, b) =>
-            a.dia !== b.dia ? a.dia - b.dia : a.row - b.row
-        );
-    };
-
-    const ultrapassaLimiteTurnosSeguidos = (nome, turnoNovoRow) => {
-        const turnos = geraListaTurnosOrdenados(nome, turnoNovoRow);
-
-        let consecutivos = 1;
-
-        for (let i = 1; i < turnos.length; i++) {
-            const ant = turnos[i - 1];
-            const atual = turnos[i];
-
-            const mesmoDiaSequencial =
-                ant.dia === atual.dia && atual.row === ant.row + 1;
-
-            const viradaDia =
-                ant.dia === -1 &&
-                atual.dia === 0 &&
-                ant.row === horarios.length - 1 &&
-                atual.row === 0;
-
-            if (mesmoDiaSequencial || viradaDia) {
-                consecutivos++;
-                if (consecutivos >= 3) return true;
-            } else {
-                consecutivos = 1;
-            }
-        }
-
-        return false;
-    };
+    
 
     const isUserAbsentForTurn = (nome, turno) => {
         if (!nomesAusentes || nomesAusentes.length === 0) return false;
@@ -359,10 +276,7 @@ const isTurnoBlockedByAusencia = (dataBR, turno, ausencia) => {
             return;
         }
         if (bloqueadosPorLimite.includes(nome)) return;
-        if (ultrapassaLimiteTurnosSeguidos(nome, row)) {
-            alert(`Erro: ${nome} não pode ser escalado em 3 turnos consecutivos.`);
-            return;
-        }
+        
 
 
 
@@ -657,10 +571,10 @@ console.log("Ausentes agora:", ausentesAgora);
                                 </tr>
                             </thead>
                             <tbody> {ausentesAgora.map((colab, idx) => (
-                <tr key={colab.nome + idx}>
-                    <td>{colab.nome} - {colab.turnosBloqueados.join(", ")}</td>
-                </tr>
-            ))}
+                                <tr key={colab.nome + idx}>
+                                    <td>{colab.nome} - {colab.turnosBloqueados.join(", ")}</td>
+                                </tr>
+                                ))}     
 
                                 {bloqueadosPorLimite.map((nome, idx) => (
                                     <tr key={`limite-${idx}`}>
