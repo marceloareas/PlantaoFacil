@@ -8,16 +8,6 @@ const LoginModal = ({ show, onClose }) => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
-  const defaultUser = {
-    email: "admin@admin",
-    password: "admin",
-    nome_completo: "admin",
-    id: 99999,
-    crm: "99999-9",
-    cpf: "000.000.000-00",
-    cargo: "Coordenador",
-    situacao: "Ativo"
-  };
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -29,34 +19,23 @@ const LoginModal = ({ show, onClose }) => {
 
     setError("");
 
-    if (email === defaultUser.email && password === defaultUser.password) {
-      localStorage.setItem('user', JSON.stringify(defaultUser));
+    try {
+      const data = await api.post('/auth/login', { email, password }, { auth:false });
+
+      localStorage.setItem('token', data.access_token);
+      localStorage.setItem('user', JSON.stringify(data.user));
 
       setEmail('');
       setPassword('');
       setError('');
       onClose();
 
-      console.log("Login bem-sucedido:", defaultUser);
+      console.log("Login successful:", data);
       window.location.reload();
     }
-    else {
-      try {
-        const data = await api.post('/auth/login', { email, password }, { auth:false });
-
-        localStorage.setItem('token', data.access_token); 
-        localStorage.setItem('user', JSON.stringify(data.user));
-
-        setEmail('');
-        setPassword('');
-        setError('');
-        onClose();
-
-        console.log("Login successful:", data);
-        window.location.reload();
-      } catch (err) {
-        setError(err.message || "Erro de conexão com o servidor");
-      }
+    catch (error) {
+      console.error("Login failed:", error);
+      setError("Falha no login. Verifique suas credenciais.");
     }
   };
 
