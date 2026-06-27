@@ -1,18 +1,18 @@
 from pydantic import BaseModel
 
 class TrocaCreate(BaseModel):
-    solicitante: str
-    destinatario: str
+    cpfSolicitante: str
+    cpfDestinatario: str
     meudia: str
     horariosolicitante: str
     diacolega: str
     horariodestinatario: str
     motivo: str | None = None
-    situacao: str
+    situacao: str | None = None
 
 
 class TrocaUpdate(BaseModel):
-    destinatario: str
+    cpfDestinatario: str
     meudia: str
     horariosolicitante: str
     diacolega: str
@@ -22,6 +22,8 @@ class TrocaUpdate(BaseModel):
 
 class TrocaResponse(TrocaCreate):
     id: int
+    nomeSolicitante: str
+    nomeDestinatario: str
 
     class Config:
         orm_mode = True

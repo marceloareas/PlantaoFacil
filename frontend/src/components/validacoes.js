@@ -8,7 +8,7 @@ export const validarCpf = (cpf) => {
 
 export const validarCoren = (coren) => {
     const value = coren.trim().toUpperCase();
-    const regex = /^[0-9]{3,6}-[A-Z]{2}\/(ENF|TE|AE|OBST)$/;
+    const regex = /^[0-9]{4,6}-[A-Za-z]{2}\/[A-Za-z]{2,4}$/;
 
     if (!regex.test(value)) {
         return {

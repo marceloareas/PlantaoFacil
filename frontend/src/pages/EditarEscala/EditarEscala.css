@@ -1,0 +1,155 @@
+.escala-page {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+.escala-layout {
+    display: flex;
+    gap: 60px; 
+    align-items: flex-start;
+    margin-top: 30px;
+}
+
+.nomes-box,
+.escala-box,
+.ausentes-box {
+    flex: 1;
+    padding: 15px;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.nomes-box h3,
+.escala-box h3,
+.ausentes-box h3 {
+    padding-top: 30px;
+    margin-bottom: 20px;
+    font-size: 18px;
+    font-weight: bold;
+    text-align: center;
+}
+
+.nomes-table,
+.escala-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: center;
+}
+
+.nomes-table th,
+.nomes-table td,
+.escala-table th,
+.escala-table td {
+    border: 1px solid #000;
+    padding: 10px;
+    text-align: center;
+}
+
+.nome-item {
+    cursor: grab;
+    background-color: #f7f7f7;
+    border-radius: 4px;
+    padding: 5px;
+}
+
+.nome-item:active {
+    cursor: grabbing;
+}
+
+.escala-cell {
+    min-height: 40px;
+    background-color: #fafafa;
+    transition: background 0.3s;
+}
+
+.escala-cell:hover {
+    background-color: #e3f2fd;
+}
+
+.submit-button {
+    
+    display: block;
+    margin: 10px auto 0 auto;
+    padding: 8px 16px;
+    background-color: #1976d2;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.submit-button:hover {
+    background-color: #1565c0;
+}
+
+.colab-ausente {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.colab-ausente th,
+.colab-ausente td {
+    border: 1px solid black;
+    padding: 10px;
+    text-align: center;
+}
+
+.colab-ausente tbody {
+    background-color: #f7f7f7;
+}
+
+.nome-escala {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background-color: #e0f7fa; 
+    padding: 4px 8px;
+    margin: 2px 0;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.remove-btn {
+    background-color: #ff6b6b;
+    border: none;
+    color: white;
+    font-weight: bold;
+    padding: 0 6px;
+    margin-left: 8px;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.remove-btn:hover {
+    background-color: #ff3b3b;
+}
+
+.modal-bg {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 999;
+}
+
+.modal-box {
+    background: white;
+    padding: 25px;
+    border-radius: 10px;
+    width: 380px;
+    box-shadow: 0 0 20px rgba(0,0,0,0.3);
+}
+
+.close-modal {
+    margin-top: 15px;
+    padding: 8px 15px;
+    background: #ff4444;
+    border: none;
+    color: white;
+    border-radius: 6px;
+    cursor: pointer;
+}

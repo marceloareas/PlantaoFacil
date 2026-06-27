@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
 import EditarPessoa from "../../components/EditarPessoaModal";
+import AdicionarTurno from "../../components/AdicionarTurnoModal";
 import { Spinner, Alert, Table, Button, Container, Row, Col, Form } from "react-bootstrap";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "./Pessoas.css";
+import { api } from "../../components/api/Api";
 
 const formatDateBR = (date) => {
     const d = String(date.getDate()).padStart(2, "0");
@@ -28,10 +30,7 @@ const getEscalasFuturasDoUsuario = async (nomeCompleto, Cpf, diasBusca = 90) => 
         const dataBR = formatDateBR(data);
 
         try {
-            const res = await fetch(`http://localhost:8000/escaladodia/${dataBR}`);
-            if (!res.ok) continue;
-
-            const dataRes = await res.json();
+            const dataRes = await api.get(`/escaladodia/${dataBR}`);
             const escala = dataRes?.Escala || [];
 
             const estaEscalado = escala.some((e) => e.Nome === nomeCompleto && e.Cpf === Cpf);
@@ -52,7 +51,8 @@ const Pessoas = () => {
     const [usuarios, setUsuarios] = useState([]);
     const [loading, setLoading] = useState(true);
     const [erro, setErro] = useState(null);
-    const [showModal, setShowModal] = useState(false);
+    const [showModalpessoa, setShowModalPessoa] = useState(false);
+    const [showModalTurnos, setShowModalTurnos] = useState(false);
     const [pessoaSelecionada, setPessoaSelecionada] = useState(null);
     const [filtro, setFiltro] = useState("");
     const [user, setUser] = useState(null);
@@ -79,13 +79,7 @@ const Pessoas = () => {
             if (!user || user.cargo.toLowerCase() !== "coordenador") return;
 
             try {
-                const token = localStorage.getItem("token");
-                const res = await fetch("http://localhost:8000/usuario/", {
-                    headers: { Authorization: `Bearer ${token}` },
-                });
-
-                if (!res.ok) throw new Error();
-                const data = await res.json();
+                const data = await api.get("/users/");
                 setUsuarios(data);
             } catch {
                 setErro("Não foi possível carregar os funcionários.");
@@ -97,10 +91,15 @@ const Pessoas = () => {
         fetchUsuarios();
     }, [user]);
 
-    const abrirModal = (pessoa) => {
+    const abrirModalpessoa = (pessoa) => {
         setPessoaSelecionada(pessoa);
-        setShowModal(true);
+        setShowModalPessoa(true);
     };
+
+    const abrirModalTurnos = (pessoa) => {
+        setPessoaSelecionada(pessoa);
+        setShowModalTurnos(true);
+    }
 
     const handleSave = (updatedPessoa) => {
         setUsuarios((prev) =>
@@ -147,31 +146,19 @@ const Pessoas = () => {
             return;
 
         try {
-            const token = localStorage.getItem("token");
-
-            const res = await fetch(`http://localhost:8000/usuario/${usuario.id}`, {
-                method: "PUT",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify({
-                    ...usuario,
-                    situacao: novoStatus,
-                }),
+            await api.put(`/users/${usuario.id}`, {
+                ...usuario,
+                situacao: novoStatus,
             });
-
-            if (!res.ok) {
-                alert("Erro ao atualizar status");
-                return;
-            }
 
             setUsuarios((prev) =>
                 prev.map((u) =>
                     u.id === usuario.id ? { ...u, situacao: novoStatus } : u
                 )
             );
-        } catch {
+
+        } catch(err) {
+            console.log(err)
             alert("Erro de conexão com o servidor");
         }
     };
@@ -233,7 +220,8 @@ const Pessoas = () => {
                         <th>CRM/COREN</th>
                         <th>CPF</th>
                         <th>Status</th>
-                        <th>Ações</th>
+                        <th>Editar</th>
+                        <th>Turnos</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -259,9 +247,20 @@ const Pessoas = () => {
                                     <Button
                                         size="sm"
                                         variant="warning"
-                                        onClick={() => abrirModal(user)}
+                                        onClick={() => abrirModalpessoa(user)}
                                     >
                                         Editar
+                                    </Button>
+                                )}
+                            </td>
+                            <td>
+                                {user.situacao === "Ativo" && (
+                                    <Button
+                                        size="sm"
+                                        variant="success"
+                                        onClick={() => abrirModalTurnos(user)}
+                                    >
+                                        Adicionar
                                     </Button>
                                 )}
                             </td>
@@ -272,8 +271,17 @@ const Pessoas = () => {
 
             {pessoaSelecionada && (
                 <EditarPessoa
-                    show={showModal}
-                    onClose={() => setShowModal(false)}
+                    show={showModalpessoa}
+                    onClose={() => setShowModalPessoa(false)}
+                    pessoa={pessoaSelecionada}
+                    onSave={handleSave}
+                />
+            )}
+
+            {pessoaSelecionada && (
+                <AdicionarTurno
+                    show={showModalTurnos}
+                    onClose={() => setShowModalTurnos(false)}
                     pessoa={pessoaSelecionada}
                     onSave={handleSave}
                 />

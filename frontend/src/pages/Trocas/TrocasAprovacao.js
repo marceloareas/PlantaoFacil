@@ -1,9 +1,13 @@
 import { useEffect, useState } from "react";
 import "./trocas.css";
+import { api } from "../../components/api/Api";
+import TrocaModal from "../../components/TrocaModal";
 
 const TrocasAprovacao = () => {
     const [user, setUser] = useState(null);
     const [trocas, setTrocas] = useState([]);
+    const [showModal, setShowModal] = useState(false);
+    const [trocaSelecionada, setTrocaSelecionada] = useState(null);
 
     useEffect(() => {
         const userData = localStorage.getItem("user");
@@ -13,8 +17,7 @@ const TrocasAprovacao = () => {
     useEffect(() => {
         const fetchTrocas = async () => {
             try {
-                const res = await fetch("http://localhost:8000/trocas/");
-                const data = await res.json();
+                const data = await api.get("/trocas/");
                 setTrocas(data);
             } catch (err) {
                 console.error("Erro ao buscar trocas:", err);
@@ -25,13 +28,12 @@ const TrocasAprovacao = () => {
 
     const atualizarsituacao = async (id, novosituacao) => {
         try {
-            const endpoint =
+            const path =
                 novosituacao === "Aprovada"
-                    ? `http://localhost:8000/trocas/${id}/aprovar`
-                    : `http://localhost:8000/trocas/${id}/rejeitar`;
+                    ? `/trocas/${id}/aprovar`
+                    : `/trocas/${id}/rejeitar`;
 
-            const res = await fetch(endpoint, { method: "PUT" });
-            if (!res.ok) throw new Error("Erro ao atualizar troca");
+            await api.put(path);
 
             setTrocas((prev) =>
                 prev.map((t) =>
@@ -51,12 +53,7 @@ const TrocasAprovacao = () => {
 
     const desfazerTroca = async (t) => {
         try {
-            const res = await fetch(
-                `http://localhost:8000/trocas/${t.id}/desfazer`,
-                { method: "PUT" }
-            );
-
-            if (!res.ok) throw new Error("Erro ao desfazer troca");
+            await api.put(`/trocas/${t.id}/desfazer`);
 
             alert("Troca desfeita com sucesso!");
 
@@ -73,12 +70,7 @@ const TrocasAprovacao = () => {
 
     const refazerTroca = async (t) => {
         try {
-            const res = await fetch(
-                `http://localhost:8000/trocas/${t.id}/aprovar`,
-                { method: "PUT" }
-            );
-
-            if (!res.ok) throw new Error("Erro ao refazer troca");
+            await api.put(`/trocas/${t.id}/aprovar`);
 
             alert("Troca refeita com sucesso!");
 
@@ -117,13 +109,13 @@ const TrocasAprovacao = () => {
                         {trocas.map((t) => (
                             <tr key={t.id}>
                                 <td>{t.id}</td>
-                                <td>{t.solicitante}</td>
+                                <td>{t.nomeSolicitante}</td>
                                 <td>{t.meudia} - {t.horariosolicitante}</td>
-                                <td>{t.destinatario}</td>
+                                <td>{t.nomeDestinatario}</td>
                                 <td>{t.diacolega} - {t.horariodestinatario}</td>
                                 <td>{t.motivo || "—"}</td>
                                 <td>
-                                    <span className={`situacao-${t.situacao.toLowerCase()}`}>
+                                    <span className={`situacao-${t.situacao?.toLowerCase()}`}>
                                         {t.situacao}
                                     </span>
                                 </td>
@@ -132,17 +124,13 @@ const TrocasAprovacao = () => {
                                     {t.situacao === "Pendente" && (
                                         <>
                                             <button
-                                                className="btn-aprovar"
-                                                onClick={() => atualizarsituacao(t.id, "Aprovada")}
-                                            >
-                                                Aprovar
-                                            </button>
-                                            <button
-                                                className="btn-rejeitar"
-                                                onClick={() => atualizarsituacao(t.id, "Rejeitada")}
-                                            >
-                                                Rejeitar
-                                            </button>
+                                                className="btm-ver"
+                                                onClick={()=> {
+                                                    setTrocaSelecionada(t);     // passar a troca como parametro
+                                                    setShowModal(true)}}
+                                                >
+                                                    ver
+                                                </button>
                                         </>
                                     )}
 
@@ -157,10 +145,11 @@ const TrocasAprovacao = () => {
 
                                     {t.situacao === "Desfeita" && (
                                         <button
-                                            className="btn-aprovar"
-                                            onClick={() => refazerTroca(t)}
+                                            className="btn-ver"
+                                            onClick={() => {setTrocaSelecionada(t);     // passar a troca como parametro
+                                                                setShowModal(true)}}
                                         >
-                                            Refazer
+                                            ver
                                         </button>
                                     )}
                                 </td>
@@ -169,6 +158,13 @@ const TrocasAprovacao = () => {
                     </tbody>
                 </table>
             )}
+
+            <TrocaModal
+                show={showModal}
+                onClose={() => setShowModal(false)}
+                troca={trocaSelecionada}
+                atualizarsituacao={atualizarsituacao}
+            />
         </div>
     );
 };

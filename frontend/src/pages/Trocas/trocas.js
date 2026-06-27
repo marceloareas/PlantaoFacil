@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import "./trocas.css";
-
-const API = "http://localhost:8000";
+import { api } from "../../components/api/Api";
 
 const Trocas = () => {
   const [user, setUser] = useState(null);
@@ -10,7 +9,8 @@ const Trocas = () => {
   const [horariosColega, setHorariosColega] = useState([]);
   const [trocasUsuario, setTrocasUsuario] = useState([]);
   const [trocasParaMim, setTrocasParaMim] = useState([]);
-  const [erro, setErro] = useState("");
+  const [erroApi, setErroApi] = useState("");
+  const [erroFormulario, setErroFormulario] = useState("");
 
   const [idEdicao, setIdEdicao] = useState(null);
 
@@ -18,7 +18,7 @@ const Trocas = () => {
   const [troca, setTroca] = useState({
     meuDia: "",
     meuHorario: "",
-    destinatario: "",
+    cpfDestinatario: "",
     horarioColega: "",
     motivo: ""
   });
@@ -38,13 +38,12 @@ const Trocas = () => {
   const carregarTrocas = async (usuario) => {
     if (!usuario) return;
     try {
-      const res = await fetch(`${API}/trocas/`);
-      const data = await res.json();
+      const data = await api.get(`/trocas/`);
 
-      setTrocasUsuario(data.filter(t => t.solicitante === usuario.nome_completo));
-      setTrocasParaMim(data.filter(t => t.destinatario === usuario.nome_completo));
+      setTrocasUsuario(data.filter(t => t.cpfSolicitante === usuario.cpf));
+      setTrocasParaMim(data.filter(t => t.cpfDestinatario === usuario.cpf));
     } catch {
-      setErro("Erro ao carregar trocas.");
+      setErroApi("Erro ao carregar trocas.");
     }
   };
 
@@ -60,19 +59,18 @@ const Trocas = () => {
 
     const load = async () => {
       try {
-        const res = await fetch(
-          `${API}/escaladodia/${formatarDataParaURL(troca.meuDia)}`
+        const data = await api.get(
+          `/escaladodia/${formatarDataParaURL(troca.meuDia)}`
         );
-        const data = await res.json();
 
         const horarios = (data.Escala || [])
-          .filter(e => e.Nome === user.nome_completo)
+          .filter(e => e.Cpf === user.cpf)
           .map(e => e.Horario);
 
         setMeusHorarios(horarios);
-        setErro(horarios.length ? "" : "Você não está escalado para esse dia.");
+        setErroFormulario(horarios.length ? "" : "Você não está escalado para esse dia.");
       } catch {
-        setErro("Erro ao buscar seus horários.");
+        setErroApi("Erro ao buscar seus horários.");
       }
     };
 
@@ -87,24 +85,23 @@ const Trocas = () => {
 
     const load = async () => {
       try {
-        const res = await fetch(
-          `${API}/escaladodia/${formatarDataParaURL(diaColega)}`
+        const data = await api.get(
+          `/escaladodia/${formatarDataParaURL(diaColega)}`
         );
-        const data = await res.json();
 
         const colegasUnicos = Array.from(
           new Map(
             (data.Escala || [])
               .filter(e => e.Cargo === user.cargo && 
-                e.Nome !== user.nome_completo)
+                e.Cpf !== user.cpf)
                 
-                .map(e => [e.Nome, { nome: e.Nome }])
+                .map(e => [e.Cpf,{nome: e.Nome, cpf: e.Cpf }])
               ).values()
             );
         setColegasDisponiveis(colegasUnicos);
-        setErro(colegasUnicos.length ? "" : "Nenhum colega escalado neste dia.");
+        setErroFormulario(colegasUnicos.length ? "" : "Nenhum colega escalado neste dia.");
       } catch {
-        setErro("Erro ao buscar colegas.");
+        setErroApi("Erro ao buscar colegas.");
       }
     };
 
@@ -112,31 +109,30 @@ const Trocas = () => {
   }, [diaColega, user]);
 
   useEffect(() => {
-    if (!diaColega || !troca.destinatario) {
+    if (!diaColega || !troca.cpfDestinatario) {
       setHorariosColega([]);
       return;
     }
 
     const load = async () => {
       try {
-        const res = await fetch(
-          `${API}/escaladodia/${formatarDataParaURL(diaColega)}`
+        const data = await api.get(
+          `/escaladodia/${formatarDataParaURL(diaColega)}`
         );
-        const data = await res.json();
 
         const horarios = (data.Escala || [])
-          .filter(e => e.Nome === troca.destinatario)
+          .filter(e => e.Cpf === troca.cpfDestinatario)
           .map(e => e.Horario);
 
         setHorariosColega(horarios);
-        setErro(horarios.length ? "" : "Esse colaborador não tem horário.");
+        setErroFormulario(horarios.length ? "" : "Esse colaborador não tem horário.");
       } catch {
-        setErro("Erro ao buscar horários do colega.");
+        setErroApi("Erro ao buscar horários do colega.");
       }
     };
 
     load();
-  }, [troca.destinatario, diaColega]);
+  }, [troca.cpfDestinatario, diaColega]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -148,7 +144,7 @@ const Trocas = () => {
     setTroca({
       meuDia: t.meudia,
       meuHorario: t.horariosolicitante,
-      destinatario: t.destinatario,
+      cpfDestinatario: t.cpfDestinatario,
       horarioColega: t.horariodestinatario,
       motivo: t.motivo || ""
     });
@@ -160,48 +156,48 @@ const Trocas = () => {
     setTroca({
       meuDia: "",
       meuHorario: "",
-      destinatario: "",
+      cpfDestinatario: "",
       horarioColega: "",
       motivo: ""
     });
     setDiaColega("");
-    setErro("");
+    setErroFormulario("");
   };
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!troca.meuDia || !troca.meuHorario || !diaColega || !troca.destinatario || !troca.horarioColega) {
-      return setErro("Preencha todos os campos obrigatórios.");
+    if (!troca.meuDia || !troca.meuHorario || !diaColega || !troca.cpfDestinatario || !troca.horarioColega) {
+      return setErroFormulario("Preencha todos os campos obrigatórios.");
     }
 
     const payload = {
-      solicitante: user.nome_completo,
-      destinatario: troca.destinatario,
+      cpfSolicitante: user.cpf,
+      cpfDestinatario: troca.cpfDestinatario,
       meudia: troca.meuDia,
       horariosolicitante: troca.meuHorario,
       diacolega: diaColega,
       horariodestinatario: troca.horarioColega,
       motivo: troca.motivo
     };
+    
+    setErroApi("");
 
     try {
-      const res = await fetch(
-        idEdicao ? `${API}/trocas/${idEdicao}` : `${API}/trocas/`,
-        {
-          method: idEdicao ? "PUT" : "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(
-            idEdicao ? payload : { ...payload, situacao: "Aguardando Destinatario" }
-          )
-        }
-      );
+      const finalPayload = idEdicao
+        ? payload
+        : { ...payload, situacao: "Aguardando Destinatario" };
 
-      if (!res.ok) throw new Error();
+      if (idEdicao) {
+        await api.put(`/trocas/${idEdicao}`, finalPayload);
+      } else {
+        await api.post(`/trocas/`, finalPayload);
+      }
 
       cancelarEdicao();
       carregarTrocas(user);
-    } catch {
-      setErro("Erro ao salvar solicitação.");
+    } catch(error) {
+      setErroApi(error.message || "Erro ao salvar solicitação.");
+      console.error(error);
     }
   };
 
@@ -213,40 +209,39 @@ const Trocas = () => {
     if (!confirm) return; 
 
     if (situacao !== "Pendente" && situacao !== "Aguardando Destinatario") {
-      return setErro("Só é possível deletar solicitações pendentes ou aguardando destinatário.");
+      return setErroFormulario("Só é possível deletar solicitações pendentes ou aguardando destinatário.");
     }
 
     try {
-      const res = await fetch(`${API}/trocas/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error();
-
+      await api.delete(`/trocas/${id}`);
       setTrocasUsuario(prev => prev.filter(t => t.id !== id));
-    } catch {
-      setErro("Erro ao deletar.");
+    } catch (error) {
+      setErroApi(error.message || "Erro ao deletar.");
     }
   };
 
   const aceitarComoDestinatario = async (id) => {
     try {
-      await fetch(`${API}/trocas/${id}/destinatario-aprovar`, { method: "PUT" });
+      await api.put(`/trocas/${id}/destinatario-aprovar`);
       carregarTrocas(user);
-    } catch {
-      setErro("Erro ao aceitar solicitação.");
+    } catch (error) {
+      setErroApi(error.message || "Erro ao aceitar solicitação.");
     }
   };
 
   const rejeitarComoDestinatario = async (id) => {
     try {
-      await fetch(`${API}/trocas/${id}/destinatario-rejeitar`, { method: "PUT" });
+      await api.put(`/trocas/${id}/destinatario-rejeitar`);
       carregarTrocas(user);
-    } catch {
-      setErro("Erro ao rejeitar solicitação.");
+    } catch (error) {
+      setErroApi(error.message || "Erro ao rejeitar solicitação.");
     }
   };
 
   return (
     <div className="troca-container">
-      {erro && <div className="erro-box">{erro}</div>}
+      {erroApi && <div className="erro-box">{erroApi}</div>}
+      {erroFormulario && <div className="erro-box">{erroFormulario}</div>}
 
       <h2>{idEdicao ? "Editar Solicitação de Troca" : "Solicitar Troca de Plantão"}</h2>
 
@@ -288,10 +283,10 @@ const Trocas = () => {
             {colegasDisponiveis.length > 0 && (
               <>
                 <label>Colaborador:</label>
-                <select name="destinatario" value={troca.destinatario} onChange={handleChange}>
+                <select name="cpfDestinatario" value={troca.cpfDestinatario} onChange={handleChange}>
                   <option value="">Selecione...</option>
                   {colegasDisponiveis.map((c, i) => (
-                    <option key={i} value={c.nome}>{c.nome}</option>
+                    <option key={i} value={c.cpf}>{c.nome}</option>
                   ))}
                 </select>
               </>
@@ -352,7 +347,7 @@ const Trocas = () => {
                       <td>{t.horariosolicitante}</td>
                       <td>{t.diacolega}</td>
                       <td>{t.horariodestinatario}</td>
-                      <td>{t.destinatario}</td>
+                      <td>{t.nomeDestinatario}</td>
                       <td>{t.situacao}</td>
 
                       <td>{t.motivo || "—"}</td>
@@ -395,7 +390,7 @@ const Trocas = () => {
                   {trocasParaMim.map(t => (
                     <tr key={t.id}>
                       <td>{t.id}</td>
-                      <td>{t.solicitante}</td>
+                      <td>{t.nomeSolicitante}</td>
                       <td>{t.meudia}</td>
                       <td>{t.horariosolicitante}</td>
                       <td>{t.diacolega}</td>

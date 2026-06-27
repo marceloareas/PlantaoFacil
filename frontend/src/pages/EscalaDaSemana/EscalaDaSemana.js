@@ -2,24 +2,126 @@ import { useNavigate } from "react-router-dom";
 import { useEffect, useState, React } from "react";
 import "./EscalaDaSemana.css";
 import "bootstrap/dist/css/bootstrap.min.css";
+import { api } from "../../components/api/Api";
 
 const EscalaDaSemana = () => {
     const navigate = useNavigate();
-
     const [dataReferencia, setDataReferencia] = useState(new Date());
     const [diasSemana, setDiasSemana] = useState([]);
     const [escalas, setEscalas] = useState({});
     const [cargos, setCargos] = useState([]);
     const [usuarios, setUsuarios] = useState([]);
+    const [semanaCopiada, setSemanaCopiada] = useState(null);
+    const [user, setUser] = useState(null);
 
     const [trocasAprovadas, setTrocasAprovadas] = useState([]);
     const [modalInfo, setModalInfo] = useState(null);
 
+    useEffect(() => {
+    const userData = localStorage.getItem("user");
+
+    if (userData) {
+        setUser(JSON.parse(userData));
+    }
+    }, []);
+    
+    
+    
+    const copiarSemanaAtual = async () => {
+        try {
+            const dadosSemana = [];
+
+            const inicio = diasSemana[0].data;
+            const fim = diasSemana[diasSemana.length - 1].data;
+
+            for (const dia of diasSemana) {
+                const response = await api.get(`/escaladodia/${dia.data}`);
+                dadosSemana.push({
+                    dataOrigem: dia.data,
+                    escala: response.Escala || []
+                });
+            }
+
+            setSemanaCopiada(dadosSemana);
+
+            alert("Semana copiada com sucesso!");
+
+        } catch (err) {
+            console.error(err);
+            alert("Erro ao copiar semana");
+        }
+    };
+
+    const colarSemana = async () => {
+
+        if (!semanaCopiada) {
+            alert("Nenhuma semana copiada");
+            return;
+        }
+
+        try {
+
+            // verifica se semana atual está vazia
+            let semanaVazia = true;
+
+            for (const dia of diasSemana) {
+                try {
+                    const data = await api.get(`/escaladodia/${dia.data}`);
+
+                    if (data.Escala && data.Escala.length > 0) {
+                        semanaVazia = false;
+                        break;
+                    }
+                } catch (err) {
+                    continue; // se der erro, considera dia vazio
+                }
+            }
+
+            if (!semanaVazia) {
+                alert("Erro: A semana destino não está vazia");
+                return;
+            }
+
+            // copia os dias
+            for (let i = 0; i < 7; i++) {
+
+                const diaDestino = diasSemana[i]?.data;
+                if (!diaDestino) continue;
+
+                const escalasOrigem = semanaCopiada[i]?.escala || [];
+
+                
+
+                for (const item of escalasOrigem) {
+
+                    await api.post(`/escaladodia/${diaDestino}`, {
+                        DataEscala: diaDestino,
+                        Escala:[
+                            {
+                                Horario: item.Horario,
+                                Nome: item.Nome,
+                                Cargo: item.Cargo,
+                                Cpf: item.Cpf}
+                            ]
+                    });
+                }
+            }
+
+            alert("Semana colada com sucesso!");
+
+            gerarDiasDaSemana(dataReferencia);
+
+        } catch (err) {
+            console.error(err);
+            alert("Erro ao colar semana");
+        }
+    };
+
+
     const horarios = ["07:00 - 19:00", "19:00 - 07:00"];
 
     useEffect(() => {
-        fetch("http://localhost:8000/usuario/")
-            .then(res => res.json())
+        api.get("/users/")
             .then(setUsuarios)
             .catch(err => console.error("Erro usuários:", err));
     }, []);
@@ -30,8 +132,7 @@ const EscalaDaSemana = () => {
         );
 
     useEffect(() => {
-        fetch("http://localhost:8000/trocas/")
-            .then(res => res.json())
+        api.get("/trocas/")
             .then(data => setTrocasAprovadas(data.filter(t => t.situacao === "Aprovada")))
             .catch(err => console.error("Erro trocas:", err));
     }, []);
@@ -43,9 +144,14 @@ const EscalaDaSemana = () => {
     const gerarDiasDaSemana = async (referencia) => {
         const dias = [];
 
-        for (let i = -3; i <= 3; i++) {
-            const d = new Date(referencia);
-            d.setDate(referencia.getDate() + i);
+        const diaDaSemana = referencia.getDay();
+
+        const primeiroDiaDaSemana = new Date(referencia);
+        primeiroDiaDaSemana.setDate(referencia.getDate() - diaDaSemana);
+
+        for (let i = 0; i < 7; i++) {
+            const d = new Date(primeiroDiaDaSemana);
+            d.setDate(primeiroDiaDaSemana.getDate() + i);
 
             dias.push({
                 label: d.toLocaleDateString("pt-BR", {
@@ -65,15 +171,14 @@ const EscalaDaSemana = () => {
 
         for (const dia of dias) {
             try {
-                const res = await fetch(`http://localhost:8000/escaladodia/${dia.data}`);
-                const data = await res.json();
+                const data = await api.get(`/escaladodia/${dia.data}`);
 
                 const escalaDia = {};
 
                 data.Escala?.forEach(item => {
                     if (!escalaDia[item.Horario]) escalaDia[item.Horario] = {};
                     if (!escalaDia[item.Horario][item.Cargo]) escalaDia[item.Horario][item.Cargo] = [];
-                    escalaDia[item.Horario][item.Cargo].push(item.Nome);
+                    escalaDia[item.Horario][item.Cargo].push({ nome: item.Nome, cpf: item.Cpf });
                     cargosSet.add(item.Cargo);
                 });
 
@@ -84,7 +189,16 @@ const EscalaDaSemana = () => {
         }
 
         setEscalas(novasEscalas);
-        setCargos(Array.from(cargosSet).sort());
+        setCargos(
+            Array.from(cargosSet).sort((a, b) => {
+                const ordem = {
+                    "Técnico": 2,
+                    "Enfermeiro": 1
+                };
+
+                return ordem[a] - ordem[b];
+            })
+);
     };
 
     const formatarDataURL = (data) => {
@@ -111,7 +225,7 @@ const EscalaDaSemana = () => {
         a.getDate() === b.getDate();
 
     const irParaDia = (data) =>
-        navigate(`/escalaDoDia/${data}`);
+        navigate(`/EscalaDoDia/${data}`);
 
     const trocaDaCelula = (turno, dataBR) => {
         const dataISO = normalizarData(toISO(dataBR));
@@ -146,8 +260,27 @@ const EscalaDaSemana = () => {
     const voltarParaHoje = () =>
         setDataReferencia(new Date());
 
+
+    const nomeSobrenome = (nomeCompleto) => {           // retorna nome e sobrenome para melhorar visualização na tabela
+        const partes = nomeCompleto.trim().split(" ");
+
+        if (partes.length === 1) return partes[0];
+
+        return `${partes[0]} ${partes[1][0].toUpperCase()}`;
+    };
+
+    const funcionarioNaTroca = (cpf, troca) => {   // verifica se funcionario participou da troca
+    if (!troca) return false;
+
     return (
-        <div className="container mt-4">
+        troca.cpfSolicitante === cpf ||
+        troca.cpfDestinatario === cpf
+    );
+
+};
+
+    return (
+        <div className="container-fluid px-4 mt-4">
             <h2 className="mb-4">Escala da Semana</h2>
 
             <div className="mb-3 d-flex justify-content-between">
@@ -202,21 +335,25 @@ const EscalaDaSemana = () => {
                                             key={`${r}-${c}-${k}`}
                                         >
                                             {escalaDia[cargo]?.length ? (
-                                                escalaDia[cargo].map((nome, i) => (
+                                                escalaDia[cargo].map((funcionario, i) => {
+                                                    const participanteTroca = funcionarioNaTroca(funcionario.cpf, troca);
+                                                    return (
                                                     <div
                                                         key={i}
                                                         style={{
-                                                            color: isUsuarioDesativado(nome)
+                                                            
+                                                            color: isUsuarioDesativado(funcionario.nome)
                                                                 ? "red"
-                                                                : troca ? "#d39e00" : "inherit",
-                                                            fontWeight: troca ? "bold" : "normal",
-                                                            cursor: troca ? "pointer" : "default"
+                                                                : participanteTroca ? "#d39e00" : "inherit",
+                                                            fontWeight: participanteTroca ? "bold" : "normal",
+                                                            cursor: participanteTroca ? "pointer" : "default"
                                                         }}
-                                                        onClick={() => troca && setModalInfo(troca)}
+                                                        onClick={() => participanteTroca && setModalInfo(troca)}
                                                     >
-                                                        • {nome}
+                                                        • {nomeSobrenome(funcionario.nome)}
                                                     </div>
-                                                ))
+                                                    );
+                                                    })
                                             ) : troca ? (
                                                 <div
                                                     style={{
@@ -231,22 +368,40 @@ const EscalaDaSemana = () => {
                                             ) : (
                                                 <span className="text-muted">—</span>
                                             )}
+            
                                         </td>
                                     ));
                                 })}
                             </tr>
                         ))}
                     </tbody>
+
                 </table>
+
+                {user?.cargo?.toLowerCase() === "coordenador" && (
+                <div className="mb-3 d-flex justify-content-center" >
+                    <button className="btn btn-outline-success" style={{ textAlign: "center", margin: "0 5px" }} onClick={copiarSemanaAtual}>
+                        Copiar Semana
+                    </button>
+                    {semanaCopiada && (
+                        <button className="btn btn-outline-success" style={{ textAlign: "center" }} onClick={colarSemana}>
+                            Colar Semana
+                        </button>
+                    )}
+                </div>
+                )}
+
             </div>
 
             {modalInfo && (
                 <div className="modal-bg" onClick={() => setModalInfo(null)}>
                     <div className="modal-box" onClick={e => e.stopPropagation()}>
                         <h4>Troca Aprovada</h4>
-                        <p><strong>Solicitante:</strong> {modalInfo.solicitante}</p>
-                        <p><strong>Destinatário:</strong> {modalInfo.destinatario}</p>
+                        <p><strong>Solicitante:</strong> {modalInfo.nomeSolicitante}</p>
+                        <p><strong>Data solicitante:</strong> {new Date(modalInfo.meudia).toLocaleDateString("pt-BR")}</p>
                         <p><strong>Turno solicitante:</strong> {modalInfo.horariosolicitante}</p>
+                        <p><strong>Destinatário:</strong> {modalInfo.nomeDestinatario}</p>
+                        <p><strong>Data destinatário:</strong> {new Date(modalInfo.diacolega).toLocaleDateString("pt-BR")}</p>
                         <p><strong>Turno destinatário:</strong> {modalInfo.horariodestinatario}</p>
                         <p><strong>Motivo:</strong> {modalInfo.motivo}</p>
 

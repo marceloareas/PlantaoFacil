@@ -4,11 +4,15 @@ import SignUpPage from './pages/SignUpPage';
 import Header from './components/Header';
 import { BrowserRouter as Router, Route, Routes, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import CalendarPage from './components/Caledar';
+import CalendarPage from './pages/Calendar/Calendar';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import EscalaDoDia from './pages/EscalaDoDia/EscalaDoDia';
+import EditarEscala from './pages/EditarEscala/EditarEscala';
 import EscalaDaSemana from './pages/EscalaDaSemana/EscalaDaSemana';
-import FuncionariosAusentes from './pages/FuncAusente';
+import FuncionariosAusentes from './pages/indisponibilidade/FuncAusente';
+import RelatorioSemanal from './pages/RelatorioSemanal/RelatorioSemanal';
+import RelatorioPeronalizado from './pages/RelatorioPersonalizado/RelatorioPersonalizado';
+import RelatorioMensal from './pages/RelatorioMensal/RelatorioMensal';
 import ApiServer from './components/api/Api';
 import { IoPersonCircleSharp } from "react-icons/io5";
 import TrocasAprovacao from './pages/Trocas/TrocasAprovacao';
@@ -16,21 +20,17 @@ import Trocas from './pages/Trocas/trocas';
 import Pessoas from './pages/Pessoas/Pessoas';
 import { Button } from 'bootstrap';
 import HelpPage from './pages/Help/HelpPage';
+import BackButton from './components/BackButton';
 
-function BackButton() {
-  const navigate = useNavigate();
-  return (
-    <button className="back-button" onClick={() => navigate(-1)}>
-      ← Voltar
-    </button>
-  );
-}
+
+
 
 function App() {
   const [showMenu, setShowMenu] = useState(false);
   const [showRelat, setShowRelat] = useState(false);
   const [user, setUser] = useState(null);
   const [showLogin, setShowLogin] = useState(false);
+  const [showSignUp, setShowSignUp] = useState(false);
 
   useEffect(() => {
     const userData = localStorage.getItem('user');
@@ -93,43 +93,51 @@ function App() {
             ) : (
               <>
                 <li>
-                  <a className="menu-username"><IoPersonCircleSharp /> Logado como <strong>{user.nome_completo}</strong> ({user.cargo})</a>
-                </li>
-                <li>
-                  <a className="menu-link" onClick={handleLogout}>Logout</a>
+                  <a className="menu-username"><IoPersonCircleSharp /><strong>{user.nome_completo}</strong> ({user.cargo})</a>
                 </li>
               </>
             )}
 
-            <li>
-              {user?.cargo === "Coordenador" && (
+              {user && user.cargo === "Coordenador" && (
                 <>
-                  <a
-                    href="#"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setShowRelat((prev) => !prev);
+                  <li>
+                  <button className="menu-link"
+                    onClick={() => {setShowRelat((prev) => !prev);
                     }}
-                    className="menu-link"
+                    
                   >
                     Relatórios
-                  </a>
+                  </button>
                   {showRelat && (
-                    <ul className="submenu">
+                    <ul className="menu-link">
                       <li>
-                        <a href="/relatorio1" onClick={() => setShowMenu(false)}>Relatório 1</a>
-                      </li>
+                        <a href="/RelatorioSemanal" onClick={() => setShowMenu(false)}>RelatórioSemanal</a>
+                      </li> 
                       <li>
-                        <a href="/relatorio2" onClick={() => setShowMenu(false)}>Relatório 2</a>
+                        <a href="/RelatorioMensal" onClick={() => setShowMenu(false)}>RelatórioMensal</a>
+                      </li>  
+                      <li>
+                        <a href="/RelatorioPersonalizado" onClick={() => setShowMenu(false)}>RelatórioPersonalizado</a>
                       </li>
                     </ul>
                   )}
+                  </li>
                 </>
               )}
-            </li>
-
+            
             {!showRelat && (
               <>
+
+                 {user && user.cargo === "Coordenador" && (
+                <>
+                  <li>
+                    <button className="menu-link" onClick={() => setShowSignUp(true)}>
+                      Cadastrar
+                    </button>
+                  </li>
+                </>
+              )}
+
                 <li><a href="/Calendar" onClick={() => setShowMenu(false)}>Calendário</a></li>
                 {user?.cargo === "Coordenador" && (
                   <>
@@ -142,6 +150,9 @@ function App() {
                   <li><a href="/Trocas" onClick={() => setShowMenu(false)}>Trocas</a></li>
                 )}
                 <li><a href="/help" onClick={() => setShowMenu(false)}>Ajuda</a></li>
+                <li>
+                  <a className="menu-link" style={{color: 'red'}} onClick={handleLogout}>Logout</a>
+                </li>
               </>
             )}
           </ul>
@@ -165,12 +176,16 @@ function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/SignUp" element={<SignUpPage />} />
             <Route path="/Calendar" element={<CalendarPage />} />
-            <Route path="/escalaDoDia/:data" element={<EscalaDoDia />} />
+            <Route path="/EscalaDoDia/:data" element={<EscalaDoDia />} />
             <Route path="/Ausentes" element={<FuncionariosAusentes />} />
             <Route path="/Trocas" element={<Trocas />} />
             <Route path="/TrocasAprovacao" element={<TrocasAprovacao />} />
             <Route path="/Pessoas" element={<Pessoas />} />
             <Route path="/help" element={<HelpPage />} />
+            <Route path="/RelatorioSemanal" element={<RelatorioSemanal />} />
+            <Route path="/RelatorioMensal" element={<RelatorioMensal/>} />
+            <Route path="/RelatorioPersonalizado" element={<RelatorioPeronalizado/>} />
+            <Route path="/EditarEscala/:data" element={<EditarEscala />} />
           </Routes>
         </div>
       </div>
@@ -197,6 +212,11 @@ function App() {
         onClose={() => setShowLogin(false)}
         onLoginSuccess={handleLoginSuccess}
       />
+      <SignUpPage
+        show={showSignUp}
+        onClose={() => setShowSignUp(false)}
+      />
+
     </Router>
   );
 }

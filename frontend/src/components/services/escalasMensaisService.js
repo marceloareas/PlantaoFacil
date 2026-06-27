@@ -1,4 +1,5 @@
 import { validarTurnosMensais } from "../utils/validarTurnosMensais";
+import { api } from "../api/Api";
 
 export const buscarEscalasDoMes = async (
     dataReferencia,
@@ -6,31 +7,17 @@ export const buscarEscalasDoMes = async (
     cpf,
     horaEscala
 ) => {
+
     const [, mes, ano] = dataReferencia.split("-");
-    const escalas = [];
 
-    const ultimoDia = new Date(ano, mes, 0).getDate();
+    const escalasMes = await api.get(
+        `/escalaMes/?mes=${parseInt(mes)}&ano=${ano}&cpf=${cpf}`
+    );
 
-    for (let dia = 1; dia <= ultimoDia; dia++) {
-        const data = `${String(dia).padStart(2, "0")}-${mes}-${ano}`;
-
-        try {
-            const res = await fetch(
-                `http://localhost:8000/escaladodia/${data}`
-            );
-            if (!res.ok) continue;
-
-            const json = await res.json();
-            escalas.push({
-                data,
-                Escala: json.Escala || [],
-            });
-        } catch {
-            continue;
-        }
-    }
-
-    return validarTurnosMensais(escalas, nome, cpf, horaEscala);
+    return validarTurnosMensais(
+        escalasMes,
+        horaEscala
+    );
 };
 
 export default buscarEscalasDoMes;
