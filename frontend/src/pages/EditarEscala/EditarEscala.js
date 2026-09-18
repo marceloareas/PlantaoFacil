@@ -184,7 +184,7 @@ const EscalaDoDia = () => {
         escalaExistente.forEach((item) => {
             const row = horarios.indexOf(item.Horario);
             const col = categorias.indexOf(item.Cargo);
-            if (row >= 0 && col >= 0) novaEscala[row][col].push(item.Nome);
+            if (row >= 0 && col >= 0) novaEscala[row][col].push({ nome: item.Nome, cpf: item.Cpf });
         });
 
         setEscala(novaEscala);
@@ -239,12 +239,12 @@ const isTurnoBlockedByAusencia = (dataBR, turno, ausencia) => {
 
     
 
-    const isUserAbsentForTurn = (nome, turno) => {
+    const isUserAbsentForTurn = (cpf, turno) => {
         if (!nomesAusentes || nomesAusentes.length === 0) return false;
 
         return nomesAusentes.some((a) => {
             if (a.ausente !== "Sim") return false;
-            if (a.nome !== nome && a.nome !== `${nome}`) return false;
+            if (a.cpf !== cpf) return false;
             return isTurnoBlockedByAusencia(data, turno, a);
         });
     };
@@ -252,70 +252,74 @@ const isTurnoBlockedByAusencia = (dataBR, turno, ausencia) => {
     const nomesPorCategoria = (categoria, horario) =>
         usuarios
             .filter((u) => u.cargo === categoria)
-            .filter((u) => !isUserAbsentForTurn(u.nome_completo, horario))
+            .filter((u) => !isUserAbsentForTurn(u.cpf, horario))
             .filter((u) => u.situacao === "Ativo")
-            .filter((u) => !bloqueadosPorLimite.includes(u.nome_completo))
-            .map((u) => ({ nome: u.nome_completo, cargo: u.cargo }));
+            .filter((u) => !bloqueadosPorLimite.includes(u.cpf))
+            .map((u) => ({ nome: u.nome_completo, cpf: u.cpf, cargo: u.cargo }));
 
-    const handleDragStart = (e, nome) => {
-        e.dataTransfer.setData("nome", nome);
+    const handleDragStart = (e, usuario) => {
+        e.dataTransfer.setData("usuario", JSON.stringify({
+            nome: usuario.nome,
+            cpf: usuario.cpf
+        }));
     };
 
     const allowDrop = (e) => e.preventDefault();
 
     const handleDrop = async (e, row, col) => {
         e.preventDefault();
-        const nome = e.dataTransfer.getData("nome");
+        const usuarioSelecionado = JSON.parse(e.dataTransfer.getData("usuario") || "{}");
         const categoriaAlvo = categorias[col];
         const horarioAlvo = horarios[row];
-        console.log("categoriaAlvo:", categoriaAlvo, "horarioAlvo:", horarioAlvo);
-        const usuario = usuarios.find((u) => u.nome_completo === nome);
-        if (!usuario) return;
+        const usuario = usuarios.find((u) => u.cpf === usuarioSelecionado.cpf);
+
+        if (!usuario || !usuarioSelecionado.cpf) return;
+
         if (usuario.cargo !== categoriaAlvo) {
-            alert(`Erro: ${nome} não pertence à categoria ${categoriaAlvo}`);
+            alert(`Erro: ${usuario.nome_completo} não pertence à categoria ${categoriaAlvo}`);
             return;
         }
-        if (bloqueadosPorLimite.includes(nome)) return;
-        
 
+        if (bloqueadosPorLimite.includes(usuario.cpf)) return;
 
-
-        if (isUserAbsentForTurn(usuario.nome_completo, horarios[row])) {
+        if (isUserAbsentForTurn(usuario.cpf, horarios[row])) {
             alert(
-                `Erro: ${usuario.nome_completo} está; ausente para o turno ${horarios[row]}!`
+                `Erro: ${usuario.nome_completo} está ausente para o turno ${horarios[row]}!`
             );
             return;
         }
+
         const { totalTurnos, limite } = await validarLimiteMensal(usuario);
 
         if (totalTurnos >= limite) {
             setBloqueadosPorLimite((prev) =>
-                prev.includes(nome) ? prev : [...prev, nome]
+                prev.includes(usuario.cpf) ? prev : [...prev, usuario.cpf]
             );
             return;
         }
 
         const novaEscala = escala.map((l) => l.map((c) => [...c]));
+        const jaExiste = novaEscala[row].some((coluna) => coluna.some((item) => item.cpf === usuario.cpf));
 
-        const jaExiste = novaEscala[row].some((coluna) => coluna.includes(nome));
         if (jaExiste) {
-            alert(`Erro: ${nome} já está escalado para o turno ${horarios[row]}!`);
+            alert(`Erro: ${usuario.nome_completo} já está escalado para o turno ${horarios[row]}!`);
             return;
         }
-            novaEscala[row][col].push(nome);
+
+        novaEscala[row][col].push({ nome: usuario.nome_completo, cpf: usuario.cpf });
         setEscala(novaEscala);
 
         if (totalTurnos + 1 >= limite) {
             setBloqueadosPorLimite((prev) =>
-                prev.includes(nome) ? prev : [...prev, nome]
+                prev.includes(usuario.cpf) ? prev : [...prev, usuario.cpf]
             );
         }
     };
 
 
-    const removerNome = (row, col, nome) => {
+    const removerNome = (row, col, cpf) => {
         const novaEscala = escala.map((linha) => linha.map((col) => [...col]));
-        novaEscala[row][col] = novaEscala[row][col].filter((n) => n !== nome);
+        novaEscala[row][col] = novaEscala[row][col].filter((item) => item.cpf !== cpf);
         setEscala(novaEscala);
     };
 
@@ -323,13 +327,13 @@ const isTurnoBlockedByAusencia = (dataBR, turno, ausencia) => {
     const existeUsuarioDesativadoNaEscala = () => {
         for (let row = 0; row < escala.length; row++) {
             for (let col = 0; col < escala[row].length; col++) {
-                for (const nome of escala[row][col]) {
+                for (const item of escala[row][col]) {
                     const usuario = usuarios.find(
-                        (u) => u.nome_completo === nome
+                        (u) => u.cpf === item.cpf
                     );
 
                     if (usuario && usuario.situacao === "Desativado") {
-                        return nome;
+                        return item.nome;
                     }
                 }
             }
@@ -355,8 +359,8 @@ const isTurnoBlockedByAusencia = (dataBR, turno, ausencia) => {
 
         horarios.forEach((horario, rowIdx) => {
             categorias.forEach((categoria, colIdx) => {
-                escala[rowIdx][colIdx].forEach((nome) => {
-                    payload.Escala.push({ Horario: horario, Nome: nome, Cargo: categoria, Cpf: usuarios.find((u) => u.nome_completo === nome)?.cpf });
+                escala[rowIdx][colIdx].forEach((item) => {
+                    payload.Escala.push({ Horario: horario, Nome: item.nome, Cargo: categoria, Cpf: item.cpf });
                 });
             });
         });
@@ -383,10 +387,10 @@ const isTurnoBlockedByAusencia = (dataBR, turno, ausencia) => {
     if (dataSelecionada) dataSelecionada.setHours(0, 0, 0, 0);
     const isDataPassada = dataSelecionada && dataSelecionada < hoje;
 
-    const isUsuarioDesativado = (nome) => {
-        console.log("Verificando se usuário desativado:", nome);
+    const isUsuarioDesativado = (cpf) => {
+        console.log("Verificando se usuário desativado:", cpf);
         return usuarios.some(
-            (u) => u.nome_completo === nome && u.situacao === "Desativado"
+            (u) => u.cpf === cpf && u.situacao === "Desativado"
         );
     };
 
@@ -463,7 +467,7 @@ console.log("Ausentes agora:", ausentesAgora);
                                                 new Map(
                                                     horarios
                                                         .flatMap((h) => nomesPorCategoria(cat, h))
-                                                        .map((u) => [u.nome, u])
+                                                        .map((u) => [u.cpf, u])
                                                 ).values()
                                             );
 
@@ -472,7 +476,7 @@ console.log("Ausentes agora:", ausentesAgora);
                                                     {nomes[rowIdx] && (
                                                         <div
                                                             draggable={!isDataPassada}
-                                                            onDragStart={(e) => handleDragStart(e, nomes[rowIdx].nome)}
+                                                            onDragStart={(e) => handleDragStart(e, nomes[rowIdx])}
                                                             className="nome-item"
                                                         >
                                                             {nomes[rowIdx].nome}
@@ -509,46 +513,48 @@ console.log("Ausentes agora:", ausentesAgora);
                                                     onDrop={(e) => handleDrop(e, rowIdx, colIdx)}
                                                     className="escala-cell"
                                                 >
-                                                    {escala[rowIdx] && escala[rowIdx][colIdx] && escala[rowIdx][colIdx].length > 0 ? (
-                                                        escala[rowIdx][colIdx].map((nome, i) => {
-                                                            const turnoAtual = horarios[rowIdx];
-                                                            const trocado = estaEmTroca(nome, turnoAtual);
-                                                            const info = getTrocaInfo(nome, turnoAtual);
+                                                                        {escala[rowIdx] && escala[rowIdx][colIdx] && escala[rowIdx][colIdx].length > 0 ? (
+                                                escala[rowIdx][colIdx].map((item, i) => {
+                                                    const nome = item.nome;
+                                                    const cpf = item.cpf;
+                                                    const turnoAtual = horarios[rowIdx];
+                                                    const trocado = estaEmTroca(cpf, turnoAtual);
+                                                    const info = getTrocaInfo(cpf, turnoAtual);
 
-                                                            return (
-                                                                <div
-                                                                    key={i}
-                                                                    className="nome-escala"
-                                                                    style={{
-                                                                        color: isUsuarioDesativado(nome)
-                                                                            ? "red"
-                                                                            : trocado
-                                                                                ? "orange"
-                                                                                : "inherit",
-                                                                        fontWeight: trocado ? "bold" : "normal",
-                                                                        cursor: trocado ? "pointer" : "default",
-                                                                    }}
+                                                    return (
+                                                        <div
+                                                            key={`${cpf}-${i}`}
+                                                            className="nome-escala"
+                                                            style={{
+                                                                color: isUsuarioDesativado(cpf)
+                                                                    ? "red"
+                                                                    : trocado
+                                                                        ? "orange"
+                                                                        : "inherit",
+                                                                fontWeight: trocado ? "bold" : "normal",
+                                                                cursor: trocado ? "pointer" : "default",
+                                                            }}
 
-                                                                    onClick={() => {
-                                                                        if (trocado && info) setModalInfo(info);
-                                                                    }}
+                                                            onClick={() => {
+                                                                if (trocado && info) setModalInfo(info);
+                                                            }}
+                                                        >
+                                                            {nome}{" "}
+                                                            {!trocado && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => removerNome(rowIdx, colIdx, cpf)}
+                                                                    className="remove-btn"
                                                                 >
-                                                                    {nome}{" "}
-                                                                    {!trocado && (
-                                                                        <button
-                                                                            type="button"
-                                                                            onClick={() => removerNome(rowIdx, colIdx, nome)}
-                                                                            className="remove-btn"
-                                                                        >
-                                                                            X
-                                                                        </button>
-                                                                    )}
-                                                                </div>
-                                                            );
-                                                        })
-                                                    ) : (
-                                                        "—"
-                                                    )}
+                                                                    X
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })
+                                            ) : (
+                                                "—"
+                                            )}
                                                 </td>
                                             ))}
                                         </tr>

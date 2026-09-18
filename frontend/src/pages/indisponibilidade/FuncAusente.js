@@ -79,7 +79,8 @@ const FuncionariosAusentes = () => {
                     `/escaladodia/${formatarDataURL(func.data)}`
                 );
                 data.Escala?.forEach((e) => {
-                    if (e.Nome === func.nome && e.Horario === func.horario) {
+                    const mesmoFuncionario = (e.Cpf || e.cpf || e.CPF) === (func.cpf || "");
+                    if (mesmoFuncionario && e.Horario === func.horario) {
                         conflitos.push({
                             data: formatarDataBR(func.data),
                             horario: e.Horario,
@@ -113,9 +114,10 @@ const FuncionariosAusentes = () => {
                 const data = await api.get(`/escaladodia/${dataURL}`);
 
                 for (const turno of turnosParaVerificar) {
-                    const existe = data.Escala?.some(
-                        (e) => e.Nome === func.nome && e.Horario === turno
-                    );
+                    const existe = data.Escala?.some((e) => {
+                        const mesmoFuncionario = (e.Cpf || e.cpf || e.CPF) === (func.cpf || "");
+                        return mesmoFuncionario && e.Horario === turno;
+                    });
 
                     console.log(
                         "Verificando conflito:",

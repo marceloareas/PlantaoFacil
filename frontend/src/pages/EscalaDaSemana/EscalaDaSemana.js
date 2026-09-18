@@ -126,9 +126,9 @@ const EscalaDaSemana = () => {
             .catch(err => console.error("Erro usuários:", err));
     }, []);
 
-    const isUsuarioDesativado = (nome) =>
+    const isUsuarioDesativado = (cpf) =>
         usuarios.some(
-            u => u.nome_completo === nome && u.situacao === "Desativado"
+            u => u.cpf === cpf && u.situacao === "Desativado"
         );
 
     useEffect(() => {
@@ -377,7 +377,9 @@ const EscalaDaSemana = () => {
                     </tbody>
 
                 </table>
-
+                
+                {/* Copiar escala da semana */}
+                {/*
                 {user?.cargo?.toLowerCase() === "coordenador" && (
                 <div className="mb-3 d-flex justify-content-center" >
                     <button className="btn btn-outline-success" style={{ textAlign: "center", margin: "0 5px" }} onClick={copiarSemanaAtual}>
@@ -390,6 +392,7 @@ const EscalaDaSemana = () => {
                     )}
                 </div>
                 )}
+                */}
 
             </div>
 

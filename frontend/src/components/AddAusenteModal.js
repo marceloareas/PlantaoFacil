@@ -50,16 +50,16 @@ const AddAusenteModal = ({ show, onClose, onSuccess }) => {
         const { name, value } = e.target;
 
         if (name === "nome") {
-            const funcionario = funcionariosFiltrados.find(f => f.nome_completo === value);
-            setFormData({
-                ...formData,
-                nome: value,
+            const funcionario = funcionarios.find((f) => String(f.cpf) === String(value));
+            setFormData((prev) => ({
+                ...prev,
+                nome: funcionario ? funcionario.nome_completo : "",
                 cpf: funcionario ? funcionario.cpf : "",
-            });
+            }));
             return;
         }
 
-        setFormData({ ...formData, [name]: value });
+        setFormData((prev) => ({ ...prev, [name]: value }));
     };
 
     const handleSubmit = async (e) => {
@@ -162,7 +162,7 @@ const AddAusenteModal = ({ show, onClose, onSuccess }) => {
             try {
                 const data = await api.get(`/escaladodia/${formatarDataBR(formData.data)}`);
                 data.Escala?.forEach(e => {
-                    if (e.Nome === formData.nome && e.Horario === formData.horario) {
+                    if (e.cpf === formData.cpf && e.Horario === formData.horario) {
                         adicionarConflito(formatarDataBR(formData.data), e.Horario);
                     }
                 });
@@ -214,7 +214,7 @@ const AddAusenteModal = ({ show, onClose, onSuccess }) => {
 
                     for (const turno of turnosParaVerificar) {
                         const existeEscala = data.Escala?.some(
-                            e => e.Nome === formData.nome && e.Horario === turno
+                            e => e.cpf === formData.cpf && e.Horario === turno
                         );
 
                         if (existeEscala) {
@@ -275,14 +275,14 @@ const AddAusenteModal = ({ show, onClose, onSuccess }) => {
                                     <select
                                         className="form-select"
                                         name="nome"
-                                        value={formData.nome}
+                                        value={formData.cpf || ""}
                                         onChange={handleChange}
                                         disabled={!formData.cargo}
                                     >
                                         <option value="">Selecione o funcionário</option>
-                                        {funcionariosFiltrados.map((f, idx) => (
-                                            <option key={idx} value={f.nome_completo}>
-                                                {f.nome_completo}
+                                        {funcionariosFiltrados.map((f) => (
+                                            <option key={f.cpf} value={f.cpf}>
+                                                {f.nome_completo} ({f.cpf})
                                             </option>
                                         ))}
                                     </select>
