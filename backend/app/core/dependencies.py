@@ -46,3 +46,16 @@ def get_current_user(
         )
 
     return user
+
+
+def get_current_coordinator(
+    current_user: User = Depends(get_current_user),
+) -> User:
+    """Permite a operação somente para usuários com cargo de coordenador."""
+    if current_user.cargo.strip().lower() != "coordenador":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Apenas coordenadores podem realizar esta operação",
+        )
+
+    return current_user

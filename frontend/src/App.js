@@ -21,6 +21,7 @@ import Pessoas from './pages/Pessoas/Pessoas';
 import { Button } from 'bootstrap';
 import HelpPage from './pages/Help/HelpPage';
 import BackButton from './components/BackButton';
+import CriarPeriodoModal from './components/CriarPeriodoModal';
 
 
 
@@ -55,6 +56,7 @@ function App() {
 
   function Home() {
     const [titulo, setTitulo] = useState("Bem vindo ao Plantão Fácil!");
+    const [showCriarPeriodo, setShowCriarPeriodo] = useState(false);
 
     useEffect(() => {
       async function fetchUsuarios() {
@@ -75,6 +77,21 @@ function App() {
       <div>
         <h1 style={{ marginLeft: "20px" }}>{titulo}</h1>
         <EscalaDaSemana />
+        {user?.cargo === "Coordenador" && (
+          <div className="d-flex justify-content-center mb-4">
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => setShowCriarPeriodo(true)}
+            >
+              Criar período
+            </button>
+          </div>
+        )}
+        <CriarPeriodoModal
+          show={showCriarPeriodo}
+          onClose={() => setShowCriarPeriodo(false)}
+        />
       </div>
     );
   }
