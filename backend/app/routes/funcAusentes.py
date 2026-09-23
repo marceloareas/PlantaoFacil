@@ -1,8 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from core.dependencies import get_setor_id
 from database import get_db
 from models.funcAusentesModels import Ausentes
+from models.userModels import User
 from schemas.funcAusentesSchemas import AusentesCreate
+
+
+def _ausentes_do_setor(db: Session, setor_id: int):
+    return db.query(Ausentes).join(User, Ausentes.cpf == User.cpf).filter(User.setor_id == setor_id)
 
 router = APIRouter(prefix="/ausentes", tags=["Funcionários Ausentes"])
 
@@ -48,20 +54,20 @@ def create_ausente(ausente: AusentesCreate, db: Session = Depends(get_db)):
 
 
 @router.get("/")
-def get_todos_ausentes(db: Session = Depends(get_db)):
-    ausentes = db.query(Ausentes).all()
+def get_todos_ausentes(setor_id: int = Depends(get_setor_id), db: Session = Depends(get_db)):
+    ausentes = _ausentes_do_setor(db, setor_id).all()
     if not ausentes:
         raise HTTPException(status_code=404, detail="Nenhum funcionário ausente encontrado.")
     return ausentes
 
 @router.get("/{data}")
-def get_ausentes_por_data(data: str, db: Session = Depends(get_db)):
+def get_ausentes_por_data(data: str, setor_id: int = Depends(get_setor_id), db: Session = Depends(get_db)):
     from sqlalchemy import or_, and_
 
     data_consulta = data 
 
     ausentes = (
-        db.query(Ausentes)
+        _ausentes_do_setor(db, setor_id)
         .filter(
             and_(
                 Ausentes.data <= data_consulta,

@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CiLogin } from "react-icons/ci";
 import 'bootstrap/dist/css/bootstrap.min.css';
-import { api } from '../components/api/Api';
+import { api, getSetorAtual } from '../components/api/Api';
 
 
 const SignUpModal = ({ show, onClose }) => {
@@ -14,6 +14,18 @@ const SignUpModal = ({ show, onClose }) => {
   const [cargo, setCargo] = useState('Tecnico');
   const [error, setError] = useState('');
   const [cpfValido, setCpfValido] = useState(null);
+  const [setores, setSetores] = useState([]);
+  const [setorId, setSetorId] = useState('');
+
+  const isCoordenador = cargo === 'Coordenador';
+
+  useEffect(() => {
+    if (!show) return;
+    setSetorId(String(getSetorAtual()?.id ?? ''));
+    api.get('/setores/')
+      .then(setSetores)
+      .catch(() => setError('Erro ao carregar setores.'));
+  }, [show]);
 
   function validarCPF(cpf) {
     cpf = cpf.replace(/\D/g, "");
@@ -78,7 +90,7 @@ const SignUpModal = ({ show, onClose }) => {
       return;
     }
 
-    if (!email || !password || !cpf || !name || !crms || !cargo || !horaEscala) {
+    if (!email || !password || !cpf || !name || !crms || !cargo || !horaEscala || (!isCoordenador && !setorId)) {
       setError("Preencha todos os campos obrigatórios!");
       return;
     }
@@ -99,7 +111,8 @@ const SignUpModal = ({ show, onClose }) => {
       cpf,
       cargo,
       horaEscala: horaEscala,
-      situacao: "Ativo"
+      situacao: "Ativo",
+      setor_id: isCoordenador ? null : Number(setorId)
     };
 
     try {
@@ -247,6 +260,22 @@ const SignUpModal = ({ show, onClose }) => {
                     <option value="Coordenador">Coordenador</option>
                   </select>
                 </div>
+                {!isCoordenador && (
+                  <div className="mb-3">
+                    <label className="form-label">Setor</label>
+                    <select
+                      className="form-control"
+                      value={setorId}
+                      onChange={(e) => setSetorId(e.target.value)}
+                      required
+                    >
+                      <option value="">Selecione o setor</option>
+                      {setores.map((s) => (
+                        <option key={s.id} value={s.id}>{s.nome}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
                 <div className="mb-3">
                   <label className="form-label">Hora de Escala</label>
                   <select

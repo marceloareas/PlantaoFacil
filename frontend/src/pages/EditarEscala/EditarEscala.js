@@ -3,10 +3,11 @@ import { useState, useEffect } from "react";
 import "./EditarEscala.css";
 import "bootstrap/dist/css/bootstrap.min.css";
 import buscarEscalasDoMes from "../../components/services/escalasMensaisService";
-import { api } from "../../components/api/Api";
+import { api, getSetorAtual } from "../../components/api/Api";
 
 const EscalaDoDia = () => {
     const { data } = useParams();
+    const setorAtual = getSetorAtual();
 
     const [usuarios, setUsuarios] = useState([]);
     const [categorias, setCategorias] = useState([]);
@@ -135,7 +136,7 @@ const EscalaDoDia = () => {
             try {
                 const dataRes = await api.get("/users/");
                 const ativos = dataRes.filter(
-                    (u) => u.cargo.toLowerCase() !== "coordenador"
+                    (u) => u.cargo.toLowerCase() !== "coordenador" && u.setor_id === getSetorAtual()?.id
                 );
                 setUsuarios(ativos);
 
@@ -353,10 +354,15 @@ const isTurnoBlockedByAusencia = (dataBR, turno, ausencia) => {
             Escala: [],
         };
 
+        // quem foi transferido de setor não está em `usuarios`, mas pode seguir na escala já salva
+        const cpfPorNome = (nome) =>
+            usuarios.find((u) => u.nome_completo === nome)?.cpf ??
+            escalaExistente.find((e) => e.Nome === nome)?.Cpf;
+
         horarios.forEach((horario, rowIdx) => {
             categorias.forEach((categoria, colIdx) => {
                 escala[rowIdx][colIdx].forEach((nome) => {
-                    payload.Escala.push({ Horario: horario, Nome: nome, Cargo: categoria, Cpf: usuarios.find((u) => u.nome_completo === nome)?.cpf });
+                    payload.Escala.push({ Horario: horario, Nome: nome, Cargo: categoria, Cpf: cpfPorNome(nome) });
                 });
             });
         });
@@ -433,6 +439,7 @@ console.log("Ausentes agora:", ausentesAgora);
             {isDataPassada && (<h2 className="alert alert-danger"> Observando data passada </h2>)}
             <h2 style={{ textAlign: "center", marginBottom: "30px" }}>
                 Escala do Dia: {data ? data.replaceAll("-", "/") : "Nenhuma data selecionada"}
+                {setorAtual && ` — ${setorAtual.nome}`}
             </h2>
             
             <div>

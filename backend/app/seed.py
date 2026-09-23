@@ -1,11 +1,10 @@
 from database import SessionLocal
+from migrations import preparar_banco
 from models.userModels import User
-from models.funcAusentesModels import Ausentes
-from models.escalaDiaModels import Escala
-from models.trocasModels import Troca
 from core.security import hash_password  # sua função de criptografia
 
 def criar_coordenador():
+    preparar_banco()
     db = SessionLocal()
 
     try:

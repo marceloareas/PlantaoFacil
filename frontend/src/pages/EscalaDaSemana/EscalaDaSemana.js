@@ -2,10 +2,11 @@ import { useNavigate } from "react-router-dom";
 import { useEffect, useState, React } from "react";
 import "./EscalaDaSemana.css";
 import "bootstrap/dist/css/bootstrap.min.css";
-import { api } from "../../components/api/Api";
+import { api, getSetorAtual } from "../../components/api/Api";
 
 const EscalaDaSemana = () => {
     const navigate = useNavigate();
+    const setorAtual = getSetorAtual();
     const [dataReferencia, setDataReferencia] = useState(new Date());
     const [diasSemana, setDiasSemana] = useState([]);
     const [escalas, setEscalas] = useState({});
@@ -187,7 +188,9 @@ const EscalaDaSemana = () => {
 
     return (
         <div className="container-fluid px-4 mt-4">
-            <h2 className="mb-4">Escala da Semana</h2>
+            <h2 className="mb-4">
+                Escala da Semana{setorAtual && ` — ${setorAtual.nome}`}
+            </h2>
 
             <div className="mb-3 d-flex justify-content-between">
                 <button className="btn btn-outline-primary" onClick={semanaAnterior}>

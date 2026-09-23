@@ -5,8 +5,9 @@ from sqlalchemy.exc import OperationalError
 import sys, os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from core.config import settings
-from database import engine, Base
-from routes import users, escalaDia, funcAusentes, trocas, escalaMes, escalaLote, auth
+from database import engine
+from migrations import preparar_banco
+from routes import users, escalaDia, funcAusentes, trocas, escalaMes, escalaLote, auth, setores
 
 app = FastAPI(title="Plantão Fácil API")
 
@@ -23,10 +24,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-Base.metadata.create_all(bind=engine)
+preparar_banco()
 
 api_router = APIRouter(prefix=settings.API_V1_PREFIX)
 
+api_router.include_router(setores.router)
 api_router.include_router(escalaLote.router)
 api_router.include_router(users.router)
 api_router.include_router(auth.router)

@@ -1,8 +1,15 @@
-from pydantic import BaseModel, EmailStr, field_validator, constr
+from pydantic import BaseModel, EmailStr, field_validator, model_validator, constr
 from validate_docbr import CPF
 import re
 
 cpf_validator = CPF()
+
+
+def _exigir_setor(user):
+    if user.cargo.lower() != "coordenador" and user.setor_id is None:
+        raise ValueError("Setor é obrigatório para funcionários")
+    return user
+
 
 class UserCreate(BaseModel):
     email: EmailStr
@@ -13,6 +20,11 @@ class UserCreate(BaseModel):
     cargo: str
     horaEscala: str
     situacao: str
+    setor_id: int | None = None
+
+    @model_validator(mode="after")
+    def validar_setor(self):
+        return _exigir_setor(self)
 
     @field_validator("cpf")
     @classmethod
@@ -72,6 +84,11 @@ class UserUpdate(BaseModel):
     cargo: str
     horaEscala: str
     situacao: str
+    setor_id: int | None = None
+
+    @model_validator(mode="after")
+    def validar_setor(self):
+        return _exigir_setor(self)
 
 
 class UserLogin(BaseModel):
@@ -88,6 +105,8 @@ class UserPublic(BaseModel):
     cargo: str
     horaEscala: str
     situacao: str
+    setor_id: int | None = None
+    setor_nome: str | None = None
 
     model_config = {"from_attributes": True}
 

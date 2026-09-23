@@ -13,7 +13,9 @@ import FuncionariosAusentes from './pages/indisponibilidade/FuncAusente';
 import RelatorioSemanal from './pages/RelatorioSemanal/RelatorioSemanal';
 import RelatorioPeronalizado from './pages/RelatorioPersonalizado/RelatorioPersonalizado';
 import RelatorioMensal from './pages/RelatorioMensal/RelatorioMensal';
-import ApiServer from './components/api/Api';
+import ApiServer, { getSetorAtual, setSetorAtual } from './components/api/Api';
+import SetorSelectorModal from './components/SetorSelectorModal';
+import Setores from './pages/Setores/Setores';
 import { IoPersonCircleSharp } from "react-icons/io5";
 import TrocasAprovacao from './pages/Trocas/TrocasAprovacao';
 import Trocas from './pages/Trocas/trocas';
@@ -28,18 +30,28 @@ import BackButton from './components/BackButton';
 function App() {
   const [showMenu, setShowMenu] = useState(false);
   const [showRelat, setShowRelat] = useState(false);
-  const [user, setUser] = useState(null);
+  // lido já no primeiro render para as páginas não buscarem dados antes de haver setor escolhido
+  const [user, setUser] = useState(() => JSON.parse(localStorage.getItem('user')));
   const [showLogin, setShowLogin] = useState(false);
   const [showSignUp, setShowSignUp] = useState(false);
+  const [setorAtual, setSetorAtualState] = useState(getSetorAtual);
+  const [showSetorModal, setShowSetorModal] = useState(false);
 
-  useEffect(() => {
-    const userData = localStorage.getItem('user');
-    if (userData) setUser(JSON.parse(userData));
-  }, []);
+  const precisaEscolherSetor = user?.cargo === "Coordenador" && !setorAtual;
+
+  const selecionarSetor = (setor) => {
+    const trocou = setorAtual && setor?.id !== setorAtual.id;
+    setSetorAtual(setor);
+    setSetorAtualState(setor ? { id: setor.id, nome: setor.nome } : null);
+    setShowSetorModal(false);
+    // recarrega para que todas as telas busquem os dados do novo setor
+    if (trocou) window.location.reload();
+  };
 
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    setSetorAtual(null);
     setUser(null);
     setShowMenu(false);
     window.location.reload();
@@ -74,7 +86,11 @@ function App() {
     return (
       <div>
         <h1 style={{ marginLeft: "20px" }}>{titulo}</h1>
-        <EscalaDaSemana />
+        {user ? (
+          <EscalaDaSemana />
+        ) : (
+          <p style={{ marginLeft: "20px" }}>Faça login para visualizar a escala do seu setor.</p>
+        )}
       </div>
     );
   }
@@ -143,6 +159,7 @@ function App() {
                   <>
                 <li><a href='/Ausentes' onClick={() => setShowMenu(false)}>Indisponibilidades</a></li>
                     <li><a href="/Pessoas" onClick={() => setShowMenu(false)}>Funcionários</a></li>
+                    <li><a href="/Setores" onClick={() => setShowMenu(false)}>Setores</a></li>
                     <li><a href="/TrocasAprovacao" onClick={() => setShowMenu(false)}>Trocas para aprovação</a></li>
                   </>
                 )}
@@ -165,12 +182,15 @@ function App() {
         onOpenMenu={() => setShowMenu(true)}
         user={user}
         onLogout={handleLogout}
+        setor={setorAtual}
+        onTrocarSetor={() => setShowSetorModal(true)}
         />
 
       <div className='bgImage'>
         <BackButton /> 
         <div className='Container-App'>
 
+          {!precisaEscolherSetor && (
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<LoginPage />} />
@@ -186,7 +206,12 @@ function App() {
             <Route path="/RelatorioMensal" element={<RelatorioMensal/>} />
             <Route path="/RelatorioPersonalizado" element={<RelatorioPeronalizado/>} />
             <Route path="/EditarEscala/:data" element={<EditarEscala />} />
+            <Route
+              path="/Setores"
+              element={<Setores user={user} setorAtual={setorAtual} onSetorAtualChange={selecionarSetor} />}
+            />
           </Routes>
+          )}
         </div>
       </div>
         </>
@@ -215,6 +240,12 @@ function App() {
       <SignUpPage
         show={showSignUp}
         onClose={() => setShowSignUp(false)}
+      />
+      <SetorSelectorModal
+        show={precisaEscolherSetor || showSetorModal}
+        setorAtual={setorAtual}
+        onSelect={selecionarSetor}
+        onClose={() => setShowSetorModal(false)}
       />
 
     </Router>

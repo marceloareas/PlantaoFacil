@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Modal, Button, Form } from "react-bootstrap";
 import { api } from "./api/Api";
 
-const EditarPessoaModal = ({ show, onClose, pessoa, onSave }) => {
+const EditarPessoaModal = ({ show, onClose, pessoa, onSave, setores = [] }) => {
     const [formData, setFormData] = useState({
         nome_completo: "",
         email: "",
@@ -12,6 +12,7 @@ const EditarPessoaModal = ({ show, onClose, pessoa, onSave }) => {
         cargo: "",
         horaEscala: "",
         situacao: "",
+        setor_id: "",
     });
     const [error, setError] = useState("");
 
@@ -26,6 +27,7 @@ const EditarPessoaModal = ({ show, onClose, pessoa, onSave }) => {
                 cargo: pessoa.cargo || "",
                 horaEscala: pessoa.horaEscala || "",
                 situacao: pessoa.situacao,
+                setor_id: pessoa.setor_id ? String(pessoa.setor_id) : "",
             });
             setError("");
         }
@@ -61,7 +63,8 @@ const EditarPessoaModal = ({ show, onClose, pessoa, onSave }) => {
         e.preventDefault();
 
         const { nome_completo, email, password, crm, cpf, cargo, horaEscala, situacao } = formData;
-        if (!nome_completo || !email || !crm || !cpf || !cargo || !horaEscala) {
+        const isCoordenador = cargo === "Coordenador";
+        if (!nome_completo || !email || !crm || !cpf || !cargo || !horaEscala || (!isCoordenador && !formData.setor_id)) {
             setError("Preencha todos os campos obrigatórios!");
             return;
         }
@@ -75,7 +78,10 @@ const EditarPessoaModal = ({ show, onClose, pessoa, onSave }) => {
         setError("");
 
         try {
-            const data = await api.put(`/users/${pessoa.id}`, formData);
+            const data = await api.put(`/users/${pessoa.id}`, {
+                ...formData,
+                setor_id: isCoordenador ? null : Number(formData.setor_id),
+            });
             onSave(data);
             onClose();
 
@@ -163,6 +169,22 @@ const EditarPessoaModal = ({ show, onClose, pessoa, onSave }) => {
                             <option value="Coordenador">Coordenador</option>
                         </Form.Select>
                     </Form.Group>
+                    {formData.cargo !== "Coordenador" && (
+                        <Form.Group className="mb-3">
+                            <Form.Label>Setor</Form.Label>
+                            <Form.Select
+                                name="setor_id"
+                                value={formData.setor_id}
+                                onChange={handleChange}
+                                required
+                            >
+                                <option value="">Selecione o setor</option>
+                                {setores.map((s) => (
+                                    <option key={s.id} value={s.id}>{s.nome}</option>
+                                ))}
+                            </Form.Select>
+                        </Form.Group>
+                    )}
                     <Form.Group className="mb-3">
                         <Form.Label>Hora de Escala</Form.Label>
                         <Form.Select

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { FaUserMinus } from "react-icons/fa";
 import "bootstrap/dist/css/bootstrap.min.css";
-import { api } from "./api/Api";
+import { api, getSetorAtual } from "./api/Api";
 
 const AddAusenteModal = ({ show, onClose, onSuccess }) => {
 
@@ -27,7 +27,7 @@ const AddAusenteModal = ({ show, onClose, onSuccess }) => {
         const fetchUsuarios = async () => {
             try {
                 const data = await api.get("/users/");
-                setFuncionarios(data);
+                setFuncionarios(data.filter((u) => u.setor_id === getSetorAtual()?.id));
 
                 const cargosUnicos = [...new Set(data.map(u => u.cargo))]
                     .filter((cargo) => cargo.toLowerCase() !== "coordenador");

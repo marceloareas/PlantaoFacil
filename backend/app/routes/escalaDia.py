@@ -1,6 +1,7 @@
 from validators.turnosConsecutivos import verificar_turnos_consecutivos
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
+from core.dependencies import get_setor_id
 from database import get_db
 from models.escalaDiaModels import Escala
 from schemas.escalaDiaSchemas import EscalaDiaCreate
@@ -9,8 +10,23 @@ from datetime import datetime
 router = APIRouter(prefix="/escaladodia", tags=["Escala do Dia"])
 
 
+def verificar_escalado_em_outro_setor(db: Session, data: str, item, setor_id: int):
+    conflito = db.query(Escala).filter(
+        Escala.DataEscala == data,
+        Escala.Horario == item.Horario,
+        Escala.Cpf == item.Cpf,
+        Escala.setor_id != setor_id,
+    ).first()
+
+    if conflito:
+        raise HTTPException(
+            status_code=400,
+            detail=f"{item.Nome} já está escalado no turno {item.Horario} do setor {conflito.setor.nome}",
+        )
+
+
 @router.post("/{data}")
-def create_escala_do_dia(data: str, escala_dia: EscalaDiaCreate, db: Session = Depends(get_db)):
+def create_escala_do_dia(data: str, escala_dia: EscalaDiaCreate, setor_id: int = Depends(get_setor_id), db: Session = Depends(get_db)):
     escalas_criadas = []
     data_dt = datetime.strptime(data, "%d-%m-%Y")
     try:
@@ -26,13 +42,16 @@ def create_escala_do_dia(data: str, escala_dia: EscalaDiaCreate, db: Session = D
             if verificacao:
                 print(f"bloqueio para o usuario {item.Nome} devido a 3 turnos seguidos")
                 raise HTTPException(status_code=400, detail=f"devido a 3 turnos seguidos do usuario {item.Nome}, a alocação foi bloqueada")
-            
+
+            verificar_escalado_em_outro_setor(db, data, item, setor_id)
+
             nova_escala = Escala(
                 DataEscala=data,
                 Horario=item.Horario,
                 Nome=item.Nome,
                 Cargo=item.Cargo,
-                Cpf=item.Cpf
+                Cpf=item.Cpf,
+                setor_id=setor_id
             )
             db.add(nova_escala)
             escalas_criadas.append(nova_escala)
@@ -46,8 +65,8 @@ def create_escala_do_dia(data: str, escala_dia: EscalaDiaCreate, db: Session = D
             raise e
 
 @router.get("/{data}")
-def get_escala_do_dia(data: str, db: Session = Depends(get_db)):
-    escalas = db.query(Escala).filter(Escala.DataEscala == data).all()
+def get_escala_do_dia(data: str, setor_id: int = Depends(get_setor_id), db: Session = Depends(get_db)):
+    escalas = db.query(Escala).filter(Escala.DataEscala == data, Escala.setor_id == setor_id).all()
 
     if not escalas:
         raise HTTPException(status_code=404, detail="Nenhuma escala encontrada para essa data")
@@ -68,8 +87,8 @@ def get_escala_do_dia(data: str, db: Session = Depends(get_db)):
     }
 
 @router.put("/{data}")
-def update_escala_do_dia(data: str, escala_dia: EscalaDiaCreate, db: Session = Depends(get_db)):
-    escalas_antigas = db.query(Escala).filter(Escala.DataEscala == data).all()
+def update_escala_do_dia(data: str, escala_dia: EscalaDiaCreate, setor_id: int = Depends(get_setor_id), db: Session = Depends(get_db)):
+    escalas_antigas = db.query(Escala).filter(Escala.DataEscala == data, Escala.setor_id == setor_id).all()
     data_dt = datetime.strptime(data, "%d-%m-%Y")
 
     try:
@@ -96,13 +115,16 @@ def update_escala_do_dia(data: str, escala_dia: EscalaDiaCreate, db: Session = D
                     status_code=400,
                     detail=f"Devido a 3 turnos seguidos do usuário {item.Nome}, a alocação foi bloqueada"
                 )
-            
+
+            verificar_escalado_em_outro_setor(db, data, item, setor_id)
+
             nova_escala = Escala(
                 DataEscala=data,
                 Horario=item.Horario,
                 Nome=item.Nome,
                 Cargo=item.Cargo,
-                Cpf=item.Cpf
+                Cpf=item.Cpf,
+                setor_id=setor_id
             )
             db.add(nova_escala)
             novas_escalas.append(nova_escala)

@@ -45,4 +45,6 @@ def _serialize_user(user: User) -> dict:
         "cargo": user.cargo,
         "horaEscala": user.horaEscala,
         "situacao": user.situacao,
+        "setor_id": user.setor_id,
+        "setor_nome": user.setor.nome if user.setor else None,
     }

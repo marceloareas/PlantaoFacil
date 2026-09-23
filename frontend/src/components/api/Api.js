@@ -4,9 +4,25 @@ const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1';
 const ApiServer = () => API_URL.replace(/\/api\/v\d+\/?$/, '');
 const getToken = () => localStorage.getItem('token');
 
+const SETOR_KEY = 'setorAtual';
+
+const getSetorAtual = () => {
+  try {
+    return JSON.parse(localStorage.getItem(SETOR_KEY));
+  } catch {
+    return null;
+  }
+};
+
+const setSetorAtual = (setor) => {
+  if (setor) localStorage.setItem(SETOR_KEY, JSON.stringify({ id: setor.id, nome: setor.nome }));
+  else localStorage.removeItem(SETOR_KEY);
+};
+
 const handleUnauthorized = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    setSetorAtual(null);
 
     if (window.location.pathname !== '/'){
         window.location.href = '/';
@@ -20,6 +36,9 @@ async function request(path, { method = 'GET', body, headers = {}, auth = true }
     const token = getToken();
     if (token) finalHeaders.Authorization = `Bearer ${token}`;
   }
+
+  const setor = getSetorAtual();
+  if (setor?.id && !finalHeaders['X-Setor-Id']) finalHeaders['X-Setor-Id'] = String(setor.id);
 
   const res = await fetch(`${API_URL}${path}`, {
     method,
@@ -60,4 +79,4 @@ const api = {
 };
 
 export default ApiServer;
-export { api, API_URL};
+export { api, API_URL, getSetorAtual, setSetorAtual };

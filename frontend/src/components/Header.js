@@ -6,15 +6,16 @@ import SignUpModal from '../pages/SignUpPage';
 import { PiStethoscopeFill } from "react-icons/pi";
 import { IoNotifications, IoHome } from "react-icons/io5";
 import { HiOutlineMenuAlt3 } from "react-icons/hi";
+import { FaHospital, FaExchangeAlt } from "react-icons/fa";
 import { api } from "./api/Api";
 
-const Header = ({ onOpenMenu, user, onLogout }) => {
+const Header = ({ onOpenMenu, user, onLogout, setor, onTrocarSetor }) => {
   const [showLogin, setShowLogin] = useState(false);
   const [showSignUp, setShowSignUp] = useState(false);
   const [notificacoesCount, setNotificacoesCount] = useState(0);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || (user.cargo === "Coordenador" && !setor)) return;
 
     const fetchNotificacoes = async () => {
       try {
@@ -41,7 +42,7 @@ const Header = ({ onOpenMenu, user, onLogout }) => {
     const interval = setInterval(fetchNotificacoes, 30000);
 
     return () => clearInterval(interval);
-  }, [user]);
+  }, [user, setor]);
 
   return (
     <div className='Container'>
@@ -54,6 +55,20 @@ const Header = ({ onOpenMenu, user, onLogout }) => {
       <nav>
         <ul>
           <li><NavLink to="/" end> <IoHome /> </NavLink></li>
+
+          {user && setor && (
+            <li>
+              {user.cargo === "Coordenador" ? (
+                <button className="login-button" onClick={onTrocarSetor} title="Trocar setor">
+                  <FaHospital /> <strong>{setor.nome}</strong> <FaExchangeAlt size={12} />
+                </button>
+              ) : (
+                <span className="setor-label">
+                  <FaHospital /> <strong>{setor.nome}</strong>
+                </span>
+              )}
+            </li>
+          )}
 
           <li>
             {user ? (

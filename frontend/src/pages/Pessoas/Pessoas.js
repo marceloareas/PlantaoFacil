@@ -4,7 +4,7 @@ import AdicionarTurno from "../../components/AdicionarTurnoModal";
 import { Spinner, Alert, Table, Button, Container, Row, Col, Form } from "react-bootstrap";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "./Pessoas.css";
-import { api } from "../../components/api/Api";
+import { api, getSetorAtual } from "../../components/api/Api";
 
 const formatDateBR = (date) => {
     const d = String(date.getDate()).padStart(2, "0");
@@ -19,18 +19,19 @@ const addDays = (date, days) => {
     return d;
 };
 
-const getEscalasFuturasDoUsuario = async (nomeCompleto, Cpf, diasBusca = 90) => {
+const getEscalasFuturasDoUsuario = async (nomeCompleto, Cpf, setorId, diasBusca = 90) => {
     const hoje = new Date();
     hoje.setHours(0, 0, 0, 0);
 
     const datasComEscala = [];
+    const opcoes = setorId ? { headers: { "X-Setor-Id": String(setorId) } } : undefined;
 
     for (let i = 1; i <= diasBusca; i++) {
         const data = addDays(hoje, i);
         const dataBR = formatDateBR(data);
 
         try {
-            const dataRes = await api.get(`/escaladodia/${dataBR}`);
+            const dataRes = await api.get(`/escaladodia/${dataBR}`, opcoes);
             const escala = dataRes?.Escala || [];
 
             const estaEscalado = escala.some((e) => e.Nome === nomeCompleto && e.Cpf === Cpf);
@@ -56,6 +57,8 @@ const Pessoas = () => {
     const [pessoaSelecionada, setPessoaSelecionada] = useState(null);
     const [filtro, setFiltro] = useState("");
     const [user, setUser] = useState(null);
+    const [setores, setSetores] = useState([]);
+    const [filtroSetor, setFiltroSetor] = useState(String(getSetorAtual()?.id ?? "todos"));
 
     useEffect(() => {
         const userData = localStorage.getItem("user");
@@ -79,8 +82,9 @@ const Pessoas = () => {
             if (!user || user.cargo.toLowerCase() !== "coordenador") return;
 
             try {
-                const data = await api.get("/users/");
+                const [data, listaSetores] = await Promise.all([api.get("/users/"), api.get("/setores/")]);
                 setUsuarios(data);
+                setSetores(listaSetores);
             } catch {
                 setErro("Não foi possível carregar os funcionários.");
             } finally {
@@ -115,6 +119,7 @@ const Pessoas = () => {
             const datasEscaladas = await getEscalasFuturasDoUsuario(
                 usuario.nome_completo,
                 usuario.cpf,
+                usuario.setor_id,
                 90
             );
 
@@ -136,6 +141,7 @@ const Pessoas = () => {
         const datasEscaladas = await getEscalasFuturasDoUsuario(
             usuario.nome_completo,
             usuario.cpf,
+            usuario.setor_id,
             90
         );
         if (datasEscaladas.length == 0 && 
@@ -165,8 +171,12 @@ const Pessoas = () => {
 
     
     const usuariosFiltrados = usuarios.filter((user) => {
+        if (filtroSetor === "sem" && user.setor_id) return false;
+        if (filtroSetor !== "todos" && filtroSetor !== "sem" && String(user.setor_id) !== filtroSetor) return false;
+
         const termo = filtro.toLowerCase();
         return (
+            user.setor_nome?.toLowerCase().includes(termo) ||
             user.nome_completo?.toLowerCase().includes(termo) ||
             user.cpf?.toLowerCase().includes(termo) ||
             user.crm?.toLowerCase().includes(termo) ||
@@ -197,10 +207,19 @@ const Pessoas = () => {
     return (
         <Container className="mt-4 pessoas-page">
             <Row className="mb-4">
-                <Col md={6}>
+                <Col md={5}>
                     <h2>Funcionários Cadastrados</h2>
                 </Col>
-                <Col md={6}>
+                <Col md={3}>
+                    <Form.Select value={filtroSetor} onChange={(e) => setFiltroSetor(e.target.value)}>
+                        <option value="todos">Todos os setores</option>
+                        {setores.map((s) => (
+                            <option key={s.id} value={String(s.id)}>{s.nome}</option>
+                        ))}
+                        <option value="sem">Sem setor (coordenadores)</option>
+                    </Form.Select>
+                </Col>
+                <Col md={4}>
                     <Form.Control
                         type="text"
                         placeholder="Nome, CPF, Cargo..."
@@ -215,6 +234,7 @@ const Pessoas = () => {
                     <tr>
                         <th>Nome</th>
                         <th>Cargo</th>
+                        <th>Setor</th>
                         <th>Escala</th>
                         <th>Email</th>
                         <th>CRM/COREN</th>
@@ -229,6 +249,7 @@ const Pessoas = () => {
                         <tr key={user.id}>
                             <td>{user.nome_completo}</td>
                             <td>{user.cargo}</td>
+                            <td>{user.setor_nome || "—"}</td>
                             <td>{user.horaEscala}</td>
                             <td>{user.email || "—"}</td>
                             <td>{user.crm || "—"}</td>
@@ -275,6 +296,7 @@ const Pessoas = () => {
                     onClose={() => setShowModalPessoa(false)}
                     pessoa={pessoaSelecionada}
                     onSave={handleSave}
+                    setores={setores}
                 />
             )}
 

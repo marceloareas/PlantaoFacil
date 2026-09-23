@@ -1,8 +1,10 @@
 from validators.turnosConsecutivos import verificar_turnos_consecutivos
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from core.dependencies import get_setor_id
 from database import get_db
 from models.trocasModels import Troca
+from models.userModels import User
 from schemas.trocasSchemas import TrocaCreate, TrocaResponse, TrocaUpdate
 from typing import List
 from models.escalaDiaModels import Escala
@@ -44,6 +46,13 @@ def validar_troca(db,cpf_solicitante,cpf_destinatario,data_solicitante,horario_s
     data_destinatario,
     horario_destinatario
 ):
+
+    solicitante = db.query(User).filter(User.cpf == cpf_solicitante).first()
+    destinatario = db.query(User).filter(User.cpf == cpf_destinatario).first()
+    if not solicitante or not destinatario:
+        raise HTTPException(status_code=404, detail="Solicitante ou destinatário não encontrado")
+    if solicitante.setor_id != destinatario.setor_id:
+        raise HTTPException(status_code=400, detail="Trocas só são permitidas entre funcionários do mesmo setor")
 
     data_solicitante_dt = datetime.strptime(data_solicitante,"%d-%m-%Y")
 
@@ -159,9 +168,14 @@ def destinatario_rejeitar(troca_id: int, db: Session = Depends(get_db)):
 @router.get("/", response_model=List[TrocaResponse])
 def listar_trocas(
     cpfSolicitante: str | None = None,
+    setor_id: int = Depends(get_setor_id),
     db: Session = Depends(get_db)
 ):
-    query = db.query(Troca)
+    query = (
+        db.query(Troca)
+        .join(User, Troca.cpfSolicitante == User.cpf)
+        .filter(User.setor_id == setor_id)
+    )
 
     if cpfSolicitante:
         query = query.filter(

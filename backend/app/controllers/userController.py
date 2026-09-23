@@ -15,6 +15,8 @@ def list_users(db: Session) -> list[dict]:
             "cargo": user.cargo,
             "horaEscala": user.horaEscala,
             "situacao": user.situacao,
+            "setor_id": user.setor_id,
+            "setor_nome": user.setor.nome if user.setor else None,
         }
         for user in userService.list_users(db)
     ]
@@ -37,5 +39,7 @@ def update_user(db: Session, user_id: int, payload: UserUpdate) -> dict:
             "cargo": db_user.cargo,
             "horaEscala": db_user.horaEscala,
             "situacao": db_user.situacao,
+            "setor_id": db_user.setor_id,
+            "setor_nome": db_user.setor.nome if db_user.setor else None,
         }
     }

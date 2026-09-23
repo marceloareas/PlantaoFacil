@@ -1,13 +1,14 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import "./EscalaDoDia.css";
-import { api } from "../../components/api/Api";
+import { api, getSetorAtual } from "../../components/api/Api";
 
 const categorias = ["Enfermeiro", "Tecnico"];
 
 const EscalaDoDia = () => {
     const { data } = useParams();
     const navigate = useNavigate();
+    const setorAtual = getSetorAtual();
     const [escala, setEscala] = useState([]);
     const [escalaExistente, setEscalaExistente] = useState([]);
     const [user, setUser] = useState(null);
@@ -74,6 +75,7 @@ const EscalaDoDia = () => {
         <div className="escala-page">
             <h2>
                 Escala do Dia: {data ? data.replaceAll("-", "/") : "Nenhuma data"}
+                {setorAtual && ` — ${setorAtual.nome}`}
             </h2>
 
             <table className="escala-table">

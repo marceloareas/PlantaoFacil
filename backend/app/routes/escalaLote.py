@@ -19,6 +19,9 @@ def criar_lote(dados: EscalaLoteSchemas, db: Session = Depends(get_db)):
     if not user:
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
 
+    if user.setor_id is None:
+        raise HTTPException(status_code=400, detail="Funcionário sem setor definido")
+
     pulos = {
         "12x36": 2, # para cada dia alocado, pula 2 dia (total 3 turnos)
         "12x60": 3, # para cada dia alocado, pula 3 dias (total 5 turnos)
@@ -66,7 +69,8 @@ def criar_lote(dados: EscalaLoteSchemas, db: Session = Depends(get_db)):
             Nome=user.nome_completo,
             Cargo=user.cargo,
             DataEscala=data,
-            Horario=dados.horario
+            Horario=dados.horario,
+            setor_id=user.setor_id
         )
         db.add(nova_escala)
 

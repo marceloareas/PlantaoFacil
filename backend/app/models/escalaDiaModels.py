@@ -11,5 +11,7 @@ class Escala(Base):
     Nome = Column(String(255), nullable=False)
     Cargo = Column(String(15), nullable=True)
     Cpf = Column(String(14), ForeignKey("users.cpf"), nullable=False)
+    setor_id = Column(Integer, ForeignKey("setores.id"), nullable=True)
     user = relationship("User", back_populates="escalas")
+    setor = relationship("Setor")
 

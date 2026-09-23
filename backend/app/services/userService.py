@@ -1,5 +1,7 @@
+from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from core.security import hash_password
+from models.setorModels import Setor
 from models.userModels import User
 from schemas.userSchemas import UserCreate, UserUpdate
 from validators.user_validations import validar_usuario_existente
@@ -9,8 +11,17 @@ def _normalizar_nome(nome: str) -> str:
     return " ".join(nome.split())
 
 
+def _setor_do_usuario(db: Session, payload: UserCreate | UserUpdate) -> int | None:
+    if payload.cargo.lower() == "coordenador":
+        return None
+    if not db.get(Setor, payload.setor_id):
+        raise HTTPException(status_code=400, detail="Setor não encontrado")
+    return payload.setor_id
+
+
 def create_user(db: Session, payload: UserCreate) -> User:
     validar_usuario_existente(db, payload)
+    setor_id = _setor_do_usuario(db, payload)
 
     novo_usuario = User(
         email=payload.email,
@@ -21,6 +32,7 @@ def create_user(db: Session, payload: UserCreate) -> User:
         cargo=payload.cargo,
         horaEscala=payload.horaEscala,
         situacao="Ativo",
+        setor_id=setor_id,
     )
 
     db.add(novo_usuario)
@@ -33,6 +45,7 @@ def update_user(db: Session, user_id: int, payload: UserUpdate) -> User | None:
     db_user = db.query(User).filter(User.id == user_id).first()
     if not db_user:
         return None
+    setor_id = _setor_do_usuario(db, payload)
 
     db_user.email = payload.email
     if payload.password:
@@ -43,6 +56,7 @@ def update_user(db: Session, user_id: int, payload: UserUpdate) -> User | None:
     db_user.cargo = payload.cargo
     db_user.horaEscala = payload.horaEscala
     db_user.situacao = payload.situacao
+    db_user.setor_id = setor_id
 
     db.commit()
     db.refresh(db_user)

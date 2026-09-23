@@ -40,6 +40,22 @@ export default function Help() {
       <hr />
 
       <section>
+        <h2>Setores</h2>
+        <p>
+          Cada colaborador pertence a um setor (ex.: UTI, Emergência), e cada setor tem sua própria escala,
+          trocas e indisponibilidades. O colaborador vê sempre a escala do seu setor.
+        </p>
+        <p>
+          Ao entrar no sistema, o gestor escolhe qual setor está coordenando naquele momento. O setor atual
+          aparece no topo da página; clique nele para trocar de setor. Para criar, renomear ou excluir setores,
+          use a opção <strong>“Setores”</strong> no menu. Para transferir um colaborador, edite-o na tela
+          <strong> “Funcionários”</strong>.
+        </p>
+      </section>
+
+      <hr />
+
+      <section>
         <h2>Cadastro de usuários</h2>
         <p>
           Somente o gestor possui acesso à tela de cadastro.  

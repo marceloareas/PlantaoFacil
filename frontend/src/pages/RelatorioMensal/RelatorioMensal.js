@@ -1,9 +1,11 @@
 import { useState } from "react";
-import { api } from "../../components/api/Api";
+import { api, getSetorAtual } from "../../components/api/Api";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "./RelatorioMensal.css";
 
 function RelatorioMensal() {
+
+    const titulo = `Relatório Mensal${getSetorAtual() ? ` — ${getSetorAtual().nome}` : ""}`;
 
     const [dataInicial, setDataInicial] = useState("");
     const [dadosRelatorio, setDadosRelatorio] = useState({});
@@ -230,6 +232,7 @@ function RelatorioMensal() {
         `);
 
         janela.document.close();
+        janela.document.querySelector("h1").textContent = titulo;
 
         setTimeout(() => {
 
@@ -243,7 +246,7 @@ function RelatorioMensal() {
 
         <div className="container-fluid mt-4">
 
-            <h2>Relatório Mensal</h2>
+            <h2>{titulo}</h2>
 
             <div className="row mt-3">
 

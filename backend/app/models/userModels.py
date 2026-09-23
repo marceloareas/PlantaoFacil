@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String
+from sqlalchemy import Column, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship
 from database import Base
 
@@ -14,6 +14,9 @@ class User(Base):
     cargo = Column(String(100), nullable=False)
     horaEscala = Column(String(50), nullable=False, default="12X36")
     situacao = Column(String(50), default="Ativo")
+    # Coordenadores não pertencem a um setor: escolhem qual coordenar ao entrar.
+    setor_id = Column(Integer, ForeignKey("setores.id"), nullable=True)
+    setor = relationship("Setor", back_populates="usuarios")
     ausentes = relationship("Ausentes", back_populates="user")
     escalas = relationship("Escala", back_populates="user")
 
