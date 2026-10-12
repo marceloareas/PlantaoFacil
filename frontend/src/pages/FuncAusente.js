@@ -82,7 +82,7 @@ const FuncionariosAusentes = () => {
             if (res.ok) {
                 const data = await res.json();
                 data.Escala?.forEach((e) => {
-                    if (e.Nome === func.nome && e.Horario === func.horario) {
+                    if (e.cpf === func.cpf && e.Horario === func.horario) {
                         conflitos.push({
                             data: formatarDataBR(func.data),
                             horario: e.Horario,
@@ -116,7 +116,7 @@ const FuncionariosAusentes = () => {
 
                 for (const turno of turnosParaVerificar) {
                     const existe = data.Escala?.some(
-                        (e) => e.Nome === func.nome && e.Horario === turno
+                        (e) => e.cpf === func.cpf && e.Horario === turno
                     );
 
                     console.log(

@@ -34,7 +34,7 @@ const getEscalasFuturasDoUsuario = async (nomeCompleto, Cpf, setorId, diasBusca 
             const dataRes = await api.get(`/escaladodia/${dataBR}`, opcoes);
             const escala = dataRes?.Escala || [];
 
-            const estaEscalado = escala.some((e) => e.Nome === nomeCompleto && e.Cpf === Cpf);
+            const estaEscalado = escala.some((e) => e.Cpf === Cpf);
 
             if (estaEscalado) {
                 datasComEscala.push(dataBR);

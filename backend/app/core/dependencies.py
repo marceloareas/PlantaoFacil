@@ -9,8 +9,8 @@ from models.setorModels import Setor
 from models.userModels import User
 
 
-# tokenUrl é o endpoint que gera o token — usado pelo Swagger pra exibir
-# o botão "Authorize". Aponta para o login REST versionado.
+# tokenUrl é o endpoint que gera o token, usado pelo Swagger pra exibir
+# o botão "Authorize". Aponta para o login REST.
 oauth2_scheme = OAuth2PasswordBearer(
     tokenUrl=f"{settings.API_V1_PREFIX}/auth/login"
 )
@@ -21,7 +21,7 @@ oauth2_scheme_opcional = OAuth2PasswordBearer(
 
 
 def is_coordenador(user: User) -> bool:
-    return (user.cargo or "").lower() == "coordenador"
+    return (user.cargo or "").strip().lower() == "coordenador"
 
 
 def get_current_user(
@@ -67,12 +67,16 @@ def get_optional_user(
 
 
 def require_coordenador(current_user: User = Depends(get_current_user)) -> User:
+    """Permite a operação somente para usuários com cargo de coordenador."""
     if not is_coordenador(current_user):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Apenas coordenadores podem realizar esta ação",
+            detail="Apenas coordenadores podem realizar esta operação",
         )
     return current_user
+
+
+get_current_coordinator = require_coordenador
 
 
 def get_setor_id(

@@ -1,7 +1,7 @@
 from sqlalchemy import inspect, text
 
 from database import Base, engine
-from models import setorModels, userModels, escalaDiaModels, funcAusentesModels, trocasModels  # noqa: F401
+from models import setorModels, userModels, escalaDiaModels, funcAusentesModels, trocasModels, periodoModels  # noqa: F401
 
 SETOR_PADRAO = "Geral"
 
