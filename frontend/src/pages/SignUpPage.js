@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { CiLogin } from "react-icons/ci";
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { api, getSetorAtual } from '../components/api/Api';
+import { isCargoGestao } from '../components/utils/perfis';
+import { OPCOES_TURNO, opcoesDeCargo, usuarioDaSessao } from '../components/EditarPessoaModal';
 
 
 const SignUpModal = ({ show, onClose }) => {
@@ -16,8 +18,12 @@ const SignUpModal = ({ show, onClose }) => {
   const [cpfValido, setCpfValido] = useState(null);
   const [setores, setSetores] = useState([]);
   const [setorId, setSetorId] = useState('');
+  const [turno, setTurno] = useState('');
+  const [inicioCiclo, setInicioCiclo] = useState('');
+  const [usuarioLogado] = useState(usuarioDaSessao);
 
-  const isCoordenador = cargo === 'Coordenador';
+  const cargoDeGestao = isCargoGestao(cargo);
+  const opcoesCargo = opcoesDeCargo(usuarioLogado);
 
   useEffect(() => {
     if (!show) return;
@@ -90,7 +96,8 @@ const SignUpModal = ({ show, onClose }) => {
       return;
     }
 
-    if (!email || !password || !cpf || !name || !crms || !cargo || !horaEscala || (!isCoordenador && !setorId)) {
+    if (!email || !password || !cpf || !name || !crms || !cargo || !horaEscala ||
+      (!cargoDeGestao && (!setorId || !turno || !inicioCiclo))) {
       setError("Preencha todos os campos obrigatórios!");
       return;
     }
@@ -112,11 +119,14 @@ const SignUpModal = ({ show, onClose }) => {
       cargo,
       horaEscala: horaEscala,
       situacao: "Ativo",
-      setor_id: isCoordenador ? null : Number(setorId)
+      setor_id: cargoDeGestao ? null : Number(setorId),
+      turno: cargoDeGestao ? null : turno,
+      inicio_ciclo: cargoDeGestao ? null : inicioCiclo
     };
 
     try {
-      await api.post('/auth/register', payload, { auth: false});
+      // o cadastro exige um gestor logado, então a chamada leva o token
+      await api.post('/auth/register', payload);
 
       setEmail('');
       setPassword('');
@@ -125,6 +135,8 @@ const SignUpModal = ({ show, onClose }) => {
       setName('');
       setCargo('Tecnico');
       sethoraEscala('12x36');
+      setTurno('');
+      setInicioCiclo('');
       setError('');
       onClose();
 
@@ -132,16 +144,8 @@ const SignUpModal = ({ show, onClose }) => {
       window.location.reload();
 
     } catch (err) {
-      //setError("Erro de conexão com o servidor");
-      console.log("ERRO COMPLETO:", err);
-      console.log("RESPONSE:", err.response);
-      console.log("DATA:", err.response?.data);
-
-      setError(
-        err.response?.data?.detail ||
-        JSON.stringify(err.response?.data) ||
-        err.message
-      );
+      console.error("Erro ao cadastrar usuário:", err);
+      setError(err.message || "Erro de conexão com o servidor");
     }
   };
 
@@ -153,6 +157,8 @@ const SignUpModal = ({ show, onClose }) => {
     setName('');
     setCargo('Tecnico');
     sethoraEscala('12x36');
+    setTurno('');
+    setInicioCiclo('');
     setError('');
     setCpfValido('');
     return;
@@ -255,12 +261,12 @@ const SignUpModal = ({ show, onClose }) => {
                     onChange={(e) => setCargo(e.target.value)}
                     required
                   >
-                    <option value="Tecnico">Técnico(a) de Enfermagem</option>
-                    <option value="Enfermeiro">Enfermeiro(a)</option>
-                    <option value="Coordenador">Coordenador</option>
+                    {opcoesCargo.map((c) => (
+                      <option key={c.valor} value={c.valor}>{c.rotulo}</option>
+                    ))}
                   </select>
                 </div>
-                {!isCoordenador && (
+                {!cargoDeGestao && (
                   <div className="mb-3">
                     <label className="form-label">Setor</label>
                     <select
@@ -288,6 +294,37 @@ const SignUpModal = ({ show, onClose }) => {
                     <option value="12x60">12x60</option>
                   </select>
                 </div>
+                {!cargoDeGestao && (
+                  <>
+                    <div className="mb-3">
+                      <label className="form-label">Turno</label>
+                      <select
+                        className="form-control"
+                        value={turno}
+                        onChange={(e) => setTurno(e.target.value)}
+                        required
+                      >
+                        <option value="">Selecione o turno</option>
+                        {OPCOES_TURNO.map((t) => (
+                          <option key={t.valor} value={t.valor}>{t.rotulo}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="mb-3">
+                      <label className="form-label">Início do ciclo</label>
+                      <input
+                        type="date"
+                        className="form-control"
+                        value={inicioCiclo}
+                        onChange={(e) => setInicioCiclo(e.target.value)}
+                        required
+                      />
+                      <div className="form-text">
+                        Primeiro dia de trabalho. A escala do período segue o regime a partir dele.
+                      </div>
+                    </div>
+                  </>
+                )}
                 <button type="submit" className="btn btn-primary w-100">
                   Cadastrar
                 </button>

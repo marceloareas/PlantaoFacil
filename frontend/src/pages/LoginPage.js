@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { CiLogin } from "react-icons/ci";
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { api, setSetorAtual } from '../components/api/Api';
+import { isGestor } from '../components/utils/perfis';
 
 const LoginModal = ({ show, onClose }) => {
   const [email, setEmail] = useState('');
@@ -24,9 +25,9 @@ const LoginModal = ({ show, onClose }) => {
 
       localStorage.setItem('token', data.access_token);
       localStorage.setItem('user', JSON.stringify(data.user));
-      // coordenador escolhe o setor a cada login; funcionário usa sempre o seu
+      // gestor escolhe o setor a cada login; funcionário usa sempre o seu
       setSetorAtual(
-        data.user.cargo !== 'Coordenador' && data.user.setor_id
+        !isGestor(data.user) && data.user.setor_id
           ? { id: data.user.setor_id, nome: data.user.setor_nome }
           : null
       );

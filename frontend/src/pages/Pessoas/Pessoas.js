@@ -1,10 +1,25 @@
 import { useState, useEffect } from "react";
-import EditarPessoa from "../../components/EditarPessoaModal";
+import EditarPessoa, { OPCOES_TURNO } from "../../components/EditarPessoaModal";
 import AdicionarTurno from "../../components/AdicionarTurnoModal";
-import { Spinner, Alert, Table, Button, Container, Row, Col, Form } from "react-bootstrap";
+import { Spinner, Alert, Table, Button, Container, Row, Col, Form, Badge } from "react-bootstrap";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "./Pessoas.css";
 import { api, getSetorAtual } from "../../components/api/Api";
+import { isAdmin, isCargoGestao, isGestor } from "../../components/utils/perfis";
+
+const NAO_DEFINIDO = "Não definido";
+
+const formatarTurno = (turno) => {
+    const opcao = OPCOES_TURNO.find((t) => t.valor === turno);
+    return opcao ? opcao.rotulo.split(" ")[0] : NAO_DEFINIDO;
+};
+
+// "AAAA-MM-DD" para "dd/mm/aaaa" sem passar por Date (evita erro de fuso)
+const formatarInicioCiclo = (data) => {
+    if (!data) return NAO_DEFINIDO;
+    const [ano, mes, dia] = data.split("-");
+    return `${dia}/${mes}/${ano}`;
+};
 
 const formatDateBR = (date) => {
     const d = String(date.getDate()).padStart(2, "0");
@@ -66,7 +81,7 @@ const Pessoas = () => {
             const parsedUser = JSON.parse(userData);
             setUser(parsedUser);
 
-            if (parsedUser.cargo.toLowerCase() !== "coordenador") {
+            if (!isGestor(parsedUser)) {
                 setErro("Você não tem permissão para acessar esta página.");
                 setLoading(false);
             }
@@ -79,7 +94,7 @@ const Pessoas = () => {
     
     useEffect(() => {
         const fetchUsuarios = async () => {
-            if (!user || user.cargo.toLowerCase() !== "coordenador") return;
+            if (!isGestor(user)) return;
 
             try {
                 const [data, listaSetores] = await Promise.all([api.get("/users/"), api.get("/setores/")]);
@@ -165,9 +180,12 @@ const Pessoas = () => {
 
         } catch(err) {
             console.log(err)
-            alert("Erro de conexão com o servidor");
+            alert(err.message || "Erro de conexão com o servidor");
         }
     };
+
+    // só o admin altera coordenadores e admins
+    const podeEditar = (pessoa) => isAdmin(user) || !isCargoGestao(pessoa.cargo);
 
     
     const usuariosFiltrados = usuarios.filter((user) => {
@@ -216,7 +234,7 @@ const Pessoas = () => {
                         {setores.map((s) => (
                             <option key={s.id} value={String(s.id)}>{s.nome}</option>
                         ))}
-                        <option value="sem">Sem setor (coordenadores)</option>
+                        <option value="sem">Sem setor (coordenadores e admins)</option>
                     </Form.Select>
                 </Col>
                 <Col md={4}>
@@ -236,6 +254,8 @@ const Pessoas = () => {
                         <th>Cargo</th>
                         <th>Setor</th>
                         <th>Escala</th>
+                        <th>Turno</th>
+                        <th>Início do ciclo</th>
                         <th>Email</th>
                         <th>CRM/COREN</th>
                         <th>CPF</th>
@@ -245,48 +265,69 @@ const Pessoas = () => {
                     </tr>
                 </thead>
                 <tbody>
-                    {usuariosFiltrados.map((user) => (
-                        <tr key={user.id}>
-                            <td>{user.nome_completo}</td>
-                            <td>{user.cargo}</td>
-                            <td>{user.setor_nome || "—"}</td>
-                            <td>{user.horaEscala}</td>
-                            <td>{user.email || "—"}</td>
-                            <td>{user.crm || "—"}</td>
-                            <td>{user.cpf || "—"}</td>
-                            <td>
-                                <Button
-                                    size="sm"
-                                    variant={user.situacao === "Ativo" ? "success" : "danger"}
-                                    onClick={() => alternarStatusUsuario(user)}
-                                >
-                                    {user.situacao}
-                                </Button>
-                            </td>
-                            <td>
-                                {user.situacao === "Ativo" && (
-                                    <Button
-                                        size="sm"
-                                        variant="warning"
-                                        onClick={() => abrirModalpessoa(user)}
-                                    >
-                                        Editar
-                                    </Button>
-                                )}
-                            </td>
-                            <td>
-                                {user.situacao === "Ativo" && (
-                                    <Button
-                                        size="sm"
-                                        variant="success"
-                                        onClick={() => abrirModalTurnos(user)}
-                                    >
-                                        Adicionar
-                                    </Button>
-                                )}
-                            </td>
-                        </tr>
-                    ))}
+                    {usuariosFiltrados.map((pessoa) => {
+                        const gestao = isCargoGestao(pessoa.cargo);
+                        const editavel = podeEditar(pessoa);
+                        // funcionário sem turno ou início do ciclo fica de fora da escala gerada do período
+                        const classeNaoDefinido = gestao ? "text-muted" : "text-danger";
+
+                        return (
+                            <tr key={pessoa.id}>
+                                <td>{pessoa.nome_completo}</td>
+                                <td>{pessoa.cargo}</td>
+                                <td>{pessoa.setor_nome || "—"}</td>
+                                <td>{pessoa.horaEscala}</td>
+                                <td className={pessoa.turno ? undefined : classeNaoDefinido}>
+                                    {formatarTurno(pessoa.turno)}
+                                </td>
+                                <td className={pessoa.inicio_ciclo ? undefined : classeNaoDefinido}>
+                                    {formatarInicioCiclo(pessoa.inicio_ciclo)}
+                                </td>
+                                <td>{pessoa.email || "—"}</td>
+                                <td>{pessoa.crm || "—"}</td>
+                                <td>{pessoa.cpf || "—"}</td>
+                                <td>
+                                    {/* ninguém desativa a própria conta */}
+                                    {editavel && pessoa.id !== user?.id ? (
+                                        <Button
+                                            size="sm"
+                                            variant={pessoa.situacao === "Ativo" ? "success" : "danger"}
+                                            onClick={() => alternarStatusUsuario(pessoa)}
+                                        >
+                                            {pessoa.situacao}
+                                        </Button>
+                                    ) : (
+                                        <Badge bg={pessoa.situacao === "Ativo" ? "success" : "danger"}>
+                                            {pessoa.situacao}
+                                        </Badge>
+                                    )}
+                                </td>
+                                <td>
+                                    {editavel && pessoa.situacao === "Ativo" && (
+                                        <Button
+                                            size="sm"
+                                            variant="warning"
+                                            onClick={() => abrirModalpessoa(pessoa)}
+                                        >
+                                            Editar
+                                        </Button>
+                                    )}
+                                </td>
+                                <td>
+                                    {/* gestores não têm setor, então não recebem plantões */}
+                                    {!gestao && pessoa.situacao === "Ativo" && (
+                                        <Button
+                                            size="sm"
+                                            variant="success"
+                                            onClick={() => abrirModalTurnos(pessoa)}
+                                        >
+                                            Adicionar
+                                        </Button>
+                                    )}
+                                </td>
+                            </tr>
+                        );
+                    })}
                 </tbody>
             </Table>
 

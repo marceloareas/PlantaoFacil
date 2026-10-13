@@ -3,6 +3,19 @@ import { useEffect, useState, React } from "react";
 import "./EscalaDaSemana.css";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { api, getSetorAtual } from "../../components/api/Api";
+import { isGestor } from "../../components/utils/perfis";
+import FaltaModal from "../../components/FaltaModal";
+
+const toISO = (dataBR) => {
+    const [d, m, y] = dataBR.split("-");
+    return `${y}-${m}-${d}`;
+};
+
+// "AAAA-MM-DD" direto para "DD/MM/AAAA": new Date() leria em UTC e mostraria o dia anterior
+const formatarDataBR = (valor) =>
+    /^\d{4}-\d{2}-\d{2}$/.test(valor || "")
+        ? valor.split("-").reverse().join("/")
+        : valor;
 
 const EscalaDaSemana = () => {
     const navigate = useNavigate();
@@ -17,6 +30,10 @@ const EscalaDaSemana = () => {
     const [trocasAprovadas, setTrocasAprovadas] = useState([]);
     const [modalInfo, setModalInfo] = useState(null);
 
+    const [faltas, setFaltas] = useState([]);
+    const [versaoFaltas, setVersaoFaltas] = useState(0);
+    const [faltaSelecionada, setFaltaSelecionada] = useState(null);
+
     useEffect(() => {
     const userData = localStorage.getItem("user");
 
@@ -24,6 +41,8 @@ const EscalaDaSemana = () => {
         setUser(JSON.parse(userData));
     }
     }, []);
+
+    const gestor = isGestor(user);
 
     const horarios = ["07:00 - 19:00", "19:00 - 07:00"];
 
@@ -47,6 +66,27 @@ const EscalaDaSemana = () => {
     useEffect(() => {
         gerarDiasDaSemana(dataReferencia);
     }, [dataReferencia]);
+
+    useEffect(() => {
+        if (!gestor || diasSemana.length === 0) return;
+
+        let ativo = true;
+        const inicio = toISO(diasSemana[0].data);
+        const fim = toISO(diasSemana[diasSemana.length - 1].data);
+
+        api.get(`/faltas/?inicio=${inicio}&fim=${fim}`)
+            .then(data => { if (ativo) setFaltas(data || []); })
+            .catch(err => console.error("Erro faltas:", err));
+
+        return () => { ativo = false; };
+    }, [gestor, diasSemana, versaoFaltas]);
+
+    const faltaDe = (cpf, dataBR, horario) => {
+        const dataISO = toISO(dataBR);
+        return faltas.find(
+            f => f.cpf === cpf && f.data === dataISO && f.horario === horario
+        ) || null;
+    };
 
     const gerarDiasDaSemana = async (referencia) => {
         const dias = [];
@@ -85,7 +125,7 @@ const EscalaDaSemana = () => {
                 data.Escala?.forEach(item => {
                     if (!escalaDia[item.Horario]) escalaDia[item.Horario] = {};
                     if (!escalaDia[item.Horario][item.Cargo]) escalaDia[item.Horario][item.Cargo] = [];
-                    escalaDia[item.Horario][item.Cargo].push({ nome: item.Nome, cpf: item.Cpf });
+                    escalaDia[item.Horario][item.Cargo].push({ nome: item.Nome, cpf: item.Cpf, tipo: item.Tipo });
                     cargosSet.add(item.Cargo);
                 });
 
@@ -113,11 +153,6 @@ const EscalaDaSemana = () => {
         const m = String(data.getMonth() + 1).padStart(2, "0");
         const y = data.getFullYear();
         return `${d}-${m}-${y}`;
-    };
-
-    const toISO = (dataBR) => {
-        const [d, m, y] = dataBR.split("-");
-        return `${y}-${m}-${d}`;
     };
 
     const normalizarData = (data) =>
@@ -246,20 +281,41 @@ const EscalaDaSemana = () => {
                                             {escalaDia[cargo]?.length ? (
                                                 escalaDia[cargo].map((funcionario, i) => {
                                                     const participanteTroca = funcionarioNaTroca(funcionario.cpf, troca);
+                                                    const falta = gestor ? faltaDe(funcionario.cpf, dia.data, horario) : null;
                                                     return (
                                                     <div
                                                         key={i}
                                                         style={{
-                                                            
+
                                                             color: isUsuarioDesativado(funcionario.cpf)
                                                                 ? "red"
                                                                 : participanteTroca ? "#d39e00" : "inherit",
                                                             fontWeight: participanteTroca ? "bold" : "normal",
-                                                            cursor: participanteTroca ? "pointer" : "default"
+                                                            cursor: gestor || participanteTroca ? "pointer" : "default"
                                                         }}
-                                                        onClick={() => participanteTroca && setModalInfo(troca)}
+                                                        title={gestor ? "Registrar ou ver falta" : undefined}
+                                                        onClick={() => {
+                                                            if (gestor) {
+                                                                setFaltaSelecionada({
+                                                                    funcionario: { nome: funcionario.nome, cpf: funcionario.cpf },
+                                                                    dataBR: dia.data,
+                                                                    horario,
+                                                                    troca: participanteTroca ? troca : null
+                                                                });
+                                                            } else if (participanteTroca) {
+                                                                setModalInfo(troca);
+                                                            }
+                                                        }}
                                                     >
-                                                        • {nomeSobrenome(funcionario.nome)}
+                                                        • <span style={{ textDecoration: falta ? "line-through" : "none" }}>
+                                                            {nomeSobrenome(funcionario.nome)}
+                                                        </span>
+                                                        {funcionario.tipo === "extra" && (
+                                                            <span className="badge bg-info text-dark ms-1">extra</span>
+                                                        )}
+                                                        {falta && (
+                                                            <span className="badge bg-danger ms-1">faltou</span>
+                                                        )}
                                                     </div>
                                                     );
                                                     })
@@ -294,10 +350,10 @@ const EscalaDaSemana = () => {
                     <div className="modal-box" onClick={e => e.stopPropagation()}>
                         <h4>Troca Aprovada</h4>
                         <p><strong>Solicitante:</strong> {modalInfo.nomeSolicitante}</p>
-                        <p><strong>Data solicitante:</strong> {new Date(modalInfo.meudia).toLocaleDateString("pt-BR")}</p>
+                        <p><strong>Data solicitante:</strong> {formatarDataBR(modalInfo.meudia)}</p>
                         <p><strong>Turno solicitante:</strong> {modalInfo.horariosolicitante}</p>
                         <p><strong>Destinatário:</strong> {modalInfo.nomeDestinatario}</p>
-                        <p><strong>Data destinatário:</strong> {new Date(modalInfo.diacolega).toLocaleDateString("pt-BR")}</p>
+                        <p><strong>Data destinatário:</strong> {formatarDataBR(modalInfo.diacolega)}</p>
                         <p><strong>Turno destinatário:</strong> {modalInfo.horariodestinatario}</p>
                         <p><strong>Motivo:</strong> {modalInfo.motivo}</p>
 
@@ -307,6 +363,24 @@ const EscalaDaSemana = () => {
                     </div>
                 </div>
             )}
+
+            <FaltaModal
+                show={!!faltaSelecionada}
+                onClose={() => setFaltaSelecionada(null)}
+                funcionario={faltaSelecionada?.funcionario}
+                dataBR={faltaSelecionada?.dataBR}
+                horario={faltaSelecionada?.horario}
+                troca={faltaSelecionada?.troca}
+                falta={
+                    faltaSelecionada
+                        ? faltaDe(faltaSelecionada.funcionario.cpf, faltaSelecionada.dataBR, faltaSelecionada.horario)
+                        : null
+                }
+                onAlterado={() => {
+                    setFaltaSelecionada(null);
+                    setVersaoFaltas(v => v + 1);
+                }}
+            />
         </div>
     );
 };

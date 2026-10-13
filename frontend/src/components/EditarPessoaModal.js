@@ -1,8 +1,35 @@
 import { useState, useEffect } from "react";
-import { Modal, Button, Form } from "react-bootstrap";
+import { Modal, Button, Form, Alert } from "react-bootstrap";
 import { api } from "./api/Api";
+import { CARGO_ADMIN, CARGO_COORDENADOR, isAdmin, isCargoGestao } from "./utils/perfis";
+
+export const OPCOES_TURNO = [
+    { valor: "07:00 - 19:00", rotulo: "Diurno 07:00 - 19:00" },
+    { valor: "19:00 - 07:00", rotulo: "Noturno 19:00 - 07:00" },
+];
+
+// só o admin cadastra ou altera coordenadores e admins
+export const opcoesDeCargo = (usuarioLogado) => [
+    { valor: "Tecnico", rotulo: "Técnico(a) de Enfermagem" },
+    { valor: "Enfermeiro", rotulo: "Enfermeiro(a)" },
+    ...(isAdmin(usuarioLogado)
+        ? [
+            { valor: CARGO_COORDENADOR, rotulo: "Coordenador" },
+            { valor: CARGO_ADMIN, rotulo: "Admin" },
+        ]
+        : []),
+];
+
+export const usuarioDaSessao = () => {
+    try {
+        return JSON.parse(localStorage.getItem("user"));
+    } catch {
+        return null;
+    }
+};
 
 const EditarPessoaModal = ({ show, onClose, pessoa, onSave, setores = [] }) => {
+    const [usuarioLogado] = useState(usuarioDaSessao);
     const [formData, setFormData] = useState({
         nome_completo: "",
         email: "",
@@ -13,6 +40,8 @@ const EditarPessoaModal = ({ show, onClose, pessoa, onSave, setores = [] }) => {
         horaEscala: "",
         situacao: "",
         setor_id: "",
+        turno: "",
+        inicio_ciclo: "",
     });
     const [error, setError] = useState("");
 
@@ -28,6 +57,8 @@ const EditarPessoaModal = ({ show, onClose, pessoa, onSave, setores = [] }) => {
                 horaEscala: pessoa.horaEscala || "",
                 situacao: pessoa.situacao,
                 setor_id: pessoa.setor_id ? String(pessoa.setor_id) : "",
+                turno: pessoa.turno || "",
+                inicio_ciclo: pessoa.inicio_ciclo || "",
             });
             setError("");
         }
@@ -62,14 +93,14 @@ const EditarPessoaModal = ({ show, onClose, pessoa, onSave, setores = [] }) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        const { nome_completo, email, password, crm, cpf, cargo, horaEscala, situacao } = formData;
-        const isCoordenador = cargo === "Coordenador";
-        if (!nome_completo || !email || !crm || !cpf || !cargo || !horaEscala || (!isCoordenador && !formData.setor_id)) {
+        const { nome_completo, email, crm, cpf, cargo, horaEscala } = formData;
+        const gestao = isCargoGestao(cargo);
+        if (!nome_completo || !email || (!crm && !gestao) || !cpf || !cargo || !horaEscala || (!gestao && !formData.setor_id)) {
             setError("Preencha todos os campos obrigatórios!");
             return;
         }
 
-        const crmValid = validateCrm(crm);
+        const crmValid = crm ? validateCrm(crm) : { valido: true };
         if (!crmValid.valido) {
             setError(crmValid.mensagem);
             return;
@@ -80,7 +111,10 @@ const EditarPessoaModal = ({ show, onClose, pessoa, onSave, setores = [] }) => {
         try {
             const data = await api.put(`/users/${pessoa.id}`, {
                 ...formData,
-                setor_id: isCoordenador ? null : Number(formData.setor_id),
+                crm: crm || null,
+                setor_id: gestao ? null : Number(formData.setor_id),
+                turno: gestao ? null : formData.turno || null,
+                inicio_ciclo: gestao ? null : formData.inicio_ciclo || null,
             });
             onSave(data);
             onClose();
@@ -90,6 +124,14 @@ const EditarPessoaModal = ({ show, onClose, pessoa, onSave, setores = [] }) => {
             setError(err.message || "Erro de conexão com o servidor");
         }
     };
+
+    const cargoDeGestao = isCargoGestao(formData.cargo);
+    const editandoASiMesmo = Boolean(pessoa && usuarioLogado && pessoa.id === usuarioLogado.id);
+    const opcoesCargo = opcoesDeCargo(usuarioLogado);
+    // mantém o cargo atual visível mesmo quando o usuário logado não pode escolhê-lo
+    if (formData.cargo && !opcoesCargo.some((c) => c.valor === formData.cargo)) {
+        opcoesCargo.push({ valor: formData.cargo, rotulo: formData.cargo });
+    }
 
     return (
         <Modal show={show} onHide={onClose} centered>
@@ -132,14 +174,14 @@ const EditarPessoaModal = ({ show, onClose, pessoa, onSave, setores = [] }) => {
                     </Form.Group>
 
                     <Form.Group className="mb-3">
-                        <Form.Label>CRM</Form.Label>
+                        <Form.Label>CRM{cargoDeGestao && " (opcional)"}</Form.Label>
                         <Form.Control
                             type="text"
                             name="crm"
                             value={formData.crm}
                             placeholder="Ex: 123456-RJ/ENF"
                             onChange={handleChange}
-                            required
+                            required={!cargoDeGestao}
                         />
                     </Form.Group>
 
@@ -161,15 +203,19 @@ const EditarPessoaModal = ({ show, onClose, pessoa, onSave, setores = [] }) => {
                             name="cargo"
                             value={formData.cargo}
                             onChange={handleChange}
+                            disabled={editandoASiMesmo}
                             required
                         >
                             <option value="">Selecione o cargo</option>
-                            <option value="Tecnico">Técnico(a) de Enfermagem</option>
-                            <option value="Enfermeiro">Enfermeiro(a)</option>
-                            <option value="Coordenador">Coordenador</option>
+                            {opcoesCargo.map((c) => (
+                                <option key={c.valor} value={c.valor}>{c.rotulo}</option>
+                            ))}
                         </Form.Select>
+                        {editandoASiMesmo && (
+                            <Form.Text muted>Você não pode alterar o seu próprio cargo.</Form.Text>
+                        )}
                     </Form.Group>
-                    {formData.cargo !== "Coordenador" && (
+                    {!cargoDeGestao && (
                         <Form.Group className="mb-3">
                             <Form.Label>Setor</Form.Label>
                             <Form.Select
@@ -197,6 +243,42 @@ const EditarPessoaModal = ({ show, onClose, pessoa, onSave, setores = [] }) => {
                             <option value="12x60">12x60</option>
                         </Form.Select>
                     </Form.Group>
+                    {!cargoDeGestao && (
+                        <>
+                            <Form.Group className="mb-3">
+                                <Form.Label>Turno</Form.Label>
+                                <Form.Select
+                                    name="turno"
+                                    value={formData.turno}
+                                    onChange={handleChange}
+                                >
+                                    <option value="">Não definido</option>
+                                    {OPCOES_TURNO.map((t) => (
+                                        <option key={t.valor} value={t.valor}>{t.rotulo}</option>
+                                    ))}
+                                </Form.Select>
+                            </Form.Group>
+
+                            <Form.Group className="mb-3">
+                                <Form.Label>Início do ciclo</Form.Label>
+                                <Form.Control
+                                    type="date"
+                                    name="inicio_ciclo"
+                                    value={formData.inicio_ciclo}
+                                    onChange={handleChange}
+                                />
+                                <Form.Text muted>
+                                    Primeiro dia de trabalho. A escala do período segue o regime a partir dele.
+                                </Form.Text>
+                            </Form.Group>
+
+                            {(!formData.turno || !formData.inicio_ciclo) && (
+                                <Alert variant="warning">
+                                    Sem turno e início do ciclo o funcionário não entra na escala gerada do período.
+                                </Alert>
+                            )}
+                        </>
+                    )}
 
                     <div className="d-flex justify-content-end">
                         <Button variant="secondary" onClick={onClose} className="me-2">

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import "./trocas.css";
 import { api } from "../../components/api/Api";
+import { isGestor } from "../../components/utils/perfis";
 
 const Trocas = () => {
   const [user, setUser] = useState(null);
@@ -245,7 +246,7 @@ const Trocas = () => {
 
       <h2>{idEdicao ? "Editar Solicitação de Troca" : "Solicitar Troca de Plantão"}</h2>
 
-      {user && user.cargo !== "Coordenador" ? (
+      {user && !isGestor(user) ? (
         <>
           <form onSubmit={handleSubmit} className="troca-form">
 

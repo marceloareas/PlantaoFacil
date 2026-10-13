@@ -2,8 +2,16 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import "./EscalaDoDia.css";
 import { api, getSetorAtual } from "../../components/api/Api";
+import { isGestor } from "../../components/utils/perfis";
+import FaltaModal from "../../components/FaltaModal";
 
 const categorias = ["Enfermeiro", "Tecnico"];
+const horarios = ["07:00 - 19:00", "19:00 - 07:00"];
+
+const toISO = (dataBR) => {
+    const [d, m, y] = dataBR.split("-");
+    return `${y}-${m}-${d}`;
+};
 
 const EscalaDoDia = () => {
     const { data } = useParams();
@@ -13,7 +21,9 @@ const EscalaDoDia = () => {
     const [escalaExistente, setEscalaExistente] = useState([]);
     const [user, setUser] = useState(null);
 
-    const horarios = ["07:00 - 19:00", "19:00 - 07:00"];
+    const [faltas, setFaltas] = useState([]);
+    const [versaoFaltas, setVersaoFaltas] = useState(0);
+    const [faltaSelecionada, setFaltaSelecionada] = useState(null);
 
     //  Pegar usuário logado
     useEffect(() => {
@@ -21,7 +31,7 @@ const EscalaDoDia = () => {
         if (userData) setUser(JSON.parse(userData));
     }, []);
 
-    
+    const gestor = isGestor(user);
 
     // Criar estrutura vazia da escala
     useEffect(() => {
@@ -31,7 +41,7 @@ const EscalaDoDia = () => {
             );
             setEscala(novaEscala);
         }
-    }, [categorias]);
+    }, []);
 
     // Buscar escala do backend
     useEffect(() => {
@@ -64,12 +74,32 @@ const EscalaDoDia = () => {
             const col = categorias.indexOf(item.Cargo);
 
             if (row >= 0 && col >= 0) {
-                novaEscala[row][col].push(item.Nome);
+                novaEscala[row][col].push({ nome: item.Nome, cpf: item.Cpf, tipo: item.Tipo });
             }
         });
 
         setEscala(novaEscala);
-    }, [escalaExistente, categorias]);
+    }, [escalaExistente]);
+
+    useEffect(() => {
+        if (!gestor || !data) return;
+
+        let ativo = true;
+        const dataISO = toISO(data);
+
+        api.get(`/faltas/?inicio=${dataISO}&fim=${dataISO}`)
+            .then((res) => { if (ativo) setFaltas(res || []); })
+            .catch((err) => console.error("Erro ao buscar faltas:", err));
+
+        return () => { ativo = false; };
+    }, [gestor, data, versaoFaltas]);
+
+    const faltaDe = (cpf, horario) => {
+        const dataISO = toISO(data);
+        return faltas.find(
+            (f) => f.cpf === cpf && f.data === dataISO && f.horario === horario
+        ) || null;
+    };
 
     return (
         <div className="escala-page">
@@ -96,11 +126,31 @@ const EscalaDoDia = () => {
                             {categorias.map((_, colIdx) => (
                                 <td key={colIdx}>
                                     {escala[rowIdx]?.[colIdx]?.length > 0 ? (
-                                        escala[rowIdx][colIdx].map((nome, i) => (
-                                            <div key={i} className="nome-funcionario">
-                                                {nome}
-                                            </div>
-                                        ))
+                                        escala[rowIdx][colIdx].map((funcionario, i) => {
+                                            const falta = gestor ? faltaDe(funcionario.cpf, horario) : null;
+                                            return (
+                                                <div
+                                                    key={i}
+                                                    className="nome-funcionario"
+                                                    style={gestor ? { cursor: "pointer" } : undefined}
+                                                    title={gestor ? "Registrar ou ver falta" : undefined}
+                                                    onClick={gestor ? () => setFaltaSelecionada({
+                                                        funcionario: { nome: funcionario.nome, cpf: funcionario.cpf },
+                                                        horario
+                                                    }) : undefined}
+                                                >
+                                                    <span style={{ textDecoration: falta ? "line-through" : "none" }}>
+                                                        {funcionario.nome}
+                                                    </span>
+                                                    {funcionario.tipo === "extra" && (
+                                                        <span className="badge bg-info text-dark ms-1">extra</span>
+                                                    )}
+                                                    {falta && (
+                                                        <span className="badge bg-danger ms-1">faltou</span>
+                                                    )}
+                                                </div>
+                                            );
+                                        })
                                     ) : (
                                         "—"
                                     )}
@@ -112,7 +162,7 @@ const EscalaDoDia = () => {
             </table>
 
             
-              {user?.cargo?.toLowerCase() === "coordenador" && (
+              {gestor && (
                 <button
                     className="botao-editar"
                     onClick={() => navigate(`/EditarEscala/${data}`)}
@@ -120,7 +170,24 @@ const EscalaDoDia = () => {
                     Editar Escala
                 </button>
             )}
-            
+
+            <FaltaModal
+                show={!!faltaSelecionada}
+                onClose={() => setFaltaSelecionada(null)}
+                funcionario={faltaSelecionada?.funcionario}
+                dataBR={data}
+                horario={faltaSelecionada?.horario}
+                falta={
+                    faltaSelecionada
+                        ? faltaDe(faltaSelecionada.funcionario.cpf, faltaSelecionada.horario)
+                        : null
+                }
+                onAlterado={() => {
+                    setFaltaSelecionada(null);
+                    setVersaoFaltas((v) => v + 1);
+                }}
+            />
+
 
         </div>
     );

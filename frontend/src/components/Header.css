@@ -148,3 +148,8 @@ nav ul li a:hover,
   padding: 3px 6px;
   position: absolute;
 }
+
+.badge.badge-aviso {
+  background-color: #ffc107;
+  color: #212529;
+}

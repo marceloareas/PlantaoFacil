@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Container, Table, Button, Form, Alert, Spinner, Row, Col, Badge } from "react-bootstrap";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { api } from "../../components/api/Api";
+import { isGestor } from "../../components/utils/perfis";
 
 const Setores = ({ user, setorAtual, onSetorAtualChange }) => {
     const [setores, setSetores] = useState([]);
@@ -23,7 +24,7 @@ const Setores = ({ user, setorAtual, onSetorAtualChange }) => {
         carregarSetores();
     }, []);
 
-    if (user?.cargo !== "Coordenador") {
+    if (!isGestor(user)) {
         return <h2>Você não tem permissão para acessar esta página.</h2>;
     }
 

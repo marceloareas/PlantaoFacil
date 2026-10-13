@@ -1,12 +1,20 @@
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
+from controllers.userController import serializar_usuario
+from core.perfis import is_admin, is_cargo_gestao
 from models.userModels import User
 from schemas.userSchemas import UserCreate
 from services import authService, userService
 
 
-def register(db: Session, payload: UserCreate) -> dict:
+def register(db: Session, payload: UserCreate, current_user: User) -> dict:
+    if is_cargo_gestao(payload.cargo) and not is_admin(current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Apenas administradores podem cadastrar coordenadores e administradores",
+        )
+
     novo_usuario = userService.create_user(db, payload)
     return {
         "message": "Usuário criado com sucesso!",
@@ -27,24 +35,9 @@ def login(db: Session, email: str, password: str) -> dict:
     return {
         "access_token": access_token,
         "token_type": "bearer",
-        "user": _serialize_user(user),
+        "user": serializar_usuario(user),
     }
 
 
 def me(user: User) -> dict:
-    return _serialize_user(user)
-
-
-def _serialize_user(user: User) -> dict:
-    return {
-        "id": user.id,
-        "email": user.email,
-        "nome_completo": user.nome_completo,
-        "crm": user.crm,
-        "cpf": user.cpf,
-        "cargo": user.cargo,
-        "horaEscala": user.horaEscala,
-        "situacao": user.situacao,
-        "setor_id": user.setor_id,
-        "setor_nome": user.setor.nome if user.setor else None,
-    }
+    return serializar_usuario(user)

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { FaUserMinus } from "react-icons/fa";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { api, getSetorAtual } from "./api/Api";
+import { isCargoGestao } from "./utils/perfis";
 
 const AddAusenteModal = ({ show, onClose, onSuccess }) => {
 
@@ -30,7 +31,7 @@ const AddAusenteModal = ({ show, onClose, onSuccess }) => {
                 setFuncionarios(data.filter((u) => u.setor_id === getSetorAtual()?.id));
 
                 const cargosUnicos = [...new Set(data.map(u => u.cargo))]
-                    .filter((cargo) => cargo.toLowerCase() !== "coordenador");
+                    .filter((cargo) => !isCargoGestao(cargo));
 
                 setCargos(cargosUnicos);
             } catch (err) {

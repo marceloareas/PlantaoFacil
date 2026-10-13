@@ -17,8 +17,16 @@ const AdicionarTurnoModal = ({ show, onClose, pessoa }) => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
+    const [avisos, setAvisos] = useState([]);
 
     if (!show) return null;
+
+    const fechar = () => {
+        setError("");
+        setSuccess("");
+        setAvisos([]);
+        onClose();
+    };
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -35,10 +43,11 @@ const AdicionarTurnoModal = ({ show, onClose, pessoa }) => {
 
         setError("");
         setSuccess("");
+        setAvisos([]);
         setLoading(true);
 
         try {
-            await api.post("/escalaLote", {
+            const resposta = await api.post("/escalaLote/", {
                 usuario_id: pessoa.id,
                 horario: formData.horario,
                 data_inicio: formData.data_inicio,
@@ -46,6 +55,13 @@ const AdicionarTurnoModal = ({ show, onClose, pessoa }) => {
             });
 
             setSuccess("Turnos alocados com sucesso!");
+
+            const avisosLimite = resposta?.avisos || [];
+            if (avisosLimite.length > 0) {
+                // não fecha sozinho para o gestor conseguir ler os avisos
+                setAvisos(avisosLimite);
+                return;
+            }
 
             setTimeout(() => {
                 setSuccess("");
@@ -70,13 +86,23 @@ const AdicionarTurnoModal = ({ show, onClose, pessoa }) => {
                             <h5 className="modal-title">
                                 Adicionar Turnos
                             </h5>
-                            <button className="btn-close" onClick={onClose}></button>
+                            <button className="btn-close" onClick={fechar}></button>
                         </div>
 
                         <div className="modal-body">
 
                             {error && <div className="alert alert-danger">{error}</div>}
                             {success && <div className="alert alert-success">{success}</div>}
+                            {avisos.length > 0 && (
+                                <div className="alert alert-warning">
+                                    <strong>Atenção: limite do período ultrapassado</strong>
+                                    <ul className="mb-0">
+                                        {avisos.map((aviso, idx) => (
+                                            <li key={idx}>{aviso.mensagem}</li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
 
                             <div className="mb-3">  {/* Informações básicas da pessoa que esta recebendo os turnos*/}
                                 <p><strong>Nome:</strong> {pessoa.nome_completo}</p>

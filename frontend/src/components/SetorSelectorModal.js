@@ -33,7 +33,7 @@ const SetorSelectorModal = ({ show, setorAtual, onSelect, onClose }) => {
         }
     };
 
-    // sem setor escolhido o coordenador não pode fechar o modal
+    // sem setor escolhido o gestor não pode fechar o modal
     const podeFechar = Boolean(setorAtual);
 
     return (

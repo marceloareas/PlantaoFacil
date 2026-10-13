@@ -2,7 +2,7 @@ import './App.css';
 import LoginPage from './pages/LoginPage';
 import SignUpPage from './pages/SignUpPage';
 import Header from './components/Header';
-import { BrowserRouter as Router, Route, Routes, useNavigate } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import CalendarPage from './pages/Calendar/Calendar';
 import 'bootstrap/dist/css/bootstrap.min.css';
@@ -13,17 +13,17 @@ import FuncionariosAusentes from './pages/indisponibilidade/FuncAusente';
 import RelatorioSemanal from './pages/RelatorioSemanal/RelatorioSemanal';
 import RelatorioPeronalizado from './pages/RelatorioPersonalizado/RelatorioPersonalizado';
 import RelatorioMensal from './pages/RelatorioMensal/RelatorioMensal';
-import ApiServer, { getSetorAtual, setSetorAtual } from './components/api/Api';
+import ApiServer, { api, getSetorAtual, setSetorAtual } from './components/api/Api';
 import SetorSelectorModal from './components/SetorSelectorModal';
 import Setores from './pages/Setores/Setores';
 import { IoPersonCircleSharp } from "react-icons/io5";
 import TrocasAprovacao from './pages/Trocas/TrocasAprovacao';
 import Trocas from './pages/Trocas/trocas';
 import Pessoas from './pages/Pessoas/Pessoas';
-import { Button } from 'bootstrap';
 import HelpPage from './pages/Help/HelpPage';
 import BackButton from './components/BackButton';
-import CriarPeriodoModal from './components/CriarPeriodoModal';
+import Periodos from './pages/Periodos/Periodos';
+import { isGestor } from './components/utils/perfis';
 
 
 
@@ -38,7 +38,8 @@ function App() {
   const [setorAtual, setSetorAtualState] = useState(getSetorAtual);
   const [showSetorModal, setShowSetorModal] = useState(false);
 
-  const precisaEscolherSetor = user?.cargo === "Coordenador" && !setorAtual;
+  const gestor = isGestor(user);
+  const precisaEscolherSetor = gestor && !setorAtual;
 
   const selecionarSetor = (setor) => {
     const trocou = setorAtual && setor?.id !== setorAtual.id;
@@ -66,9 +67,35 @@ function App() {
     setShowMenu(false);
   };
 
+  // o cargo ou o setor podem ter mudado desde o login (ex.: conta padrão promovida a Admin)
+  useEffect(() => {
+    if (!localStorage.getItem('token')) return;
+    api.get('/auth/me')
+      .then((atual) => {
+        const salvo = JSON.parse(localStorage.getItem('user')) || {};
+        if (atual.cargo === salvo.cargo && atual.setor_id === salvo.setor_id) return;
+
+        localStorage.setItem('user', JSON.stringify(atual));
+        setUser(atual);
+        if (!isGestor(atual) || !isGestor(salvo)) {
+          const setor = !isGestor(atual) && atual.setor_id ? { id: atual.setor_id, nome: atual.setor_nome } : null;
+          setSetorAtual(setor);
+          setSetorAtualState(setor);
+        }
+      })
+      .catch((err) => console.error("Erro ao atualizar os dados do usuário:", err));
+  }, []);
+
   function Home() {
     const [titulo, setTitulo] = useState("Bem vindo ao Plantão Fácil!");
-    const [showCriarPeriodo, setShowCriarPeriodo] = useState(false);
+    const [qtdAvisos, setQtdAvisos] = useState(0);
+
+    useEffect(() => {
+      if (!gestor || !setorAtual) return;
+      api.get("/avisos/abertos")
+        .then((data) => setQtdAvisos(data?.avisos?.length || 0))
+        .catch((err) => console.error("Erro ao buscar avisos de limite:", err));
+    }, []);
 
     useEffect(() => {
       async function fetchUsuarios() {
@@ -88,26 +115,24 @@ function App() {
     return (
       <div>
         <h1 style={{ marginLeft: "20px" }}>{titulo}</h1>
+        {gestor && setorAtual && qtdAvisos > 0 && (
+          <div className="alert alert-warning mx-3" role="alert">
+            {qtdAvisos} aviso(s) de limite de extras ou trocas no período atual ou nos próximos.{" "}
+            <Link to="/Periodos" className="alert-link">Ver detalhes</Link>
+          </div>
+        )}
         {user ? (
           <EscalaDaSemana />
         ) : (
           <p style={{ marginLeft: "20px" }}>Faça login para visualizar a escala do seu setor.</p>
         )}
-        {user?.cargo === "Coordenador" && (
+        {gestor && (
           <div className="d-flex justify-content-center mb-4">
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={() => setShowCriarPeriodo(true)}
-            >
-              Criar período
-            </button>
+            <Link to="/Periodos" className="btn btn-primary">
+              Períodos e escala
+            </Link>
           </div>
         )}
-        <CriarPeriodoModal
-          show={showCriarPeriodo}
-          onClose={() => setShowCriarPeriodo(false)}
-        />
       </div>
     );
   }
@@ -131,7 +156,7 @@ function App() {
               </>
             )}
 
-              {user && user.cargo === "Coordenador" && (
+              {gestor && (
                 <>
                   <li>
                   <button className="menu-link"
@@ -161,7 +186,7 @@ function App() {
             {!showRelat && (
               <>
 
-                 {user && user.cargo === "Coordenador" && (
+                 {gestor && (
                 <>
                   <li>
                     <button className="menu-link" onClick={() => setShowSignUp(true)}>
@@ -172,15 +197,16 @@ function App() {
               )}
 
                 <li><a href="/Calendar" onClick={() => setShowMenu(false)}>Calendário</a></li>
-                {user?.cargo === "Coordenador" && (
+                {gestor && (
                   <>
                 <li><a href='/Ausentes' onClick={() => setShowMenu(false)}>Indisponibilidades</a></li>
                     <li><a href="/Pessoas" onClick={() => setShowMenu(false)}>Funcionários</a></li>
                     <li><a href="/Setores" onClick={() => setShowMenu(false)}>Setores</a></li>
+                    <li><a href="/Periodos" onClick={() => setShowMenu(false)}>Períodos</a></li>
                     <li><a href="/TrocasAprovacao" onClick={() => setShowMenu(false)}>Trocas para aprovação</a></li>
                   </>
                 )}
-                {user?.cargo !== "Coordenador" && (
+                {!gestor && (
                   <li><a href="/Trocas" onClick={() => setShowMenu(false)}>Trocas</a></li>
                 )}
                 <li><a href="/help" onClick={() => setShowMenu(false)}>Ajuda</a></li>
@@ -223,6 +249,7 @@ function App() {
             <Route path="/RelatorioMensal" element={<RelatorioMensal/>} />
             <Route path="/RelatorioPersonalizado" element={<RelatorioPeronalizado/>} />
             <Route path="/EditarEscala/:data" element={<EditarEscala />} />
+            <Route path="/Periodos" element={<Periodos user={user} />} />
             <Route
               path="/Setores"
               element={<Setores user={user} setorAtual={setorAtual} onSetorAtualChange={selecionarSetor} />}

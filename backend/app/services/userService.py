@@ -1,5 +1,6 @@
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
+from core.perfis import is_cargo_gestao
 from core.security import hash_password
 from models.setorModels import Setor
 from models.userModels import User
@@ -12,7 +13,7 @@ def _normalizar_nome(nome: str) -> str:
 
 
 def _setor_do_usuario(db: Session, payload: UserCreate | UserUpdate) -> int | None:
-    if payload.cargo.lower() == "coordenador":
+    if is_cargo_gestao(payload.cargo):
         return None
     if not db.get(Setor, payload.setor_id):
         raise HTTPException(status_code=400, detail="Setor não encontrado")
@@ -33,6 +34,8 @@ def create_user(db: Session, payload: UserCreate) -> User:
         horaEscala=payload.horaEscala,
         situacao="Ativo",
         setor_id=setor_id,
+        turno=payload.turno,
+        inicio_ciclo=payload.inicio_ciclo,
     )
 
     db.add(novo_usuario)
@@ -41,8 +44,12 @@ def create_user(db: Session, payload: UserCreate) -> User:
     return novo_usuario
 
 
+def get_user(db: Session, user_id: int) -> User | None:
+    return db.query(User).filter(User.id == user_id).first()
+
+
 def update_user(db: Session, user_id: int, payload: UserUpdate) -> User | None:
-    db_user = db.query(User).filter(User.id == user_id).first()
+    db_user = get_user(db, user_id)
     if not db_user:
         return None
     setor_id = _setor_do_usuario(db, payload)
@@ -50,13 +57,16 @@ def update_user(db: Session, user_id: int, payload: UserUpdate) -> User | None:
     db_user.email = payload.email
     if payload.password:
         db_user.password = hash_password(payload.password)
-    db_user.crm = payload.crm
+    if payload.crm:
+        db_user.crm = payload.crm
     db_user.cpf = payload.cpf
     db_user.nome_completo = _normalizar_nome(payload.nome_completo)
     db_user.cargo = payload.cargo
     db_user.horaEscala = payload.horaEscala
     db_user.situacao = payload.situacao
     db_user.setor_id = setor_id
+    db_user.turno = payload.turno
+    db_user.inicio_ciclo = payload.inicio_ciclo
 
     db.commit()
     db.refresh(db_user)

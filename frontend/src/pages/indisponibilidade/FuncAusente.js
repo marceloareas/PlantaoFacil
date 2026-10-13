@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import AddAusenteModal from "../../components/AddAusenteModal";
+import { isGestor } from "../../components/utils/perfis";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "./FuncAusente.css";
 import { api } from '../../components/api/Api';
@@ -164,7 +165,7 @@ const FuncionariosAusentes = () => {
                         Limpar
                     </button>
 
-                    {user?.cargo === "Coordenador" && (
+                    {isGestor(user) && (
                         <button
                             className="btn btn-primary"
                             onClick={() => setShowModal(true)}
@@ -190,7 +191,7 @@ const FuncionariosAusentes = () => {
                             <th>Horário Final</th>
                             <th>Motivo</th>
                             <th>Conflitos</th>
-                            {user?.cargo === "Coordenador" && <th>Ações</th>}
+                            {isGestor(user) && <th>Ações</th>}
                         </tr>
                     </thead>
                     <tbody>
@@ -233,7 +234,7 @@ const FuncionariosAusentes = () => {
                                     </button>
                                 </td>
 
-                                {user?.cargo === "Coordenador" && (
+                                {isGestor(user) && (
                                     <td>
                                         <button
                                             className="btn btn-sm btn-outline-danger"

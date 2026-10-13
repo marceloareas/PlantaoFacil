@@ -5,15 +5,23 @@ from sqlalchemy.orm import Session
 from core.dependencies import get_current_user, require_coordenador
 from database import get_db
 from models.escalaDiaModels import Escala
+from models.faltaModels import Falta
+from models.periodoModels import Periodo
 from models.setorModels import Setor
 from models.userModels import User
-from schemas.setorSchemas import SetorCreate
+from schemas.setorSchemas import SetorCreate, SetorParametros
 
 router = APIRouter(prefix="/setores", tags=["Setores"])
 
 
 def _serializar(setor: Setor, total_funcionarios: int) -> dict:
-    return {"id": setor.id, "nome": setor.nome, "total_funcionarios": total_funcionarios}
+    return {
+        "id": setor.id,
+        "nome": setor.nome,
+        "total_funcionarios": total_funcionarios,
+        "max_extras_periodo": setor.max_extras_periodo,
+        "max_trocas_periodo": setor.max_trocas_periodo,
+    }
 
 
 def _total_funcionarios(db: Session, setor_id: int) -> int:
@@ -67,6 +75,16 @@ def renomear_setor(setor_id: int, payload: SetorCreate, db: Session = Depends(ge
     return _serializar(setor, _total_funcionarios(db, setor_id))
 
 
+@router.put("/{setor_id}/parametros", dependencies=[Depends(require_coordenador)])
+def atualizar_parametros(setor_id: int, payload: SetorParametros, db: Session = Depends(get_db)):
+    setor = _buscar_setor(db, setor_id)
+    setor.max_extras_periodo = payload.max_extras_periodo
+    setor.max_trocas_periodo = payload.max_trocas_periodo
+    db.commit()
+    db.refresh(setor)
+    return _serializar(setor, _total_funcionarios(db, setor_id))
+
+
 @router.delete("/{setor_id}", dependencies=[Depends(require_coordenador)])
 def excluir_setor(setor_id: int, db: Session = Depends(get_db)):
     setor = _buscar_setor(db, setor_id)
@@ -81,7 +99,16 @@ def excluir_setor(setor_id: int, db: Session = Depends(get_db)):
             status_code=400,
             detail="O setor possui escalas cadastradas e não pode ser excluído.",
         )
+    if db.query(Falta).filter(Falta.setor_id == setor_id).first() or db.query(Periodo).filter(
+        Periodo.setor_id == setor_id, Periodo.escala_gerada_em.isnot(None)
+    ).first():
+        raise HTTPException(
+            status_code=400,
+            detail="O setor possui faltas ou períodos com escala gerada e não pode ser excluído.",
+        )
 
+    # períodos sem escala gerada não guardam nada além das datas
+    db.query(Periodo).filter(Periodo.setor_id == setor_id).delete()
     db.delete(setor)
     db.commit()
     return {"message": f"Setor {setor.nome} excluído com sucesso"}

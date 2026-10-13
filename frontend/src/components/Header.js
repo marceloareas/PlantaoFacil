@@ -4,18 +4,21 @@ import { NavLink } from "react-router-dom";
 import LoginModal from '../pages/LoginPage';
 import SignUpModal from '../pages/SignUpPage';
 import { PiStethoscopeFill } from "react-icons/pi";
-import { IoNotifications, IoHome } from "react-icons/io5";
+import { IoNotifications, IoHome, IoWarning } from "react-icons/io5";
 import { HiOutlineMenuAlt3 } from "react-icons/hi";
 import { FaHospital, FaExchangeAlt } from "react-icons/fa";
 import { api } from "./api/Api";
+import { isGestor } from "./utils/perfis";
 
 const Header = ({ onOpenMenu, user, onLogout, setor, onTrocarSetor }) => {
   const [showLogin, setShowLogin] = useState(false);
   const [showSignUp, setShowSignUp] = useState(false);
   const [notificacoesCount, setNotificacoesCount] = useState(0);
+  const [avisosCount, setAvisosCount] = useState(0);
+  const gestor = isGestor(user);
 
   useEffect(() => {
-    if (!user || (user.cargo === "Coordenador" && !setor)) return;
+    if (!user || (isGestor(user) && !setor)) return;
 
     const fetchNotificacoes = async () => {
       try {
@@ -23,7 +26,7 @@ const Header = ({ onOpenMenu, user, onLogout, setor, onTrocarSetor }) => {
 
         let count = 0;
 
-        if (user.cargo === "Coordenador") {
+        if (isGestor(user)) {
           count = data.filter(t => t.situacao === "Pendente").length;
         } else {
           count = data.filter(
@@ -38,8 +41,23 @@ const Header = ({ onOpenMenu, user, onLogout, setor, onTrocarSetor }) => {
       }
     };
 
-    fetchNotificacoes();
-    const interval = setInterval(fetchNotificacoes, 30000);
+    const fetchAvisos = async () => {
+      try {
+        const data = await api.get(`/avisos/abertos`);
+        setAvisosCount(data?.avisos?.length || 0);
+      } catch (err) {
+        setAvisosCount(0);
+        console.error("Erro ao buscar avisos de limite:", err);
+      }
+    };
+
+    const atualizar = () => {
+      fetchNotificacoes();
+      if (isGestor(user)) fetchAvisos();
+    };
+
+    atualizar();
+    const interval = setInterval(atualizar, 30000);
 
     return () => clearInterval(interval);
   }, [user, setor]);
@@ -58,7 +76,7 @@ const Header = ({ onOpenMenu, user, onLogout, setor, onTrocarSetor }) => {
 
           {user && setor && (
             <li>
-              {user.cargo === "Coordenador" ? (
+              {gestor ? (
                 <button className="login-button" onClick={onTrocarSetor} title="Trocar setor">
                   <FaHospital /> <strong>{setor.nome}</strong> <FaExchangeAlt size={12} />
                 </button>
@@ -85,8 +103,18 @@ const Header = ({ onOpenMenu, user, onLogout, setor, onTrocarSetor }) => {
 
           {user && (
             <>
+              {gestor && setor && (
+                <li>
+                  <NavLink className="login-button notification-btn" to="/Periodos" title="Avisos de limite">
+                    <IoWarning />
+                    {avisosCount > 0 && (
+                      <span className="badge badge-aviso">{avisosCount}</span>
+                    )}
+                  </NavLink>
+                </li>
+              )}
               <li>
-                {user.cargo === "Coordenador" ? (
+                {gestor ? (
                   <NavLink className="login-button notification-btn" to="/TrocasAprovacao">
                     <IoNotifications />
                     {notificacoesCount > 0 && (

@@ -7,7 +7,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from core.config import settings
 from database import engine
 from migrations import preparar_banco
-from routes import users, escalaDia, funcAusentes, trocas, escalaMes, escalaLote, auth, setores, periodos
+from routes import users, escalaDia, funcAusentes, trocas, escalaMes, escalaLote, auth, setores, periodos, avisos, faltas
 
 app = FastAPI(title="Plantão Fácil API")
 
@@ -37,6 +37,8 @@ api_router.include_router(funcAusentes.router)
 api_router.include_router(trocas.router)
 api_router.include_router(escalaMes.router)
 api_router.include_router(periodos.router)
+api_router.include_router(avisos.router)
+api_router.include_router(faltas.router)
 
 app.include_router(api_router)
 

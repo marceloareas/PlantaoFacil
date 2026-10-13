@@ -3,6 +3,7 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
 from core.config import settings
+from core.perfis import is_admin, is_gestor
 from core.security import JWTError, decode_access_token
 from database import get_db
 from models.setorModels import Setor
@@ -18,10 +19,6 @@ oauth2_scheme_opcional = OAuth2PasswordBearer(
     tokenUrl=f"{settings.API_V1_PREFIX}/auth/login",
     auto_error=False,
 )
-
-
-def is_coordenador(user: User) -> bool:
-    return (user.cargo or "").strip().lower() == "coordenador"
 
 
 def get_current_user(
@@ -67,8 +64,8 @@ def get_optional_user(
 
 
 def require_coordenador(current_user: User = Depends(get_current_user)) -> User:
-    """Permite a operação somente para usuários com cargo de coordenador."""
-    if not is_coordenador(current_user):
+    """Permite a operação somente para coordenadores e admins."""
+    if not is_gestor(current_user):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Apenas coordenadores podem realizar esta operação",
@@ -79,13 +76,22 @@ def require_coordenador(current_user: User = Depends(get_current_user)) -> User:
 get_current_coordinator = require_coordenador
 
 
+def require_admin(current_user: User = Depends(get_current_user)) -> User:
+    if not is_admin(current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Apenas administradores podem realizar esta operação",
+        )
+    return current_user
+
+
 def get_setor_id(
     x_setor_id: int | None = Header(default=None),
     user: User | None = Depends(get_optional_user),
     db: Session = Depends(get_db),
 ) -> int:
     """Setor em que a requisição opera: o do funcionário logado, ou o escolhido pelo coordenador."""
-    if user and not is_coordenador(user):
+    if user and not is_gestor(user):
         if user.setor_id is None:
             raise HTTPException(status_code=400, detail="Funcionário sem setor definido")
         return user.setor_id

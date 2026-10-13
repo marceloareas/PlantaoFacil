@@ -1,14 +1,38 @@
+from datetime import date
 from pydantic import BaseModel, EmailStr, field_validator, model_validator, constr
 from validate_docbr import CPF
 import re
+
+from core.perfis import is_cargo_gestao
+from services.periodoService import TURNOS
 
 cpf_validator = CPF()
 
 
 def _exigir_setor(user):
-    if user.cargo.lower() != "coordenador" and user.setor_id is None:
+    # Gestores não têm setor nem ciclo de trabalho próprio.
+    if is_cargo_gestao(user.cargo):
+        user.setor_id = None
+        user.turno = None
+        user.inicio_ciclo = None
+    elif user.setor_id is None:
         raise ValueError("Setor é obrigatório para funcionários")
     return user
+
+
+def _validar_turno(turno):
+    if turno is None or not turno.strip():
+        return None
+    turno = turno.strip()
+    if turno not in TURNOS:
+        raise ValueError(f"turno deve ser '{TURNOS[0]}' ou '{TURNOS[1]}'")
+    return turno
+
+
+def _data_vazia_como_nula(valor):
+    if isinstance(valor, str) and not valor.strip():
+        return None
+    return valor
 
 
 class UserCreate(BaseModel):
@@ -21,10 +45,22 @@ class UserCreate(BaseModel):
     horaEscala: str
     situacao: str
     setor_id: int | None = None
+    turno: str | None = None
+    inicio_ciclo: date | None = None
 
     @model_validator(mode="after")
     def validar_setor(self):
         return _exigir_setor(self)
+
+    @field_validator("turno")
+    @classmethod
+    def validar_turno(cls, v):
+        return _validar_turno(v)
+
+    @field_validator("inicio_ciclo", mode="before")
+    @classmethod
+    def validar_inicio_ciclo(cls, v):
+        return _data_vazia_como_nula(v)
 
     @field_validator("cpf")
     @classmethod
@@ -78,17 +114,30 @@ class UserCreate(BaseModel):
 class UserUpdate(BaseModel):
     email: EmailStr
     password: str | None = None
-    crm: str
+    # a conta padrão do admin é criada sem CRM
+    crm: str | None = None
     cpf: str
     nome_completo: constr(min_length=3, strip_whitespace=True)
     cargo: str
     horaEscala: str
     situacao: str
     setor_id: int | None = None
+    turno: str | None = None
+    inicio_ciclo: date | None = None
 
     @model_validator(mode="after")
     def validar_setor(self):
         return _exigir_setor(self)
+
+    @field_validator("turno")
+    @classmethod
+    def validar_turno(cls, v):
+        return _validar_turno(v)
+
+    @field_validator("inicio_ciclo", mode="before")
+    @classmethod
+    def validar_inicio_ciclo(cls, v):
+        return _data_vazia_como_nula(v)
 
 
 class UserLogin(BaseModel):
@@ -107,6 +156,8 @@ class UserPublic(BaseModel):
     situacao: str
     setor_id: int | None = None
     setor_nome: str | None = None
+    turno: str | None = None
+    inicio_ciclo: date | None = None
 
     model_config = {"from_attributes": True}
 

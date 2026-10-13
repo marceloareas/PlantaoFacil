@@ -40,6 +40,25 @@ export default function Help() {
       <hr />
 
       <section>
+        <h2>Perfis de gestão: Admin e Coordenador</h2>
+        <p>
+          Existem dois perfis de gestor: <strong>Admin</strong> e <strong>Coordenador</strong>. Os dois escolhem
+          o setor ao entrar e podem montar escalas, aprovar trocas, cadastrar funcionários e gerenciar períodos,
+          limites e faltas.
+        </p>
+        <ul>
+          <li>O <strong>Coordenador</strong> cadastra e edita enfermeiros e técnicos.</li>
+          <li>
+            O <strong>Admin</strong> faz tudo o que o coordenador faz e, além disso, é o único que cadastra e
+            edita coordenadores e outros admins.
+          </li>
+          <li>Ninguém pode alterar o próprio cargo.</li>
+        </ul>
+      </section>
+
+      <hr />
+
+      <section>
         <h2>Setores</h2>
         <p>
           Cada colaborador pertence a um setor (ex.: UTI, Emergência), e cada setor tem sua própria escala,
@@ -109,11 +128,76 @@ export default function Help() {
           O colaborador tem acesso apenas à visualização da escala semanal.
         </p>
 
-        <img 
+        <img
           src="https://github.com/andressa-oliveira21051/Fotos/blob/main/image%20(8).png?raw=true"
           alt="Escala semanal colaborador"
           className="help-img"
         />
+      </section>
+
+      <hr />
+
+      <section>
+        <h2>Períodos e escala do período</h2>
+        <p>
+          A escala de cada setor é organizada em períodos. Acesse <strong>menu → Períodos</strong> (ou o botão
+          <strong> “Períodos e escala”</strong> na tela inicial), clique em <strong>“Novo período”</strong> e
+          informe só a data de início. O período termina sempre no dia anterior ao mesmo dia do mês seguinte
+          (ex.: de 15/10 a 14/11). Os períodos de um mesmo setor não podem se sobrepor.
+        </p>
+        <p>
+          Depois de criar o período, clique em <strong>“Gerar escala”</strong>. O sistema escala todos os
+          funcionários ativos do setor nos seus dias de trabalho, de acordo com o cadastro de cada um
+          (tela <strong>“Funcionários”</strong>):
+        </p>
+        <ul>
+          <li><strong>Turno</strong>: diurno (07:00 - 19:00) ou noturno (19:00 - 07:00);</li>
+          <li><strong>Início do ciclo</strong>: o primeiro dia trabalhado, a partir do qual os plantões se repetem;</li>
+          <li><strong>Regime</strong>: 12x36 (um plantão a cada 2 dias) ou 12x60 (um plantão a cada 3 dias).</li>
+        </ul>
+        <p>
+          Funcionários sem turno ou sem início do ciclo aparecem no resumo da geração e não são escalados.
+          Preencha esses campos e clique em <strong>“Completar escala”</strong>: gerar de novo só inclui quem
+          ainda não tem plantões no período, sem mexer na escala dos demais. Dias com indisponibilidade, escala em outro setor no mesmo turno ou que
+          formariam 3 turnos seguidos ficam de fora e também aparecem no resumo. Depois que a escala é gerada,
+          o período não pode mais ser excluído.
+        </p>
+      </section>
+
+      <hr />
+
+      <section>
+        <h2>Limites e avisos</h2>
+        <p>
+          Cada setor tem dois limites por funcionário em cada período: o número de <strong>plantões extras</strong>
+          {" "}e o número de <strong>trocas solicitadas</strong> (o padrão é 5 de cada). Os gestores alteram esses
+          valores na tela <strong>“Períodos”</strong>, em “Limites do setor”.
+        </p>
+        <ul>
+          <li>Plantão extra é qualquer plantão incluído na escala depois que a escala do período foi gerada.</li>
+          <li>Plantões recebidos por troca não contam como extra, e trocas recusadas não contam no limite.</li>
+        </ul>
+        <p>
+          Quando um funcionário passa do limite, o sistema avisa os gestores: um ícone de alerta com a quantidade
+          de avisos aparece no topo da página e a tela inicial mostra um aviso. Na tela <strong>“Períodos”</strong>,
+          a seção “Uso do período” mostra os extras e as trocas de cada funcionário. O aviso não impede a
+          inclusão do plantão nem a troca.
+        </p>
+      </section>
+
+      <hr />
+
+      <section>
+        <h2>Faltas</h2>
+        <p>
+          Na escala, o gestor clica no nome do funcionário e registra que ele faltou naquele turno, com uma
+          observação opcional. O sistema guarda o dia e o turno da falta. Não é possível registrar falta em uma
+          data futura.
+        </p>
+        <p>
+          As faltas de cada período aparecem na tela <strong>“Períodos”</strong>, em “Faltas do período”, onde
+          também podem ser removidas caso tenham sido registradas por engano.
+        </p>
       </section>
 
       <hr />

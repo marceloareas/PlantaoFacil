@@ -1,9 +1,20 @@
 import { useParams } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import "./EditarEscala.css";
 import "bootstrap/dist/css/bootstrap.min.css";
-import buscarEscalasDoMes from "../../components/services/escalasMensaisService";
 import { api, getSetorAtual } from "../../components/api/Api";
+import { isCargoGestao, isGestor } from "../../components/utils/perfis";
+
+const horarios = ["07:00 - 19:00", "19:00 - 07:00"];
+
+const toISO = (dataBR) => {
+    if (!dataBR) return null;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dataBR)) return dataBR;
+    const [d, m, y] = dataBR.split("-");
+    return `${y}-${m}-${d}`;
+};
+
+const formatarDataISO = (dataISO) => (dataISO ? dataISO.split("-").reverse().join("/") : "");
 
 const EscalaDoDia = () => {
     const { data } = useParams();
@@ -15,73 +26,37 @@ const EscalaDoDia = () => {
     const [nomesAusentes, setNomesAusentes] = useState([]);
     const [escalaExistente, setEscalaExistente] = useState([]);
     const [user, setUser] = useState(null);
-    const [bloqueadosPorLimite, setBloqueadosPorLimite] = useState([]);
-    
+
+    // período da data: undefined enquanto carrega, null se não houver
+    const [periodo, setPeriodo] = useState(undefined);
+    // resumo de extras/trocas do período (GET /avisos/)
+    const [situacao, setSituacao] = useState(null);
 
     const [trocasAprovadas, setTrocasAprovadas] = useState([]);
     const [modalInfo, setModalInfo] = useState(null);
-
-    const horarios = ["07:00 - 19:00", "19:00 - 07:00"];
-
-    const validarLimiteMensal = async (usuario) => {
-        const resultado = await buscarEscalasDoMes(
-            data,
-            usuario.nome_completo,
-            usuario.cpf,
-            usuario.horaEscala
-        );
-
-        return resultado;
-    };
-
-
-    useEffect(() => {
-        if (!data || usuarios.length === 0) return;
-
-        const validarUsuariosPorLimite = async () => {
-            const bloqueados = [];
-
-            for (const usuario of usuarios) {
-                if (usuario.situacao !== "Ativo") continue;
-
-                try {
-                    const { excedeuLimite } = await buscarEscalasDoMes(
-                        data,
-                        usuario.nome_completo,
-                        usuario.cpf,
-                        usuario.horaEscala
-                    );
-
-                    if (excedeuLimite) {
-                        bloqueados.push(usuario.nome_completo);
-                    }
-                } catch (err) {
-                    console.error(
-                        "Erro ao validar limite mensal de",
-                        usuario.nome_completo,
-                        err
-                    );
-                }
-            }
-
-            setBloqueadosPorLimite(bloqueados);
-        };
-
-        validarUsuariosPorLimite();
-    }, [data, usuarios]);
-
 
     useEffect(() => {
         const userData = localStorage.getItem("user");
         if (userData) setUser(JSON.parse(userData));
     }, []);
 
-    const toISO = (dataBR) => {
-        if (!dataBR) return null;
-        if (/^\d{4}-\d{2}-\d{2}$/.test(dataBR)) return dataBR;
-        const [d, m, y] = dataBR.split("-");
-        return `${y}-${m}-${d}`;
-    };
+    const gestor = isGestor(user);
+
+    const carregarPeriodo = useCallback(async () => {
+        if (!data || !gestor) return;
+
+        try {
+            const vigente = await api.get(`/periodos/vigente?data=${toISO(data)}`);
+            setPeriodo(vigente || null);
+            setSituacao(vigente ? await api.get(`/avisos/?periodo_id=${vigente.id}`) : null);
+        } catch (err) {
+            console.error("Erro ao buscar período e avisos:", err);
+        }
+    }, [data, gestor]);
+
+    useEffect(() => {
+        carregarPeriodo();
+    }, [carregarPeriodo]);
 
     useEffect(() => {
         if (!data) return;
@@ -136,12 +111,12 @@ const EscalaDoDia = () => {
             try {
                 const dataRes = await api.get("/users/");
                 const ativos = dataRes.filter(
-                    (u) => u.cargo.toLowerCase() !== "coordenador" && u.setor_id === getSetorAtual()?.id
+                    (u) => !isCargoGestao(u.cargo) && u.setor_id === getSetorAtual()?.id
                 );
                 setUsuarios(ativos);
 
                 const uniqueCategorias = [...new Set(dataRes.map((u) => u.cargo))].filter(
-                    (cargo) => cargo && cargo.toLowerCase() !== "coordenador"
+                    (cargo) => cargo && !isCargoGestao(cargo)
                 );
                 setCategorias(uniqueCategorias);
             } catch (err) {
@@ -185,7 +160,7 @@ const EscalaDoDia = () => {
         escalaExistente.forEach((item) => {
             const row = horarios.indexOf(item.Horario);
             const col = categorias.indexOf(item.Cargo);
-            if (row >= 0 && col >= 0) novaEscala[row][col].push({ nome: item.Nome, cpf: item.Cpf });
+            if (row >= 0 && col >= 0) novaEscala[row][col].push({ nome: item.Nome, cpf: item.Cpf, tipo: item.Tipo });
         });
 
         setEscala(novaEscala);
@@ -255,8 +230,39 @@ const isTurnoBlockedByAusencia = (dataBR, turno, ausencia) => {
             .filter((u) => u.cargo === categoria)
             .filter((u) => !isUserAbsentForTurn(u.cpf, horario))
             .filter((u) => u.situacao === "Ativo")
-            .filter((u) => !bloqueadosPorLimite.includes(u.cpf))
             .map((u) => ({ nome: u.nome_completo, cpf: u.cpf, cargo: u.cargo }));
+
+    const salvoNoTurno = (cpf, horario) =>
+        escalaExistente.some((e) => e.Cpf === cpf && e.Horario === horario);
+
+    // o servidor mantém o tipo de quem já estava salvo no turno; quem entra depois da escala gerada vira extra
+    const tipoPrevisto = (cpf, horario) => {
+        const salvo = escalaExistente.find((e) => e.Cpf === cpf && e.Horario === horario);
+        if (salvo) return salvo.Tipo || "regular";
+        return periodo?.escala_gerada_em ? "extra" : "regular";
+    };
+
+    // extras ainda não salvos desta pessoa na tela (o outro turno do dia)
+    const extrasNaoSalvos = (cpf) =>
+        horarios.filter((h, rowIdx) =>
+            !salvoNoTurno(cpf, h) &&
+            (escala[rowIdx] || []).some((coluna) => coluna.some((item) => item.cpf === cpf))
+        ).length;
+
+    const avisarSeExcederExtras = (usuario) => {
+        const limite = situacao?.limites?.max_extras_periodo;
+        if (limite === undefined || limite === null) return;
+
+        const resumo = situacao.funcionarios?.find((f) => f.cpf === usuario.cpf);
+        const extras = (resumo?.extras || 0) + extrasNaoSalvos(usuario.cpf) + 1;
+
+        if (extras > limite) {
+            alert(
+                `Atenção: ${usuario.nome_completo} passará do limite de extras do período (${extras}/${limite}). ` +
+                "O plantão será incluído mesmo assim."
+            );
+        }
+    };
 
     const handleDragStart = (e, usuario) => {
         e.dataTransfer.setData("usuario", JSON.stringify({
@@ -267,7 +273,7 @@ const isTurnoBlockedByAusencia = (dataBR, turno, ausencia) => {
 
     const allowDrop = (e) => e.preventDefault();
 
-    const handleDrop = async (e, row, col) => {
+    const handleDrop = (e, row, col) => {
         e.preventDefault();
         const usuarioSelecionado = JSON.parse(e.dataTransfer.getData("usuario") || "{}");
         const categoriaAlvo = categorias[col];
@@ -281,20 +287,9 @@ const isTurnoBlockedByAusencia = (dataBR, turno, ausencia) => {
             return;
         }
 
-        if (bloqueadosPorLimite.includes(usuario.cpf)) return;
-
-        if (isUserAbsentForTurn(usuario.cpf, horarios[row])) {
+        if (isUserAbsentForTurn(usuario.cpf, horarioAlvo)) {
             alert(
-                `Erro: ${usuario.nome_completo} está ausente para o turno ${horarios[row]}!`
-            );
-            return;
-        }
-
-        const { totalTurnos, limite } = await validarLimiteMensal(usuario);
-
-        if (totalTurnos >= limite) {
-            setBloqueadosPorLimite((prev) =>
-                prev.includes(usuario.cpf) ? prev : [...prev, usuario.cpf]
+                `Erro: ${usuario.nome_completo} está ausente para o turno ${horarioAlvo}!`
             );
             return;
         }
@@ -303,18 +298,19 @@ const isTurnoBlockedByAusencia = (dataBR, turno, ausencia) => {
         const jaExiste = novaEscala[row].some((coluna) => coluna.some((item) => item.cpf === usuario.cpf));
 
         if (jaExiste) {
-            alert(`Erro: ${usuario.nome_completo} já está escalado para o turno ${horarios[row]}!`);
+            alert(`Erro: ${usuario.nome_completo} já está escalado para o turno ${horarioAlvo}!`);
             return;
         }
 
-        novaEscala[row][col].push({ nome: usuario.nome_completo, cpf: usuario.cpf });
-        setEscala(novaEscala);
+        const tipo = tipoPrevisto(usuario.cpf, horarioAlvo);
 
-        if (totalTurnos + 1 >= limite) {
-            setBloqueadosPorLimite((prev) =>
-                prev.includes(usuario.cpf) ? prev : [...prev, usuario.cpf]
-            );
+        // só avisa: o limite de extras nunca impede a inclusão
+        if (tipo === "extra" && !salvoNoTurno(usuario.cpf, horarioAlvo)) {
+            avisarSeExcederExtras(usuario);
         }
+
+        novaEscala[row][col].push({ nome: usuario.nome_completo, cpf: usuario.cpf, tipo });
+        setEscala(novaEscala);
     };
 
 
@@ -367,12 +363,21 @@ const isTurnoBlockedByAusencia = (dataBR, turno, ausencia) => {
         });
 
         try {
-            if (escalaExistente.length > 0) {
-                await api.put(`/escaladodia/${data}`, payload);
-            } else {
-                await api.post(`/escaladodia/${data}`, payload);
-            }
-            alert("Escala enviada com sucesso!");
+            const resposta = escalaExistente.length > 0
+                ? await api.put(`/escaladodia/${data}`, payload)
+                : await api.post(`/escaladodia/${data}`, payload);
+
+            // a resposta traz o tipo decidido pelo servidor; também evita um novo POST no próximo envio
+            if (Array.isArray(resposta?.Escala)) setEscalaExistente(resposta.Escala);
+
+            const avisos = resposta?.avisos || [];
+            alert(
+                avisos.length > 0
+                    ? `Escala enviada com sucesso!\n\nAvisos de limite do período:\n${avisos.map((a) => `• ${a.mensagem}`).join("\n")}`
+                    : "Escala enviada com sucesso!"
+            );
+
+            carregarPeriodo();
         } catch (err) {
             console.error(err);
             alert(err.message || "Erro ao enviar escala");
@@ -453,7 +458,7 @@ console.log("Ausentes agora:", ausentesAgora);
                 </div>
             </div>
 
-            {user && user.cargo === "Coordenador" && (
+            {gestor && (
                 <div className="escala-layout">
                     <div className="nomes-box">
                         <h3>Nomes disponíveis</h3>
@@ -519,6 +524,7 @@ console.log("Ausentes agora:", ausentesAgora);
                                                 escala[rowIdx][colIdx].map((item, i) => {
                                                     const nome = item.nome;
                                                     const cpf = item.cpf;
+                                                    const extra = item.tipo === "extra";
                                                     const turnoAtual = horarios[rowIdx];
                                                     const trocado = estaEmTroca(cpf, turnoAtual);
                                                     const info = getTrocaInfo(cpf, turnoAtual);
@@ -541,7 +547,12 @@ console.log("Ausentes agora:", ausentesAgora);
                                                                 if (trocado && info) setModalInfo(info);
                                                             }}
                                                         >
-                                                            {nome}{" "}
+                                                            <span>
+                                                                {nome}
+                                                                {extra && (
+                                                                    <span className="badge bg-info text-dark ms-1">extra</span>
+                                                                )}
+                                                            </span>{" "}
                                                             {!trocado && (
                                                                 <button
                                                                     type="button"
@@ -564,7 +575,7 @@ console.log("Ausentes agora:", ausentesAgora);
                                 </tbody>
                             </table>
 
-                            {!isDataPassada && user && user.cargo === "Coordenador" && (
+                            {!isDataPassada && gestor && (
                                 <button type="submit" className="submit-button">Enviar Escala</button>
                             )}
                         </form>
@@ -582,22 +593,48 @@ console.log("Ausentes agora:", ausentesAgora);
                                 <tr key={colab.nome + idx}>
                                     <td>{colab.nome} - {colab.turnosBloqueados.join(", ")}</td>
                                 </tr>
-                                ))}     
-
-                                {bloqueadosPorLimite.map((nome, idx) => (
-                                    <tr key={`limite-${idx}`}>
-                                        <td>{nome} - Limite mensal excedido</td>
-                                    </tr>
                                 ))}
-
-
                             </tbody>
                         </table>
+
+                        {periodo !== undefined && <h3>Limites do Período</h3>}
+                        {periodo ? (
+                            <>
+                                <p className="periodo-info">
+                                    Período de {formatarDataISO(periodo.data_inicio)} a {formatarDataISO(periodo.data_fim)}
+                                    {!periodo.escala_gerada_em && " (escala do período ainda não gerada)"}
+                                </p>
+                                <table className="colab-ausente">
+                                    <thead>
+                                        <tr>
+                                            <th>Nome - Aviso</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {(situacao?.avisos || []).length === 0 ? (
+                                            <tr>
+                                                <td className="text-muted">Ninguém acima dos limites</td>
+                                            </tr>
+                                        ) : (
+                                            situacao.avisos.map((aviso) => (
+                                                <tr key={`${aviso.cpf}-${aviso.tipo}`}>
+                                                    <td>
+                                                        {aviso.nome} - Acima do limite de {aviso.tipo} ({aviso.quantidade}/{aviso.limite})
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        )}
+                                    </tbody>
+                                </table>
+                            </>
+                        ) : periodo === null && (
+                            <p className="periodo-info">Esta data não pertence a nenhum período cadastrado.</p>
+                        )}
                     </div>
                 </div>
             )}
 
-            {user && user.cargo !== "Coordenador" && <h2>Você não tem permissão para acessar esta página.</h2>}
+            {user && !gestor && <h2>Você não tem permissão para acessar esta página.</h2>}
 
             {modalInfo && (
                 <div className="modal-bg" onClick={() => setModalInfo(null)}>
