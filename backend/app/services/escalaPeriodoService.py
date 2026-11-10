@@ -3,6 +3,7 @@ from datetime import date, datetime, timedelta
 from sqlalchemy.orm import Session
 
 from core.perfis import is_cargo_gestao
+from models.emprestimoModels import Emprestimo
 from models.escalaDiaModels import Escala
 from models.funcAusentesModels import Ausentes
 from models.periodoModels import Periodo
@@ -76,6 +77,15 @@ def _ausencias_por_cpf(db: Session, cpfs: list[str], periodo: Periodo) -> dict[s
 
 
 def _motivo_para_ignorar(db: Session, user: User, dia: date, data_str: str, setor_id: int, ausencias: list) -> str | None:
+    emprestimo = db.query(Emprestimo).filter(
+        Emprestimo.cpf == user.cpf,
+        Emprestimo.data_inicio <= dia,
+        Emprestimo.data_fim >= dia,
+    ).first()
+    if emprestimo and emprestimo.setor_destino_id != setor_id:
+        nome_setor = emprestimo.setor_destino.nome if emprestimo.setor_destino else "outro setor"
+        return f"Emprestado ao setor {nome_setor}"
+
     conflito = db.query(Escala).filter(
         Escala.DataEscala == data_str,
         Escala.Horario == user.turno,

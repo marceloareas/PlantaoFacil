@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { CiLogin } from "react-icons/ci";
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { api, getSetorAtual } from '../components/api/Api';
-import { isCargoGestao } from '../components/utils/perfis';
+import { CARGO_COORDENADOR, isCargoGestao } from '../components/utils/perfis';
 import { OPCOES_TURNO, opcoesDeCargo, usuarioDaSessao } from '../components/EditarPessoaModal';
+import { avisar } from '../components/Mensagens';
+import CampoData from '../components/CampoData';
 
 
 const SignUpModal = ({ show, onClose }) => {
@@ -23,6 +25,8 @@ const SignUpModal = ({ show, onClose }) => {
   const [usuarioLogado] = useState(usuarioDaSessao);
 
   const cargoDeGestao = isCargoGestao(cargo);
+  // coordenadores são cadastrados sem COREN
+  const pedeCoren = cargo !== CARGO_COORDENADOR;
   const opcoesCargo = opcoesDeCargo(usuarioLogado);
 
   useEffect(() => {
@@ -96,16 +100,18 @@ const SignUpModal = ({ show, onClose }) => {
       return;
     }
 
-    if (!email || !password || !cpf || !name || !crms || !cargo || !horaEscala ||
+    if (!email || !password || !cpf || !name || (pedeCoren && !crms) || !cargo || !horaEscala ||
       (!cargoDeGestao && (!setorId || !turno || !inicioCiclo))) {
       setError("Preencha todos os campos obrigatórios!");
       return;
     }
 
-    const corenValidacao = handleCoren(crms);
-    if (!corenValidacao.valido) {
-      setError(corenValidacao.mensagem);
-      return;
+    if (pedeCoren) {
+      const corenValidacao = handleCoren(crms);
+      if (!corenValidacao.valido) {
+        setError(corenValidacao.mensagem);
+        return;
+      }
     }
 
     setError("");
@@ -114,7 +120,7 @@ const SignUpModal = ({ show, onClose }) => {
       nome_completo: name,
       email,
       password,
-      crm: crms,
+      crm: pedeCoren ? crms : null,
       cpf,
       cargo,
       horaEscala: horaEscala,
@@ -140,7 +146,7 @@ const SignUpModal = ({ show, onClose }) => {
       setError('');
       onClose();
 
-      alert("Usuário criado com sucesso!");
+      await avisar("Usuário criado com sucesso!", { variante: "sucesso" });
       window.location.reload();
 
     } catch (err) {
@@ -215,17 +221,19 @@ const SignUpModal = ({ show, onClose }) => {
                   />
                 </div>
 
-                <div className="mb-3">
-                  <label className="form-label">Coren</label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    placeholder='Ex: 123456-RJ/ENF'
-                    value={crms}
-                    onChange={(e) => setCrms(e.target.value)}
-                    required
-                  />
-                </div>
+                {pedeCoren && (
+                  <div className="mb-3">
+                    <label className="form-label">Coren</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder='Ex: 123456-RJ/ENF'
+                      value={crms}
+                      onChange={(e) => setCrms(e.target.value)}
+                      required
+                    />
+                  </div>
+                )}
 
                 <div className="mb-3">
                   <label className="form-label">CPF</label>
@@ -312,9 +320,7 @@ const SignUpModal = ({ show, onClose }) => {
                     </div>
                     <div className="mb-3">
                       <label className="form-label">Início do ciclo</label>
-                      <input
-                        type="date"
-                        className="form-control"
+                      <CampoData
                         value={inicioCiclo}
                         onChange={(e) => setInicioCiclo(e.target.value)}
                         required

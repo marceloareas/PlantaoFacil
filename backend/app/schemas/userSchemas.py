@@ -3,7 +3,7 @@ from pydantic import BaseModel, EmailStr, field_validator, model_validator, cons
 from validate_docbr import CPF
 import re
 
-from core.perfis import is_cargo_gestao
+from core.perfis import CARGO_COORDENADOR, is_cargo_gestao
 from services.periodoService import TURNOS
 
 cpf_validator = CPF()
@@ -38,7 +38,8 @@ def _data_vazia_como_nula(valor):
 class UserCreate(BaseModel):
     email: EmailStr
     password : str
-    crm: str
+    # coordenadores são cadastrados sem COREN
+    crm: str | None = None
     cpf: str
     nome_completo: constr(min_length=3, strip_whitespace=True)
     cargo: str
@@ -51,6 +52,14 @@ class UserCreate(BaseModel):
     @model_validator(mode="after")
     def validar_setor(self):
         return _exigir_setor(self)
+
+    @model_validator(mode="after")
+    def validar_coren_por_cargo(self):
+        if (self.cargo or "").strip().lower() == CARGO_COORDENADOR.lower():
+            self.crm = None
+        elif not self.crm:
+            raise ValueError("COREN é obrigatório para enfermeiros e técnicos de enfermagem")
+        return self
 
     @field_validator("turno")
     @classmethod
@@ -94,6 +103,9 @@ class UserCreate(BaseModel):
         -  2 a 4 letras
         """
 
+        if v is None or not v.strip():
+            return None
+
         crm = v.strip().upper()
 
         regex = r'^\d{4,6}-[A-Z]{2}/[A-Z]{2,4}$'
@@ -102,14 +114,14 @@ class UserCreate(BaseModel):
             raise ValueError("CRM deve estar no formato 123456-RJ/ENF")
 
         return crm
-    
+
     @field_validator("horaEscala")
     @classmethod
     def validar_hora_escala(cls, v):
         if not v in ["12x36", "12x60"]:
             raise ValueError("horaEscala deve ser '12x36' ou '12x60'")
         return v
-    
+
 
 class UserUpdate(BaseModel):
     email: EmailStr

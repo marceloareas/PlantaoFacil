@@ -10,6 +10,7 @@ def validar_usuario_existente(db, user):
     if existing_cpf:
         raise HTTPException(status_code=400, detail="CPF já foi cadastrado")
 
-    existing_crm = db.query(User).filter(User.crm == user.crm).first()
+    # coordenadores não têm COREN: não há o que comparar
+    existing_crm = user.crm and db.query(User).filter(User.crm == user.crm).first()
     if existing_crm:
         raise HTTPException(status_code=400, detail="CRM já foi cadastrado")

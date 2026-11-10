@@ -29,6 +29,17 @@
     max-width: 100%;
 }
 
+/* tabela de períodos: cada coluna cresce até caber o conteúdo, sem quebrar nem sobrepor */
+.periodos-tabela th,
+.periodos-tabela td {
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+.periodos-tabela .badge {
+    display: inline-block;
+}
+
 .periodos-resumo {
     border-top: 1px solid #dee2e6;
     padding-top: 16px;

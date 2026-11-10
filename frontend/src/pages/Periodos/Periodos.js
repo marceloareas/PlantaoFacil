@@ -4,6 +4,7 @@ import { Alert, Badge, Button, Col, Container, Form, Modal, Row, Spinner, Table 
 import "./Periodos.css";
 import { api, getSetorAtual } from "../../components/api/Api";
 import CriarPeriodoModal from "../../components/CriarPeriodoModal";
+import { confirmar } from "../../components/Mensagens";
 import { isGestor } from "../../components/utils/perfis";
 import {
     descreverPeriodo,
@@ -270,7 +271,11 @@ const Periodos = ({ user }) => {
     };
 
     const excluirPeriodo = async (periodo) => {
-        if (!window.confirm(`Deseja realmente excluir o período de ${descreverPeriodo(periodo)}?`)) return;
+        const confirmado = await confirmar(`Deseja realmente excluir o período de ${descreverPeriodo(periodo)}?`, {
+            variante: "atencao",
+            textoOk: "Excluir",
+        });
+        if (!confirmado) return;
 
         try {
             const resposta = await api.delete(`/periodos/${periodo.id}`);
@@ -318,7 +323,11 @@ const Periodos = ({ user }) => {
 
     const removerFalta = async (falta) => {
         const descricao = `${falta.nome} em ${formatarData(falta.data)} (${falta.horario})`;
-        if (!window.confirm(`Deseja realmente remover a falta de ${descricao}?`)) return;
+        const confirmado = await confirmar(`Deseja realmente remover a falta de ${descricao}?`, {
+            variante: "atencao",
+            textoOk: "Remover",
+        });
+        if (!confirmado) return;
 
         try {
             await api.delete(`/faltas/${falta.id}`);
@@ -359,7 +368,7 @@ const Periodos = ({ user }) => {
                 ) : periodos.length === 0 ? (
                     <p className="mb-0">Nenhum período cadastrado neste setor.</p>
                 ) : (
-                    <Table bordered hover responsive className="mb-0">
+                    <Table bordered hover responsive className="mb-0 periodos-tabela">
                         <thead className="table-dark">
                             <tr>
                                 <th>Início</th>
@@ -591,6 +600,7 @@ const Periodos = ({ user }) => {
                 onClose={() => setShowNovoPeriodo(false)}
                 onCreated={periodoCriado}
                 sugestaoInicio={sugestaoInicio}
+                periodos={periodos}
             />
 
             <Modal show={confirmacao.show} onHide={fecharConfirmacao} centered>

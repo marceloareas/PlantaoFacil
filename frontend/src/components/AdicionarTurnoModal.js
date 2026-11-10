@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { api } from "./api/Api";
+import { avisarExtrasAlocados } from "./Mensagens";
+import CampoData from "./CampoData";
 
 const AdicionarTurnoModal = ({ show, onClose, pessoa }) => {
 
@@ -55,6 +57,8 @@ const AdicionarTurnoModal = ({ show, onClose, pessoa }) => {
             });
 
             setSuccess("Turnos alocados com sucesso!");
+
+            await avisarExtrasAlocados(resposta?.extras_alocados);
 
             const avisosLimite = resposta?.avisos || [];
             if (avisosLimite.length > 0) {
@@ -114,9 +118,7 @@ const AdicionarTurnoModal = ({ show, onClose, pessoa }) => {
 
                                 <div className="mb-3">
                                     <label className="form-label">Data Inicial</label>
-                                    <input
-                                        type="date"
-                                        className="form-control"
+                                    <CampoData
                                         name="data_inicio"
                                         value={formData.data_inicio}
                                         onChange={handleChange}

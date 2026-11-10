@@ -3,6 +3,7 @@ import "./trocas.css";
 import { api } from "../../components/api/Api";
 import TrocaModal from "../../components/TrocaModal";
 import { isGestor } from "../../components/utils/perfis";
+import { avisar } from "../../components/Mensagens";
 
 // aceita "AAAA-MM-DD" e "DD-MM-AAAA"; devolve ISO para comparar com as datas do período
 const paraIso = (data) => {
@@ -84,7 +85,7 @@ const TrocasAprovacao = () => {
             );
         } catch (err) {
             console.error(err);
-            alert("Erro ao atualizar troca.");
+            avisar("Erro ao atualizar troca.", { variante: "erro" });
         }
     };
 
@@ -97,7 +98,7 @@ const TrocasAprovacao = () => {
         try {
             await api.put(`/trocas/${t.id}/desfazer`);
 
-            alert("Troca desfeita com sucesso!");
+            avisar("Troca desfeita com sucesso!", { variante: "sucesso" });
 
             setTrocas((prev) =>
                 prev.map((x) =>
@@ -106,7 +107,7 @@ const TrocasAprovacao = () => {
             );
         } catch (err) {
             console.error(err);
-            alert("Erro ao desfazer troca.");
+            avisar("Erro ao desfazer troca.", { variante: "erro" });
         }
     };
 
@@ -114,7 +115,7 @@ const TrocasAprovacao = () => {
         try {
             await api.put(`/trocas/${t.id}/aprovar`);
 
-            alert("Troca refeita com sucesso!");
+            avisar("Troca refeita com sucesso!", { variante: "sucesso" });
 
             setTrocas((prev) =>
                 prev.map((x) =>
@@ -123,7 +124,7 @@ const TrocasAprovacao = () => {
             );
         } catch (err) {
             console.error(err);
-            alert("Erro ao refazer troca.");
+            avisar("Erro ao refazer troca.", { variante: "erro" });
         }
     };
 

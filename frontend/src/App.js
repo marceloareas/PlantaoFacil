@@ -23,7 +23,9 @@ import Pessoas from './pages/Pessoas/Pessoas';
 import HelpPage from './pages/Help/HelpPage';
 import BackButton from './components/BackButton';
 import Periodos from './pages/Periodos/Periodos';
+import Emprestimos from './pages/Emprestimos/Emprestimos';
 import { isGestor } from './components/utils/perfis';
+import MensagensHost from './components/Mensagens';
 
 
 
@@ -203,6 +205,7 @@ function App() {
                     <li><a href="/Pessoas" onClick={() => setShowMenu(false)}>Funcionários</a></li>
                     <li><a href="/Setores" onClick={() => setShowMenu(false)}>Setores</a></li>
                     <li><a href="/Periodos" onClick={() => setShowMenu(false)}>Períodos</a></li>
+                    <li><a href="/Emprestimos" onClick={() => setShowMenu(false)}>Empréstimos</a></li>
                     <li><a href="/TrocasAprovacao" onClick={() => setShowMenu(false)}>Trocas para aprovação</a></li>
                   </>
                 )}
@@ -250,6 +253,7 @@ function App() {
             <Route path="/RelatorioPersonalizado" element={<RelatorioPeronalizado/>} />
             <Route path="/EditarEscala/:data" element={<EditarEscala />} />
             <Route path="/Periodos" element={<Periodos user={user} />} />
+            <Route path="/Emprestimos" element={<Emprestimos user={user} />} />
             <Route
               path="/Setores"
               element={<Setores user={user} setorAtual={setorAtual} onSetorAtualChange={selecionarSetor} />}
@@ -291,6 +295,7 @@ function App() {
         onSelect={selecionarSetor}
         onClose={() => setShowSetorModal(false)}
       />
+      <MensagensHost />
 
     </Router>
   );

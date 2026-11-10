@@ -6,6 +6,8 @@ import "./FuncAusente.css";
 import { api } from '../../components/api/Api';
 import ConflitoModal from "../../components/ConflitoModal";
 import MotivoModal from "../../components/MotivoModal";
+import { confirmar } from "../../components/Mensagens";
+import CampoData from "../../components/CampoData";
 
 const FuncionariosAusentes = () => {
     const [ausentes, setAusentes] = useState([]);
@@ -50,7 +52,11 @@ const FuncionariosAusentes = () => {
     }, [dataFiltro]);
 
     const handleDelete = async (cpf) => {
-        if (!window.confirm("Deseja realmente remover este ausente?")) return;
+        const confirmado = await confirmar("Deseja realmente remover este ausente?", {
+            variante: "atencao",
+            textoOk: "Remover",
+        });
+        if (!confirmado) return;
 
         try {
             await api.delete(`/ausentes/${cpf}`);
@@ -150,9 +156,7 @@ const FuncionariosAusentes = () => {
 
             <div className="d-flex flex-wrap justify-content-between align-items-center mb-3">
                 <div className="d-flex gap-2 align-items-center">
-                    <input
-                        type="date"
-                        className="form-control"
+                    <CampoData
                         style={{ maxWidth: "200px" }}
                         value={dataFiltro}
                         onChange={(e) => setDataFiltro(e.target.value)}

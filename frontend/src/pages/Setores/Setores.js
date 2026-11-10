@@ -3,6 +3,7 @@ import { Container, Table, Button, Form, Alert, Spinner, Row, Col, Badge } from 
 import "bootstrap/dist/css/bootstrap.min.css";
 import { api } from "../../components/api/Api";
 import { isGestor } from "../../components/utils/perfis";
+import { confirmar, perguntar } from "../../components/Mensagens";
 
 const Setores = ({ user, setorAtual, onSetorAtualChange }) => {
     const [setores, setSetores] = useState([]);
@@ -43,7 +44,7 @@ const Setores = ({ user, setorAtual, onSetorAtualChange }) => {
     };
 
     const renomearSetor = async (setor) => {
-        const nome = window.prompt("Novo nome do setor:", setor.nome);
+        const nome = await perguntar("Novo nome do setor:", { titulo: "Renomear setor", valorInicial: setor.nome });
         if (!nome || nome.trim() === setor.nome) return;
 
         try {
@@ -57,7 +58,11 @@ const Setores = ({ user, setorAtual, onSetorAtualChange }) => {
     };
 
     const excluirSetor = async (setor) => {
-        if (!window.confirm(`Deseja realmente excluir o setor ${setor.nome}?`)) return;
+        const confirmado = await confirmar(`Deseja realmente excluir o setor ${setor.nome}?`, {
+            variante: "atencao",
+            textoOk: "Excluir",
+        });
+        if (!confirmado) return;
 
         try {
             await api.delete(`/setores/${setor.id}`);

@@ -2,6 +2,8 @@ import { useState } from "react";
 import { api, getSetorAtual } from "../../components/api/Api";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "./RelatorioMensal.css";
+import { avisar } from "../../components/Mensagens";
+import CampoData from "../../components/CampoData";
 
 function RelatorioMensal() {
 
@@ -82,7 +84,7 @@ function RelatorioMensal() {
     const gerarRelatorio = async () => {
 
         if (!dataInicial) {
-            alert("Selecione uma data.");
+            avisar("Selecione uma data.", { variante: "atencao" });
             return;
         }
 
@@ -161,7 +163,7 @@ function RelatorioMensal() {
         } catch (erro) {
 
             console.error(erro);
-            alert("Erro ao gerar relatório.");
+            avisar("Erro ao gerar relatório.", { variante: "erro" });
 
         } finally {
 
@@ -256,9 +258,7 @@ function RelatorioMensal() {
                         Data Inicial
                     </label>
 
-                    <input
-                        type="date"
-                        className="form-control"
+                    <CampoData
                         value={dataInicial}
                         onChange={(e) =>
                             setDataInicial(

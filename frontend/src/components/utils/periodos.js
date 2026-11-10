@@ -17,6 +17,36 @@ export const diaSeguinteISO = (iso) => {
     return paraISO(new Date(data.ano, data.mes - 1, data.dia + 1));
 };
 
+export const diaAnteriorISO = (iso) => {
+    const data = lerISO(iso);
+    if (!data) return "";
+    return paraISO(new Date(data.ano, data.mes - 1, data.dia - 1));
+};
+
+// trechos sem período entre o novo período e os vizinhos já cadastrados
+export const diasSemPeriodo = (periodos, inicioISO, fimISO) => {
+    const trechos = [];
+    if (!inicioISO || !fimISO) return trechos;
+
+    const fimAnterior = periodos
+        .filter((p) => p.data_fim < inicioISO)
+        .reduce((maior, p) => (p.data_fim > maior ? p.data_fim : maior), "");
+    if (fimAnterior) {
+        const primeiroDia = diaSeguinteISO(fimAnterior);
+        if (primeiroDia < inicioISO) trechos.push({ inicio: primeiroDia, fim: diaAnteriorISO(inicioISO) });
+    }
+
+    const inicioPosterior = periodos
+        .filter((p) => p.data_inicio > fimISO)
+        .reduce((menor, p) => (!menor || p.data_inicio < menor ? p.data_inicio : menor), "");
+    if (inicioPosterior) {
+        const primeiroDia = diaSeguinteISO(fimISO);
+        if (primeiroDia < inicioPosterior) trechos.push({ inicio: primeiroDia, fim: diaAnteriorISO(inicioPosterior) });
+    }
+
+    return trechos;
+};
+
 // mesma regra do backend (calcular_data_fim): termina no dia anterior ao mesmo dia do mês seguinte
 export const calcularDataFim = (inicioISO) => {
     const inicio = lerISO(inicioISO);

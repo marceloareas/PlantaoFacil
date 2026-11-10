@@ -6,6 +6,7 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import "./Pessoas.css";
 import { api, getSetorAtual } from "../../components/api/Api";
 import { isAdmin, isCargoGestao, isGestor } from "../../components/utils/perfis";
+import { avisar, confirmar } from "../../components/Mensagens";
 
 const NAO_DEFINIDO = "Não definido";
 
@@ -143,13 +144,14 @@ const Pessoas = () => {
                     .map((d) => d.replaceAll("-", "/"))
                     .join(", ");
 
-                const confirmar = window.confirm(
+                const confirmado = await confirmar(
                     `${usuario.nome_completo} está escalado nas seguintes datas:\n` +
-                    `${listaDatas}\n` +
-                    `Deseja realmente desativar este funcionário?`
+                    `${listaDatas}\n\n` +
+                    `Deseja realmente desativar este funcionário?`,
+                    { variante: "atencao", textoOk: "Desativar" }
                 );
 
-                if (!confirmar) return;
+                if (!confirmado) return;
             }
         }
 
@@ -159,10 +161,10 @@ const Pessoas = () => {
             usuario.setor_id,
             90
         );
-        if (datasEscaladas.length == 0 && 
-            !window.confirm(
+        if (datasEscaladas.length == 0 &&
+            !(await confirmar(
                 `Deseja realmente alterar o status de ${usuario.nome_completo} para ${novoStatus}?`
-            )
+            ))
         )
             return;
 
@@ -180,7 +182,7 @@ const Pessoas = () => {
 
         } catch(err) {
             console.log(err)
-            alert(err.message || "Erro de conexão com o servidor");
+            avisar(err.message || "Erro de conexão com o servidor", { variante: "erro" });
         }
     };
 

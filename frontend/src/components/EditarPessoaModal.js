@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Modal, Button, Form, Alert } from "react-bootstrap";
 import { api } from "./api/Api";
 import { CARGO_ADMIN, CARGO_COORDENADOR, isAdmin, isCargoGestao } from "./utils/perfis";
+import CampoData from "./CampoData";
 
 export const OPCOES_TURNO = [
     { valor: "07:00 - 19:00", rotulo: "Diurno 07:00 - 19:00" },
@@ -261,8 +262,7 @@ const EditarPessoaModal = ({ show, onClose, pessoa, onSave, setores = [] }) => {
 
                             <Form.Group className="mb-3">
                                 <Form.Label>Início do ciclo</Form.Label>
-                                <Form.Control
-                                    type="date"
+                                <CampoData
                                     name="inicio_ciclo"
                                     value={formData.inicio_ciclo}
                                     onChange={handleChange}

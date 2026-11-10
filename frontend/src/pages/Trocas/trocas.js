@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import "./trocas.css";
 import { api } from "../../components/api/Api";
 import { isGestor } from "../../components/utils/perfis";
+import { confirmar } from "../../components/Mensagens";
+import CampoData from "../../components/CampoData";
 
 const Trocas = () => {
   const [user, setUser] = useState(null);
@@ -204,10 +206,11 @@ const Trocas = () => {
 
   const handleDelete = async (id, situacao) => {
   
-    const confirm = window.confirm(
-      "Tem certeza que deseja deletar esta solicitação? Esta ação não pode ser desfeita."
+    const confirmado = await confirmar(
+      "Tem certeza que deseja deletar esta solicitação? Esta ação não pode ser desfeita.",
+      { variante: "atencao", textoOk: "Deletar" }
     );
-    if (!confirm) return; 
+    if (!confirmado) return;
 
     if (situacao !== "Pendente" && situacao !== "Aguardando Destinatario") {
       return setErroFormulario("Só é possível deletar solicitações pendentes ou aguardando destinatário.");
@@ -251,8 +254,7 @@ const Trocas = () => {
           <form onSubmit={handleSubmit} className="troca-form">
 
             <label>Dia do seu plantão:</label>
-            <input
-              type="date"
+            <CampoData
               name="meuDia"
               value={troca.meuDia}
               onChange={handleChange}
@@ -273,8 +275,7 @@ const Trocas = () => {
             )}
 
             <label>Dia do plantão do colega:</label>
-            <input
-              type="date"
+            <CampoData
               value={diaColega}
               onChange={(e) => setDiaColega(e.target.value)}
               min={new Date().toLocaleDateString("en-CA")}

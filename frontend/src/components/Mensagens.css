@@ -1,0 +1,133 @@
+/* fica acima dos outros modais e do menu lateral (z-index 9999) */
+.mensagem-modal {
+    z-index: 10001;
+}
+
+.mensagem-backdrop {
+    z-index: 10000;
+    backdrop-filter: blur(2px);
+}
+
+.mensagem-modal .modal-dialog {
+    max-width: 420px;
+}
+
+.mensagem-conteudo {
+    --mensagem-cor: #0d6efd;
+    --mensagem-fundo: #e7f1ff;
+    border: none;
+    border-radius: 16px;
+    border-top: 6px solid var(--mensagem-cor);
+    box-shadow: 0 18px 45px rgba(0, 0, 0, 0.25);
+    overflow: hidden;
+    animation: mensagem-entrada 0.18s ease-out;
+}
+
+.mensagem-sucesso {
+    --mensagem-cor: #198754;
+    --mensagem-fundo: #e3f5ec;
+}
+
+.mensagem-erro {
+    --mensagem-cor: #dc3545;
+    --mensagem-fundo: #fdecee;
+}
+
+.mensagem-atencao {
+    --mensagem-cor: #e0a800;
+    --mensagem-fundo: #fff6da;
+}
+
+.mensagem-info {
+    --mensagem-cor: #0d6efd;
+    --mensagem-fundo: #e7f1ff;
+}
+
+.mensagem-pergunta {
+    --mensagem-cor: #6f42c1;
+    --mensagem-fundo: #f0e9fb;
+}
+
+.mensagem-corpo {
+    padding: 28px 28px 22px;
+    text-align: center;
+}
+
+.mensagem-icone {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 14px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    color: var(--mensagem-cor);
+    background-color: var(--mensagem-fundo);
+}
+
+.mensagem-titulo {
+    font-weight: 700;
+    margin-bottom: 8px;
+    color: #212529;
+}
+
+.mensagem-texto {
+    color: #495057;
+    margin-bottom: 0;
+    white-space: pre-line;
+    word-break: break-word;
+    max-height: 50vh;
+    overflow-y: auto;
+}
+
+.mensagem-campo {
+    margin-top: 16px;
+}
+
+.mensagem-botoes {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 22px;
+}
+
+.mensagem-botao {
+    min-width: 110px;
+    padding: 9px 20px;
+    border-radius: 999px;
+    border: 2px solid var(--mensagem-cor);
+    font-weight: 600;
+    cursor: pointer;
+    transition: filter 0.15s ease, background-color 0.15s ease;
+}
+
+.mensagem-botao-principal {
+    background-color: var(--mensagem-cor);
+    color: #fff;
+}
+
+.mensagem-botao-principal:hover {
+    filter: brightness(0.92);
+}
+
+.mensagem-botao-secundario {
+    background-color: transparent;
+    color: var(--mensagem-cor);
+}
+
+.mensagem-botao-secundario:hover {
+    background-color: var(--mensagem-fundo);
+}
+
+@keyframes mensagem-entrada {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}

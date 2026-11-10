@@ -5,7 +5,8 @@ from database import get_db
 from models.escalaDiaModels import Escala
 from models.userModels import User
 from schemas.escalaLoteSchemas import EscalaLoteSchemas
-from services.limitesService import avisos_para
+from services.emprestimoService import verificar_entrada_na_escala
+from services.limitesService import avisos_para, resumo_extras_alocados
 from services.periodoService import DIAS_DO_CICLO, periodo_da_data, tipo_novo_plantao
 from fastapi import HTTPException
 from datetime import datetime, timedelta
@@ -61,6 +62,9 @@ def criar_lote(dados: EscalaLoteSchemas, db: Session = Depends(get_db)):
             if DiasConsecutivos:
                 raise HTTPException(status_code=400, detail=f"Alocação bloqueada para {data_formatada} devido a 3 turnos seguidos")
 
+            # bloqueia os dias em que ele está emprestado a outro setor
+            verificar_entrada_na_escala(db, user, user.setor_id, data_formatada, data_atual.date())
+
             # depois de gerada a escala do período, o plantão conta como extra
             tipo = tipo_novo_plantao(db, user.setor_id, data_atual.date())
             datas_validas.append((data_formatada, data_atual.date(), tipo))
@@ -83,13 +87,18 @@ def criar_lote(dados: EscalaLoteSchemas, db: Session = Depends(get_db)):
 
     # um lote pode atravessar mais de um período
     avisos, periodos_vistos = [], set()
-    for _, dia, _ in datas_validas:
+    extras_alocados, periodos_com_extra = [], set()
+    for _, dia, tipo in datas_validas:
         periodo = periodo_da_data(db, user.setor_id, dia)
         if periodo and periodo.id not in periodos_vistos:
             periodos_vistos.add(periodo.id)
             avisos.extend(avisos_para(db, user.setor_id, [user.cpf], dia))
+        if tipo == "extra" and periodo and periodo.id not in periodos_com_extra:
+            periodos_com_extra.add(periodo.id)
+            extras_alocados.extend(resumo_extras_alocados(db, user.setor_id, [user.cpf], dia))
 
     return {
         "message": "Processo finalizado",
         "avisos": avisos,
+        "extras_alocados": extras_alocados,
     }

@@ -1,9 +1,14 @@
 import { useEffect, useState } from "react";
 import { Alert, Button, Form, Modal } from "react-bootstrap";
 import { api } from "./api/Api";
-import { calcularDataFim, formatarData, hojeISO } from "./utils/periodos";
+import { calcularDataFim, diasSemPeriodo, formatarData, hojeISO } from "./utils/periodos";
+import { confirmar } from "./Mensagens";
+import CampoData from "./CampoData";
 
-const CriarPeriodoModal = ({ show, onClose, onCreated, sugestaoInicio }) => {
+const descreverTrecho = ({ inicio, fim }) =>
+    inicio === fim ? `o dia ${formatarData(inicio)}` : `os dias de ${formatarData(inicio)} a ${formatarData(fim)}`;
+
+const CriarPeriodoModal = ({ show, onClose, onCreated, sugestaoInicio, periodos = [] }) => {
     const [dataInicio, setDataInicio] = useState("");
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
@@ -23,6 +28,17 @@ const CriarPeriodoModal = ({ show, onClose, onCreated, sugestaoInicio }) => {
         if (!dataInicio) {
             setError("Informe a data de início do período.");
             return;
+        }
+
+        const trechos = diasSemPeriodo(periodos, dataInicio, dataFim);
+        if (trechos.length > 0) {
+            const lista = trechos.map(descreverTrecho).join(" e ");
+            const continuar = await confirmar(
+                `Com este período, ${lista} não ficarão cobertos por nenhum período.\n\n` +
+                "Tem certeza de que deseja criar este período?",
+                { titulo: "Dias sem período", variante: "atencao", textoOk: "Sim, criar", textoCancelar: "Cancelar" }
+            );
+            if (!continuar) return;
         }
 
         setError("");
@@ -51,8 +67,8 @@ const CriarPeriodoModal = ({ show, onClose, onCreated, sugestaoInicio }) => {
                 <Form onSubmit={handleSubmit}>
                     <Form.Group className="mb-3" controlId="periodo-data-inicio">
                         <Form.Label>Data de início</Form.Label>
-                        <Form.Control
-                            type="date"
+                        <CampoData
+                            id="periodo-data-inicio"
                             value={dataInicio}
                             onChange={(e) => {
                                 setDataInicio(e.target.value);

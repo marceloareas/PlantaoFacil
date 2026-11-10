@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Button, Form, Modal } from "react-bootstrap";
 import { api } from "./api/Api";
+import { confirmar } from "./Mensagens";
 
 const hojeISO = () => {
     const hoje = new Date();
@@ -65,7 +66,11 @@ const FaltaModal = ({ show, onClose, funcionario, dataBR, horario, falta, troca,
     };
 
     const removerFalta = async () => {
-        if (!window.confirm(`Remover a falta de ${funcionario.nome} em ${formatarData(dataBR)}?`)) return;
+        const confirmado = await confirmar(
+            `Remover a falta de ${funcionario.nome} em ${formatarData(dataBR)}?`,
+            { variante: "atencao", textoOk: "Remover" }
+        );
+        if (!confirmado) return;
 
         setErro("");
         setSalvando(true);

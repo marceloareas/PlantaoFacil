@@ -4,8 +4,10 @@ from sqlalchemy.orm import Session
 from core.dependencies import get_setor_id, require_coordenador
 from database import get_db
 from models.escalaDiaModels import Escala
+from models.userModels import User
 from schemas.escalaDiaSchemas import EscalaDiaCreate
-from services.limitesService import avisos_para
+from services.emprestimoService import verificar_entrada_na_escala
+from services.limitesService import avisos_para, resumo_extras_alocados
 from services.periodoService import FORMATO_ESCALA, tipo_novo_plantao
 from datetime import datetime
 
@@ -41,13 +43,19 @@ def serializar_linha(e: Escala) -> dict:
         "Cargo": e.Cargo,
         "Cpf": e.Cpf,
         "Tipo": e.tipo or "regular",
+        # preenchido quando o funcionário é de outro setor (emprestado)
+        "SetorOrigem": e.user.setor.nome if e.user and e.user.setor and e.user.setor_id != e.setor_id else None,
     }
 
 
-def criar_linhas(db: Session, data: str, data_dt: datetime, escala_dia: EscalaDiaCreate, setor_id: int, tipos_existentes: dict) -> list:
-    """Cria as linhas recebidas; quem já estava no turno mantém o tipo, quem entrou agora recebe o tipo de plantão novo."""
+def criar_linhas(db: Session, data: str, data_dt: datetime, escala_dia: EscalaDiaCreate, setor_id: int, tipos_existentes: dict) -> tuple[list, set]:
+    """Cria as linhas recebidas; quem já estava no turno mantém o tipo, quem entrou agora recebe o tipo de plantão novo.
+
+    Devolve também os CPFs que acabaram de receber um plantão extra.
+    """
     tipo_novo = None
     novas_escalas = []
+    cpfs_com_extra_novo = set()
 
     for item in escala_dia.Escala:
 
@@ -68,9 +76,19 @@ def criar_linhas(db: Session, data: str, data_dt: datetime, escala_dia: EscalaDi
 
         tipo = tipos_existentes.get((item.Cpf, item.Horario))
         if tipo is None:
-            if tipo_novo is None:
-                tipo_novo = tipo_novo_plantao(db, setor_id, data_dt.date())
-            tipo = tipo_novo
+            # só quem entra agora passa pelas regras de empréstimo
+            funcionario = db.query(User).filter(User.cpf == item.Cpf).first()
+            emprestimo_pontual = verificar_entrada_na_escala(db, funcionario, setor_id, data, data_dt.date())
+
+            if emprestimo_pontual:
+                # cobre um plantão de outro setor num dia em que estaria de folga
+                tipo = "extra"
+            else:
+                if tipo_novo is None:
+                    tipo_novo = tipo_novo_plantao(db, setor_id, data_dt.date())
+                tipo = tipo_novo
+            if tipo == "extra":
+                cpfs_com_extra_novo.add(item.Cpf)
 
         nova_escala = Escala(
             DataEscala=data,
@@ -85,15 +103,16 @@ def criar_linhas(db: Session, data: str, data_dt: datetime, escala_dia: EscalaDi
         novas_escalas.append(nova_escala)
         db.flush()  # Garante que o novo registro seja processado antes da próxima iteração
 
-    return novas_escalas
+    return novas_escalas, cpfs_com_extra_novo
 
 
-def resposta_com_avisos(db: Session, mensagem: str, data: str, data_dt: datetime, linhas: list, setor_id: int) -> dict:
+def resposta_com_avisos(db: Session, mensagem: str, data: str, data_dt: datetime, linhas: list, setor_id: int, cpfs_com_extra_novo: set) -> dict:
     return {
         "message": mensagem,
         "DataEscala": data,
         "Escala": linhas,
         "avisos": avisos_para(db, setor_id, {linha["Cpf"] for linha in linhas}, data_dt.date()),
+        "extras_alocados": resumo_extras_alocados(db, setor_id, cpfs_com_extra_novo, data_dt.date()),
     }
 
 
@@ -104,14 +123,14 @@ def create_escala_do_dia(data: str, escala_dia: EscalaDiaCreate, setor_id: int =
         existentes = db.query(Escala).filter(Escala.DataEscala == data, Escala.setor_id == setor_id).all()
         tipos_existentes = {(e.Cpf, e.Horario): e.tipo for e in existentes}
 
-        escalas_criadas = criar_linhas(db, data, data_dt, escala_dia, setor_id, tipos_existentes)
+        escalas_criadas, cpfs_com_extra_novo = criar_linhas(db, data, data_dt, escala_dia, setor_id, tipos_existentes)
         linhas = [serializar_linha(e) for e in escalas_criadas]
         db.commit()
     except Exception as e:
         db.rollback()
         raise e
 
-    return resposta_com_avisos(db, "Escala criada com sucesso", data, data_dt, linhas, setor_id)
+    return resposta_com_avisos(db, "Escala criada com sucesso", data, data_dt, linhas, setor_id, cpfs_com_extra_novo)
 
 @router.get("/{data}")
 def get_escala_do_dia(data: str, setor_id: int = Depends(get_setor_id), db: Session = Depends(get_db)):
@@ -142,7 +161,7 @@ def update_escala_do_dia(data: str, escala_dia: EscalaDiaCreate, setor_id: int =
                 db.delete(e)
             db.flush()
 
-        novas_escalas = criar_linhas(db, data, data_dt, escala_dia, setor_id, tipos_existentes)
+        novas_escalas, cpfs_com_extra_novo = criar_linhas(db, data, data_dt, escala_dia, setor_id, tipos_existentes)
         linhas = [serializar_linha(e) for e in novas_escalas]
         db.commit()
 
@@ -150,4 +169,4 @@ def update_escala_do_dia(data: str, escala_dia: EscalaDiaCreate, setor_id: int =
         db.rollback()
         raise e
 
-    return resposta_com_avisos(db, "Escala atualizada com sucesso", data, data_dt, linhas, setor_id)
+    return resposta_com_avisos(db, "Escala atualizada com sucesso", data, data_dt, linhas, setor_id, cpfs_com_extra_novo)

@@ -3,6 +3,8 @@ import { FaUserMinus } from "react-icons/fa";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { api, getSetorAtual } from "./api/Api";
 import { isCargoGestao } from "./utils/perfis";
+import { avisar } from "./Mensagens";
+import CampoData from "./CampoData";
 
 const AddAusenteModal = ({ show, onClose, onSuccess }) => {
 
@@ -111,8 +113,9 @@ const AddAusenteModal = ({ show, onClose, onSuccess }) => {
                     .map(c => `${c.data} - ${c.horario}`)
                     .join("\n");
 
-                alert(
-                    `⚠️ O funcionário ${formData.nome} já está escalado no(s) seguinte(s) dia(s):\n\n${lista}`
+                avisar(
+                    `O funcionário ${formData.nome} já está escalado no(s) seguinte(s) dia(s):\n\n${lista}`,
+                    { variante: "atencao" }
                 );
             }
 
@@ -332,9 +335,7 @@ const AddAusenteModal = ({ show, onClose, onSuccess }) => {
                                     <>
                                         <div className="mb-3">
                                             <label className="form-label">Data</label>
-                                            <input
-                                                type="date"
-                                                className="form-control"
+                                            <CampoData
                                                 name="data"
                                                 value={formData.data}
                                                 onChange={handleChange}
@@ -358,9 +359,7 @@ const AddAusenteModal = ({ show, onClose, onSuccess }) => {
                                     <>
                                         <div className="mb-3">
                                             <label className="form-label">Data Inicial</label>
-                                            <input
-                                                type="date"
-                                                className="form-control"
+                                            <CampoData
                                                 name="data"
                                                 value={formData.data}
                                                 onChange={handleChange}
@@ -380,9 +379,7 @@ const AddAusenteModal = ({ show, onClose, onSuccess }) => {
 
                                         <div className="mb-3">
                                             <label className="form-label">Data Final</label>
-                                            <input
-                                                type="date"
-                                                className="form-control"
+                                            <CampoData
                                                 name="data_final"
                                                 value={formData.data_final}
                                                 onChange={handleChange}
