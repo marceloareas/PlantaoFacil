@@ -192,7 +192,13 @@ const EscalaDoDia = () => {
         escalaExistente.forEach((item) => {
             const row = horarios.indexOf(item.Horario);
             const col = categorias.indexOf(item.Cargo);
-            if (row >= 0 && col >= 0) novaEscala[row][col].push({ nome: item.Nome, cpf: item.Cpf, tipo: item.Tipo, setorOrigem: item.SetorOrigem });
+            if (row >= 0 && col >= 0) novaEscala[row][col].push({
+                nome: item.Nome,
+                cpf: item.Cpf,
+                tipo: item.Tipo,
+                setorOrigem: item.SetorOrigem,
+                indisponivel: item.Indisponivel,
+            });
         });
 
         setEscala(novaEscala);
@@ -621,7 +627,12 @@ const isTurnoBlockedByAusencia = (dataBR, turno, ausencia) => {
                                                             }}
                                                         >
                                                             <span>
-                                                                {nome}
+                                                                <span style={{ textDecoration: item.indisponivel ? "line-through" : "none" }}>
+                                                                    {nome}
+                                                                </span>
+                                                                {item.indisponivel && (
+                                                                    <span className="badge bg-secondary ms-1">indisponível</span>
+                                                                )}
                                                                 {extra && (
                                                                     <span className="badge bg-info text-dark ms-1">extra</span>
                                                                 )}

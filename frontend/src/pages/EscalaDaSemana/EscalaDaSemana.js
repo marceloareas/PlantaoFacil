@@ -125,7 +125,7 @@ const EscalaDaSemana = () => {
                 data.Escala?.forEach(item => {
                     if (!escalaDia[item.Horario]) escalaDia[item.Horario] = {};
                     if (!escalaDia[item.Horario][item.Cargo]) escalaDia[item.Horario][item.Cargo] = [];
-                    escalaDia[item.Horario][item.Cargo].push({ nome: item.Nome, cpf: item.Cpf, tipo: item.Tipo });
+                    escalaDia[item.Horario][item.Cargo].push({ nome: item.Nome, cpf: item.Cpf, tipo: item.Tipo, indisponivel: item.Indisponivel });
                     cargosSet.add(item.Cargo);
                 });
 
@@ -307,9 +307,12 @@ const EscalaDaSemana = () => {
                                                             }
                                                         }}
                                                     >
-                                                        • <span style={{ textDecoration: falta ? "line-through" : "none" }}>
+                                                        • <span style={{ textDecoration: falta || funcionario.indisponivel ? "line-through" : "none" }}>
                                                             {nomeSobrenome(funcionario.nome)}
                                                         </span>
+                                                        {funcionario.indisponivel && (
+                                                            <span className="badge bg-secondary ms-1">indisponível</span>
+                                                        )}
                                                         {funcionario.tipo === "extra" && (
                                                             <span className="badge bg-info text-dark ms-1">extra</span>
                                                         )}

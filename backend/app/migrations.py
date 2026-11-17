@@ -24,6 +24,11 @@ COLUNAS_NOVAS = {
         "setor_id": "INTEGER REFERENCES setores(id)",
         "escala_gerada_em": "TIMESTAMP",
     },
+    "ausentes": {
+        "descricao": "VARCHAR(1000)",
+        "remover_da_escala": "BOOLEAN NOT NULL DEFAULT FALSE",
+        "plantoes_removidos": "TEXT",
+    },
 }
 
 

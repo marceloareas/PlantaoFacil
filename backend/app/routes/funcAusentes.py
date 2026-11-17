@@ -1,8 +1,14 @@
+import json
+from types import SimpleNamespace
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from core.dependencies import get_setor_id
 from database import get_db
+from models.escalaDiaModels import Escala
 from models.funcAusentesModels import Ausentes
+from services.escalaPeriodoService import turno_bloqueado_por_ausencia
+from services.periodoService import ler_data
 from models.userModels import User
 from schemas.funcAusentesSchemas import AusentesCreate
 
@@ -22,6 +28,16 @@ def create_ausente(ausente: AusentesCreate, db: Session = Depends(get_db)):
     if existente:
         raise HTTPException(status_code=400, detail="Esse funcionário já está registrado como ausente nessa data.")
 
+    try:
+        periodo_ausencia = SimpleNamespace(
+            data=ler_data(ausente.data),
+            data_final=ler_data(ausente.data_final) if ausente.data_final else None,
+            horario=ausente.horario,
+            horario_final=ausente.horario_final,
+        )
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Data inválida")
+
     novo_ausente = Ausentes(
         ausente=ausente.ausente,
         nome=ausente.nome,
@@ -31,10 +47,33 @@ def create_ausente(ausente: AusentesCreate, db: Session = Depends(get_db)):
         horario=ausente.horario,
         horario_final=ausente.horario_final,
         cargo=ausente.cargo,
-        motivo=ausente.motivo
+        motivo=ausente.motivo,
+        descricao=ausente.descricao,
+        remover_da_escala=ausente.remover_da_escala,
     )
 
     db.add(novo_ausente)
+
+    # "Remover da escala? Sim": tira os plantões do funcionário nos turnos em que está indisponível
+    removidos_da_escala = []
+    if ausente.remover_da_escala:
+        for linha in db.query(Escala).filter(Escala.Cpf == ausente.cpf).all():
+            try:
+                dia = ler_data(linha.DataEscala)
+            except ValueError:
+                continue
+            if turno_bloqueado_por_ausencia(dia, linha.Horario, periodo_ausencia):
+                removidos_da_escala.append({
+                    "data": linha.DataEscala,
+                    "horario": linha.Horario,
+                    "nome": linha.Nome,
+                    "cargo": linha.Cargo,
+                    "setor_id": linha.setor_id,
+                    "tipo": linha.tipo or "regular",
+                })
+                db.delete(linha)
+        novo_ausente.plantoes_removidos = json.dumps(removidos_da_escala, ensure_ascii=False)
+
     db.commit()
     db.refresh(novo_ausente)
 
@@ -48,8 +87,11 @@ def create_ausente(ausente: AusentesCreate, db: Session = Depends(get_db)):
             "horario": novo_ausente.horario,
             "horario_final": novo_ausente.horario_final,
             "cargo": novo_ausente.cargo,
-            "motivo": novo_ausente.motivo
-        }
+            "motivo": novo_ausente.motivo,
+            "descricao": novo_ausente.descricao,
+            "remover_da_escala": novo_ausente.remover_da_escala,
+        },
+        "removidos_da_escala": [{"data": r["data"], "horario": r["horario"]} for r in removidos_da_escala],
     }
 
 
@@ -86,14 +128,49 @@ def get_ausentes_por_data(data: str, setor_id: int = Depends(get_setor_id), db: 
     return ausentes
 
 
-@router.delete("/{cpf}")
-def delete_ausente(cpf: str, db: Session = Depends(get_db)):
-    ausente = db.query(Ausentes).filter(Ausentes.cpf == cpf).first()
+@router.delete("/{ausente_id}")
+def delete_ausente(ausente_id: int, db: Session = Depends(get_db)):
+    ausente = db.get(Ausentes, ausente_id)
 
     if not ausente:
-        raise HTTPException(status_code=404, detail="Funcionário ausente não encontrado.")
+        raise HTTPException(status_code=404, detail="Indisponibilidade não encontrada.")
+
+    nome = ausente.nome
+
+    # desfaz o "Remover da escala": devolve os plantões que foram retirados
+    restaurados, nao_restaurados = [], []
+    if ausente.remover_da_escala and ausente.plantoes_removidos:
+        for plantao in json.loads(ausente.plantoes_removidos):
+            ocupado = db.query(Escala).filter(
+                Escala.Cpf == ausente.cpf,
+                Escala.DataEscala == plantao["data"],
+                Escala.Horario == plantao["horario"],
+            ).first()
+            if ocupado:
+                nao_restaurados.append({
+                    "data": plantao["data"],
+                    "horario": plantao["horario"],
+                    "motivo": "Já está escalado nesse turno",
+                })
+                continue
+
+            db.add(Escala(
+                DataEscala=plantao["data"],
+                Horario=plantao["horario"],
+                Nome=plantao.get("nome") or nome,
+                Cargo=plantao.get("cargo") or ausente.cargo,
+                Cpf=ausente.cpf,
+                setor_id=plantao.get("setor_id"),
+                tipo=plantao.get("tipo") or "regular",
+            ))
+            db.flush()
+            restaurados.append({"data": plantao["data"], "horario": plantao["horario"]})
 
     db.delete(ausente)
     db.commit()
 
-    return {"message": f"Funcionário {ausente.nome} removido da lista de ausentes."}
+    return {
+        "message": f"Indisponibilidade de {nome} removida.",
+        "restaurados": restaurados,
+        "nao_restaurados": nao_restaurados,
+    }

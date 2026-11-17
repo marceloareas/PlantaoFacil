@@ -6,6 +6,8 @@ import { isCargoGestao } from "./utils/perfis";
 import { avisar } from "./Mensagens";
 import CampoData from "./CampoData";
 
+const MOTIVOS = ["Doença", "Férias", "Imprevisto", "Acidente", "Outro"];
+
 const AddAusenteModal = ({ show, onClose, onSuccess }) => {
 
     const [formData, setFormData] = useState({
@@ -13,6 +15,8 @@ const AddAusenteModal = ({ show, onClose, onSuccess }) => {
         cpf: "",
         cargo: "",
         motivo: "",
+        descricao: "",
+        removerDaEscala: "nao",
         data: "",
         horario: "07:00 - 19:00",
         data_final: null,
@@ -91,6 +95,8 @@ const AddAusenteModal = ({ show, onClose, onSuccess }) => {
             cpf: formData.cpf,
             cargo: formData.cargo,
             motivo: formData.motivo,
+            descricao: formData.descricao.trim() || null,
+            remover_da_escala: formData.removerDaEscala === "sim",
             data: formData.data,
             horario: formData.horario,
             data_final: null,
@@ -104,11 +110,20 @@ const AddAusenteModal = ({ show, onClose, onSuccess }) => {
         const conflitos = await verificarConflitosEscala();
 
         try {
-            await api.post("/ausentes/", payload);
+            const resposta = await api.post("/ausentes/", payload);
 
             setSuccess("Funcionário ausente registrado com sucesso!");
 
-            if (conflitos.length > 0) {
+            const removidos = resposta?.removidos_da_escala || [];
+            if (payload.remover_da_escala) {
+                avisar(
+                    removidos.length > 0
+                        ? `${formData.nome} foi retirado da escala nos seguintes plantões:\n\n` +
+                          removidos.map((r) => `${r.data.replace(/-/g, "/")} - ${r.horario}`).join("\n")
+                        : `${formData.nome} não tinha plantões na escala nesse período.`,
+                    { variante: "sucesso", titulo: "Indisponibilidade registrada" }
+                );
+            } else if (conflitos.length > 0) {
                 const lista = conflitos
                     .map(c => `${c.data} - ${c.horario}`)
                     .join("\n");
@@ -124,6 +139,8 @@ const AddAusenteModal = ({ show, onClose, onSuccess }) => {
                 cpf: "",
                 cargo: "",
                 motivo: "",
+                descricao: "",
+                removerDaEscala: "nao",
                 data: "",
                 horario: "07:00 - 19:00",
                 data_final: null,
@@ -400,12 +417,59 @@ const AddAusenteModal = ({ show, onClose, onSuccess }) => {
                                 )}
 
                                 <div className="mb-3">
+                                    <label className="form-label">Remover da escala?</label>
+                                    <div>
+                                        <div className="form-check form-check-inline">
+                                            <input
+                                                className="form-check-input"
+                                                type="radio"
+                                                id="remover-escala-sim"
+                                                name="removerDaEscala"
+                                                value="sim"
+                                                checked={formData.removerDaEscala === "sim"}
+                                                onChange={handleChange}
+                                            />
+                                            <label className="form-check-label" htmlFor="remover-escala-sim">Sim</label>
+                                        </div>
+                                        <div className="form-check form-check-inline">
+                                            <input
+                                                className="form-check-input"
+                                                type="radio"
+                                                id="remover-escala-nao"
+                                                name="removerDaEscala"
+                                                value="nao"
+                                                checked={formData.removerDaEscala === "nao"}
+                                                onChange={handleChange}
+                                            />
+                                            <label className="form-check-label" htmlFor="remover-escala-nao">Não</label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="mb-3">
                                     <label className="form-label">Motivo</label>
-                                    <input
-                                        type="text"
-                                        className="form-control"
+                                    <select
+                                        className="form-select"
                                         name="motivo"
                                         value={formData.motivo}
+                                        onChange={handleChange}
+                                        required
+                                    >
+                                        <option value="">Selecione o motivo</option>
+                                        {MOTIVOS.map((m) => (
+                                            <option key={m} value={m}>{m}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div className="mb-3">
+                                    <label className="form-label">Descrição</label>
+                                    <textarea
+                                        className="form-control"
+                                        name="descricao"
+                                        rows={3}
+                                        maxLength={1000}
+                                        value={formData.descricao}
                                         onChange={handleChange}
                                     />
                                 </div>

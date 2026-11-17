@@ -1,4 +1,4 @@
-const MotivoModal = ({ show, onClose, motivo, nome }) => {
+const MotivoModal = ({ show, onClose, motivo, descricao, nome }) => {
     if (!show) return null;
 
     return (
@@ -16,9 +16,14 @@ const MotivoModal = ({ show, onClose, motivo, nome }) => {
 
                         <div className="modal-body" style={ {maxHeight: "400px",overflowY: "auto", wordBreak: "break-word"}}>
                             {motivo ? (
-                                <p>{motivo}</p>
+                                <p><strong>Motivo:</strong> {motivo}</p>
                             ) : (
                                 <p className="text-muted">Nenhum motivo informado.</p>
+                            )}
+                            {descricao && (
+                                <p className="mb-0" style={{ whiteSpace: "pre-line" }}>
+                                    <strong>Descrição:</strong> {descricao}
+                                </p>
                             )}
                         </div>
 

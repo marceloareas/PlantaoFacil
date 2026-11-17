@@ -6,8 +6,9 @@ import "./FuncAusente.css";
 import { api } from '../../components/api/Api';
 import ConflitoModal from "../../components/ConflitoModal";
 import MotivoModal from "../../components/MotivoModal";
-import { confirmar } from "../../components/Mensagens";
+import { avisar, confirmar } from "../../components/Mensagens";
 import CampoData from "../../components/CampoData";
+import { FaSearch } from "react-icons/fa";
 
 const FuncionariosAusentes = () => {
     const [ausentes, setAusentes] = useState([]);
@@ -51,18 +52,40 @@ const FuncionariosAusentes = () => {
         fetchAusentes(dataFiltro);
     }, [dataFiltro]);
 
-    const handleDelete = async (cpf) => {
-        const confirmado = await confirmar("Deseja realmente remover este ausente?", {
-            variante: "atencao",
-            textoOk: "Remover",
-        });
+    const handleDelete = async (func) => {
+        const confirmado = await confirmar(
+            func.remover_da_escala
+                ? `Deseja realmente remover a indisponibilidade de ${func.nome}?\n\nOs plantões retirados da escala por ela serão devolvidos.`
+                : `Deseja realmente remover a indisponibilidade de ${func.nome}?`,
+            { variante: "atencao", textoOk: "Remover" }
+        );
         if (!confirmado) return;
 
         try {
-            await api.delete(`/ausentes/${cpf}`);
+            const resposta = await api.delete(`/ausentes/${func.id}`);
             await fetchAusentes(dataFiltro);
+
+            const restaurados = resposta?.restaurados || [];
+            const naoRestaurados = resposta?.nao_restaurados || [];
+            const formatar = (p) => `${p.data.replace(/-/g, "/")} - ${p.horario}`;
+            if (restaurados.length > 0 || naoRestaurados.length > 0) {
+                const partes = [];
+                if (restaurados.length > 0) {
+                    partes.push(`Plantões devolvidos à escala:\n${restaurados.map(formatar).join("\n")}`);
+                }
+                if (naoRestaurados.length > 0) {
+                    partes.push(
+                        `Não devolvidos:\n${naoRestaurados.map((p) => `${formatar(p)} (${p.motivo})`).join("\n")}`
+                    );
+                }
+                avisar(partes.join("\n\n"), {
+                    titulo: "Indisponibilidade removida",
+                    variante: naoRestaurados.length > 0 ? "atencao" : "sucesso",
+                });
+            }
         } catch (err) {
             console.error(err);
+            avisar(err.message || "Não foi possível remover a indisponibilidade.", { variante: "erro" });
         }
     };
 
@@ -152,31 +175,38 @@ const FuncionariosAusentes = () => {
 
     return (
         <div className="ausentes-page container mt-4">
-            <h2 className="mb-4">Funcionários Indisponíveis</h2>
+            <div className="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+                <h2 className="mb-0">Funcionários Indisponíveis</h2>
 
-            <div className="d-flex flex-wrap justify-content-between align-items-center mb-3">
-                <div className="d-flex gap-2 align-items-center">
+                {isGestor(user) && (
+                    <button
+                        className="btn btn-primary"
+                        onClick={() => setShowModal(true)}
+                    >
+                        + Adicionar Indisponibilidade
+                    </button>
+                )}
+            </div>
+
+            <div className="consulta-box mb-3">
+                <label className="form-label fw-semibold mb-2">
+                    <FaSearch className="me-2" />
+                    Consultar indisponíveis em uma data
+                </label>
+                <div className="d-flex flex-wrap gap-2 align-items-center">
                     <CampoData
-                        style={{ maxWidth: "200px" }}
+                        style={{ maxWidth: "220px" }}
                         value={dataFiltro}
                         onChange={(e) => setDataFiltro(e.target.value)}
                     />
 
                     <button
-                        className="btn btn-secondary"
+                        className="btn btn-outline-secondary"
                         onClick={() => setDataFiltro("")}
+                        disabled={!dataFiltro}
                     >
-                        Limpar
+                        Limpar consulta
                     </button>
-
-                    {isGestor(user) && (
-                        <button
-                            className="btn btn-primary"
-                            onClick={() => setShowModal(true)}
-                        >
-                            + Adicionar Ausência
-                        </button>
-                    )}
                 </div>
             </div>
 
@@ -242,7 +272,7 @@ const FuncionariosAusentes = () => {
                                     <td>
                                         <button
                                             className="btn btn-sm btn-outline-danger"
-                                            onClick={() => handleDelete(func.cpf)}
+                                            onClick={() => handleDelete(func)}
                                         >
                                             Remover
                                         </button>
@@ -258,6 +288,7 @@ const FuncionariosAusentes = () => {
                 show={showMotivoModal}
                 onClose={() => setShowMotivoModal(false)}
                 motivo={motivoSelecionado}
+                descricao={funcSelecionado?.descricao}
                 nome={funcSelecionado?.nome}
             />
 

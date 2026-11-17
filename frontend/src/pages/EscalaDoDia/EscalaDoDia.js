@@ -74,7 +74,7 @@ const EscalaDoDia = () => {
             const col = categorias.indexOf(item.Cargo);
 
             if (row >= 0 && col >= 0) {
-                novaEscala[row][col].push({ nome: item.Nome, cpf: item.Cpf, tipo: item.Tipo });
+                novaEscala[row][col].push({ nome: item.Nome, cpf: item.Cpf, tipo: item.Tipo, indisponivel: item.Indisponivel });
             }
         });
 
@@ -139,9 +139,12 @@ const EscalaDoDia = () => {
                                                         horario
                                                     }) : undefined}
                                                 >
-                                                    <span style={{ textDecoration: falta ? "line-through" : "none" }}>
+                                                    <span style={{ textDecoration: falta || funcionario.indisponivel ? "line-through" : "none" }}>
                                                         {funcionario.nome}
                                                     </span>
+                                                    {funcionario.indisponivel && (
+                                                        <span className="badge bg-secondary ms-1">indisponível</span>
+                                                    )}
                                                     {funcionario.tipo === "extra" && (
                                                         <span className="badge bg-info text-dark ms-1">extra</span>
                                                     )}

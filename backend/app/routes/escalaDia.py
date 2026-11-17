@@ -4,9 +4,11 @@ from sqlalchemy.orm import Session
 from core.dependencies import get_setor_id, require_coordenador
 from database import get_db
 from models.escalaDiaModels import Escala
+from models.funcAusentesModels import Ausentes
 from models.userModels import User
 from schemas.escalaDiaSchemas import EscalaDiaCreate
 from services.emprestimoService import verificar_entrada_na_escala
+from services.escalaPeriodoService import turno_bloqueado_por_ausencia
 from services.limitesService import avisos_para, resumo_extras_alocados
 from services.periodoService import FORMATO_ESCALA, tipo_novo_plantao
 from datetime import datetime
@@ -46,6 +48,25 @@ def serializar_linha(e: Escala) -> dict:
         # preenchido quando o funcionário é de outro setor (emprestado)
         "SetorOrigem": e.user.setor.nome if e.user and e.user.setor and e.user.setor_id != e.setor_id else None,
     }
+
+
+def marcar_indisponiveis(db: Session, data_dt: datetime, linhas: list) -> list:
+    """Marca as linhas de quem tem indisponibilidade registrada nesse dia e turno."""
+    dia = data_dt.date()
+    cpfs = {linha["Cpf"] for linha in linhas}
+    ausencias = []
+    if cpfs:
+        ausencias = (
+            db.query(Ausentes)
+            .filter(Ausentes.cpf.in_(cpfs), Ausentes.ausente == "Sim", Ausentes.data <= dia)
+            .all()
+        )
+    for linha in linhas:
+        linha["Indisponivel"] = any(
+            a.cpf == linha["Cpf"] and turno_bloqueado_por_ausencia(dia, linha["Horario"], a)
+            for a in ausencias
+        )
+    return linhas
 
 
 def criar_linhas(db: Session, data: str, data_dt: datetime, escala_dia: EscalaDiaCreate, setor_id: int, tipos_existentes: dict) -> tuple[list, set]:
@@ -110,7 +131,7 @@ def resposta_com_avisos(db: Session, mensagem: str, data: str, data_dt: datetime
     return {
         "message": mensagem,
         "DataEscala": data,
-        "Escala": linhas,
+        "Escala": marcar_indisponiveis(db, data_dt, linhas),
         "avisos": avisos_para(db, setor_id, {linha["Cpf"] for linha in linhas}, data_dt.date()),
         "extras_alocados": resumo_extras_alocados(db, setor_id, cpfs_com_extra_novo, data_dt.date()),
     }
@@ -139,7 +160,7 @@ def get_escala_do_dia(data: str, setor_id: int = Depends(get_setor_id), db: Sess
     if not escalas:
         raise HTTPException(status_code=404, detail="Nenhuma escala encontrada para essa data")
 
-    resultado = [serializar_linha(e) for e in escalas]
+    resultado = marcar_indisponiveis(db, ler_data_da_escala(data), [serializar_linha(e) for e in escalas])
 
     return {
         "DataEscala": data,
