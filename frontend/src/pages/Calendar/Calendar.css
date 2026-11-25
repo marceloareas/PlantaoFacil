@@ -58,15 +58,9 @@
   min-height: 40px !important;
 }
 
-.calendar-today {
-  background-color: #4da6ff !important;
-  color: white !important;
-  border-color: black !important;
-  font-weight: bold !important;
-}
 
 .calendar-today:hover {
-  background-color: rgb(137, 247, 247) !important;
+  background-color: rgb(137, 247, 247, 0.8) !important;
   color: rgb(0, 0, 0) !important;
   text-decoration-color: black !important;
   border-color: black !important;
@@ -85,3 +79,17 @@
   background-color: #555555;
   color: white;
 }
+
+.calendar-escalado {
+  background-color: #4CAF50;
+  color: white;
+  font-weight: bold;
+}
+
+.calendar-today {
+  background-color: #4da6ff !important;
+  color: white !important;
+  border-color: black !important;
+  font-weight: bold !important;
+}
+

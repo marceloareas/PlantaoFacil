@@ -1,4 +1,5 @@
-from sqlalchemy import Column, Integer, String
+from sqlalchemy import Column, Date, Integer, String, ForeignKey
+from sqlalchemy.orm import relationship
 from database import Base
 
 class User(Base):
@@ -8,6 +9,19 @@ class User(Base):
     email = Column(String(255), unique=True, nullable=False)
     password = Column(String(255), nullable=False)
     crm = Column(String(20), unique=True, nullable=True)
-    cpf = Column(String(20), unique=True, nullable=True)
+    cpf = Column(String(14), unique=True, nullable=False)
     nome_completo = Column(String(255), nullable=False)
     cargo = Column(String(100), nullable=False)
+    horaEscala = Column(String(50), nullable=False, default="12X36")
+    situacao = Column(String(50), default="Ativo")
+    # Turno fixo e primeiro dia trabalhado, usados para gerar a escala do período.
+    turno = Column(String(20), nullable=True)
+    inicio_ciclo = Column(Date, nullable=True)
+    # Coordenadores não pertencem a um setor: escolhem qual coordenar ao entrar.
+    setor_id = Column(Integer, ForeignKey("setores.id"), nullable=True)
+    setor = relationship("Setor", back_populates="usuarios")
+    ausentes = relationship("Ausentes", back_populates="user")
+    escalas = relationship("Escala", back_populates="user")
+
+    trocas_solicitadas = relationship("Troca", foreign_keys="Troca.cpfSolicitante", back_populates="solicitante_user")
+    trocas_recebidas = relationship("Troca", foreign_keys="Troca.cpfDestinatario", back_populates="destinatario_user")  

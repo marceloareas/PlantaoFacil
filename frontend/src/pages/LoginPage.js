@@ -1,21 +1,14 @@
 import React, { useState } from 'react';
 import { CiLogin } from "react-icons/ci";
 import 'bootstrap/dist/css/bootstrap.min.css';
+import { api, setSetorAtual } from '../components/api/Api';
+import { isGestor } from '../components/utils/perfis';
 
 const LoginModal = ({ show, onClose }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
-  const defaultUser = {
-    email: "admin@admin",
-    password: "admin",
-    nome_completo: "admin",
-    id: 99999,
-    crm: "99999-9",
-    cpf: "000.000.000-00",
-    cargo: "Coordenador"
-  };
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -27,50 +20,29 @@ const LoginModal = ({ show, onClose }) => {
 
     setError("");
 
-    if (email === defaultUser.email && password === defaultUser.password) {
-      sessionStorage.setItem('user', JSON.stringify(defaultUser));
+    try {
+      const data = await api.post('/auth/login', { email, password }, { auth:false });
+
+      localStorage.setItem('token', data.access_token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      // gestor escolhe o setor a cada login; funcionário usa sempre o seu
+      setSetorAtual(
+        !isGestor(data.user) && data.user.setor_id
+          ? { id: data.user.setor_id, nome: data.user.setor_nome }
+          : null
+      );
 
       setEmail('');
       setPassword('');
       setError('');
       onClose();
 
-      console.log("Login bem-sucedido:", defaultUser);
+      console.log("Login successful:", data);
+      window.location.reload();
     }
-    else {
-      try {
-        const response = await fetch("http://localhost:8000/login/", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, password })
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-
-          if (Array.isArray(errorData.detail)) {
-            setError(errorData.detail.map(err => err.msg).join(", "));
-          } else {
-            setError(errorData.detail || "Email ou senha inválidos");
-          }
-          return;
-        }
-
-        const data = await response.json();
-
-        sessionStorage.setItem('token', data.token); 
-        sessionStorage.setItem('user', JSON.stringify(data.user));
-
-        setEmail('');
-        setPassword('');
-        setError('');
-        onClose();
-
-        console.log("Login successful:", data);
-
-      } catch (err) {
-        setError("Erro de conexão com o servidor");
-      }
+    catch (error) {
+      console.error("Login failed:", error);
+      setError("Falha no login. Verifique suas credenciais.");
     }
   };
 

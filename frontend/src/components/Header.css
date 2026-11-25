@@ -39,6 +39,12 @@ nav ul li a:hover,
   background-color: #111;
 }
 
+.setor-label {
+  color: aliceblue;
+  padding: 10px 16px;
+  display: inline-block;
+}
+
 .login-button {
   background: none;
   border: none;

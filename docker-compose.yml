@@ -1,43 +1,60 @@
+# Plantão Fácil - configuração de implantação (homologação / servidor do CEFET)
+#
+# Uso:  cp .env.example .env   (e preencha os valores)
+#       docker compose up -d --build
+#
+# Acesso: http://ENDERECO_DO_SERVIDOR (porta HTTP_PORT, padrão 80).
+# O nginx do frontend entrega a aplicação React e repassa /api/ para o backend,
+# então só a porta HTTP precisa ficar aberta; backend e banco ficam na rede interna.
+
+# nome próprio para não reaproveitar contêineres/volume do ambiente de desenvolvimento
+name: plantaofacil-homologacao
+
 services:
-  backend:
-    build: ./backend
-    container_name: fastapi-backend
-    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
-    volumes:
-      - ./backend/app:/app
-    ports:
-      - "8000:8000"
-    depends_on:
-      - db
-    environment:
-      - DATABASE_URL=postgresql://postgres:postgres@db:5432/plantao-facil-db
-
-  frontend:
-      build: ./frontend
-      container_name: react-frontend
-      volumes:
-        - ./frontend:/app
-        - /app/node_modules
-      ports:
-        - "3000:3000"
-      environment:
-        - CHOKIDAR_USEPOLLING=true
-      depends_on:
-        - backend
-
-
   db:
     image: postgres:16
-    container_name: postgres-db
-    restart: always
+    container_name: plantaofacil-db
+    restart: unless-stopped
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: plantao-facil-db
-    ports:
-      - "5433:5432"
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  backend:
+    build: ./backend
+    container_name: plantaofacil-backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      JWT_SECRET: ${JWT_SECRET}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-1440}
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
+      DEBUG: "false"
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@plantaofacil.com}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # endereço relativo: o navegador chama a API pelo mesmo endereço do site
+        REACT_APP_API_URL: /api/v1
+    container_name: plantaofacil-frontend
+    restart: unless-stopped
+    ports:
+      - "${HTTP_PORT:-80}:80"
+    depends_on:
+      - backend
 
 volumes:
   postgres_data:

@@ -5,10 +5,13 @@
 .bgImage {
   position: relative;
   /* background-image: url("https://w0.peakpx.com/wallpaper/20/335/HD-wallpaper-my-little-med-diary-medical-school-motivation-medical-med-school-motivation-medical-study.jpg"); */
-  background-image: url("https://img.freepik.com/fotos-premium/vista-de-angulo-alto-de-plantas-em-mesa-contra-fundo-branco_1048944-21057526.jpg");
+  /* background-image: url("https://img.freepik.com/fotos-premium/vista-de-angulo-alto-de-plantas-em-mesa-contra-fundo-branco_1048944-21057526.jpg"); */
+  /* background-image: url("https://github.com/andressa-oliveira21051/Fotos/blob/main/Background_reduzida.png?raw=true"); */
+
   background-position: center;
+  background-color: #d7f5ff;
   background-repeat: no-repeat;
-  height: calc(100vh - 68px);
+  min-height: calc(100vh - 68px);
   overflow: hidden;
 }
 
@@ -58,7 +61,7 @@
 }
 
 .App-link {
-  color: #61dafb;
+  color: #61dafb !important;
 }
 
 @keyframes App-logo-spin {
@@ -120,15 +123,23 @@
   text-align: left;
 }
 
-.fullscreen-menu ul li a {
+
+
+.fullscreen-menu ul li a,
+.fullscreen-menu ul li button {
   color: #333;
   font-size: 20px;
   text-decoration: none;
   font-weight: bold;
   transition: color 0.2s ease;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
 }
 
-.fullscreen-menu ul li a:hover {
+.fullscreen-menu ul li a:hover,
+.fullscreen-menu ul li button:hover {
   color: #007bff;
 }
 
@@ -151,4 +162,23 @@
   font-size: 13px;
   text-decoration: none;
   cursor: pointer;
+}
+
+.back-button {
+  z-index: 10000;
+  padding: 10px 15px;
+  left: -35%;
+  position: relative;
+  background-color: #333;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  font-size: 16px;
+  cursor: pointer;
+  box-shadow: 0 3px 6px rgba(0,0,0,0.2);
+  transition: background-color 0.2s ease;
+}
+
+.back-button:hover {
+  background-color: #0056b3;
 }

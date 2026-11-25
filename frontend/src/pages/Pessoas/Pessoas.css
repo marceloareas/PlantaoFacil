@@ -1,0 +1,17 @@
+.pessoas-page {
+    padding: 20px;
+    color: #333;
+}
+
+.pessoas-page h2 {
+    font-weight: bold;
+}
+
+.erro {
+    color: red;
+}
+
+.table-dark th {
+    background-color: #ccc;
+    color: rgb(0, 0, 0);
+}

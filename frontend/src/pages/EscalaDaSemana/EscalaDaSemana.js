@@ -1,31 +1,113 @@
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState, React } from "react";
 import "./EscalaDaSemana.css";
-import 'bootstrap/dist/css/bootstrap.min.css';
+import "bootstrap/dist/css/bootstrap.min.css";
+import { api, getSetorAtual } from "../../components/api/Api";
+import { isGestor } from "../../components/utils/perfis";
+import FaltaModal from "../../components/FaltaModal";
+
+const toISO = (dataBR) => {
+    const [d, m, y] = dataBR.split("-");
+    return `${y}-${m}-${d}`;
+};
+
+// "AAAA-MM-DD" direto para "DD/MM/AAAA": new Date() leria em UTC e mostraria o dia anterior
+const formatarDataBR = (valor) =>
+    /^\d{4}-\d{2}-\d{2}$/.test(valor || "")
+        ? valor.split("-").reverse().join("/")
+        : valor;
 
 const EscalaDaSemana = () => {
     const navigate = useNavigate();
+    const setorAtual = getSetorAtual();
     const [dataReferencia, setDataReferencia] = useState(new Date());
     const [diasSemana, setDiasSemana] = useState([]);
-    const [escalas, setEscalas] = useState({}); 
-    const [cargos, setCargos] = useState([]); 
+    const [escalas, setEscalas] = useState({});
+    const [cargos, setCargos] = useState([]);
+    const [usuarios, setUsuarios] = useState([]);
+    const [user, setUser] = useState(null);
+
+    const [trocasAprovadas, setTrocasAprovadas] = useState([]);
+    const [modalInfo, setModalInfo] = useState(null);
+
+    const [faltas, setFaltas] = useState([]);
+    const [versaoFaltas, setVersaoFaltas] = useState(0);
+    const [faltaSelecionada, setFaltaSelecionada] = useState(null);
+
+    useEffect(() => {
+    const userData = localStorage.getItem("user");
+
+    if (userData) {
+        setUser(JSON.parse(userData));
+    }
+    }, []);
+
+    const gestor = isGestor(user);
+
+    const horarios = ["07:00 - 19:00", "19:00 - 07:00"];
+
+    useEffect(() => {
+        api.get("/users/")
+            .then(setUsuarios)
+            .catch(err => console.error("Erro usuários:", err));
+    }, []);
+
+    const isUsuarioDesativado = (cpf) =>
+        usuarios.some(
+            u => u.cpf === cpf && u.situacao === "Desativado"
+        );
+
+    useEffect(() => {
+        api.get("/trocas/")
+            .then(data => setTrocasAprovadas(data.filter(t => t.situacao === "Aprovada")))
+            .catch(err => console.error("Erro trocas:", err));
+    }, []);
 
     useEffect(() => {
         gerarDiasDaSemana(dataReferencia);
     }, [dataReferencia]);
 
+    useEffect(() => {
+        if (!gestor || diasSemana.length === 0) return;
+
+        let ativo = true;
+        const inicio = toISO(diasSemana[0].data);
+        const fim = toISO(diasSemana[diasSemana.length - 1].data);
+
+        api.get(`/faltas/?inicio=${inicio}&fim=${fim}`)
+            .then(data => { if (ativo) setFaltas(data || []); })
+            .catch(err => console.error("Erro faltas:", err));
+
+        return () => { ativo = false; };
+    }, [gestor, diasSemana, versaoFaltas]);
+
+    const faltaDe = (cpf, dataBR, horario) => {
+        const dataISO = toISO(dataBR);
+        return faltas.find(
+            f => f.cpf === cpf && f.data === dataISO && f.horario === horario
+        ) || null;
+    };
+
     const gerarDiasDaSemana = async (referencia) => {
         const dias = [];
 
-        for (let i = -3; i <= 3; i++) {
-            const novaData = new Date(referencia);
-            novaData.setDate(referencia.getDate() + i);
-            const dataFormatada = formatarDataURL(novaData);
+        const diaDaSemana = referencia.getDay();
+
+        const primeiroDiaDaSemana = new Date(referencia);
+        primeiroDiaDaSemana.setDate(referencia.getDate() - diaDaSemana);
+
+        for (let i = 0; i < 7; i++) {
+            const d = new Date(primeiroDiaDaSemana);
+            d.setDate(primeiroDiaDaSemana.getDate() + i);
 
             dias.push({
-                label: formatarLabel(novaData),
-                data: dataFormatada,
-                isHoje: isMesmaData(novaData, new Date())
+                label: d.toLocaleDateString("pt-BR", {
+                    weekday: "short",
+                    day: "2-digit",
+                    month: "2-digit"
+                }),
+                data: formatarDataURL(d),
+                isHoje: isMesmaData(d, new Date())
             });
         }
 
@@ -36,87 +118,136 @@ const EscalaDaSemana = () => {
 
         for (const dia of dias) {
             try {
-                const response = await fetch(`http://localhost:8000/escaladodia/${dia.data.split('-').join('-')}`);
-                const data = await response.json();
+                const data = await api.get(`/escaladodia/${dia.data}`);
 
                 const escalaDia = {};
-                data.Escala.forEach(item => {
+
+                data.Escala?.forEach(item => {
                     if (!escalaDia[item.Horario]) escalaDia[item.Horario] = {};
                     if (!escalaDia[item.Horario][item.Cargo]) escalaDia[item.Horario][item.Cargo] = [];
-                    escalaDia[item.Horario][item.Cargo].push(item.Nome);
+                    escalaDia[item.Horario][item.Cargo].push({ nome: item.Nome, cpf: item.Cpf, tipo: item.Tipo, indisponivel: item.Indisponivel });
                     cargosSet.add(item.Cargo);
                 });
 
                 novasEscalas[dia.data] = escalaDia;
-            } catch (err) {
-                console.error(`Erro ao buscar escala do dia ${dia.data}:`, err);
+            } catch {
                 novasEscalas[dia.data] = {};
             }
         }
 
         setEscalas(novasEscalas);
-        setCargos(Array.from(cargosSet).sort());
+        setCargos(
+            Array.from(cargosSet).sort((a, b) => {
+                const ordem = {
+                    "Técnico": 2,
+                    "Enfermeiro": 1
+                };
+
+                return ordem[a] - ordem[b];
+            })
+);
     };
 
     const formatarDataURL = (data) => {
-        const ano = data.getFullYear();
-        const mes = String(data.getMonth() + 1).padStart(2, '0');
-        const dia = String(data.getDate()).padStart(2, '0');
-        return `${dia}-${mes}-${ano}`; // Formato que seu backend espera
+        const d = String(data.getDate()).padStart(2, "0");
+        const m = String(data.getMonth() + 1).padStart(2, "0");
+        const y = data.getFullYear();
+        return `${d}-${m}-${y}`;
     };
 
-    const formatarLabel = (data) => {
-        const opcoes = { weekday: "short", day: "2-digit", month: "2-digit" };
-        return data.toLocaleDateString("pt-BR", opcoes);
-    };
+    const normalizarData = (data) =>
+        new Date(data).toISOString().split("T")[0];
 
-    const isMesmaData = (d1, d2) => {
-        return d1.getFullYear() === d2.getFullYear() &&
-               d1.getMonth() === d2.getMonth() &&
-               d1.getDate() === d2.getDate();
-    };
+    const normalizarTurno = (t) =>
+        t.replace(/\s+/g, "").toLowerCase();
 
-    const irParaDia = (data) => {
-        navigate(`/escalaDoDia/${data}`);
-    };
+    const isMesmaData = (a, b) =>
+        a.getFullYear() === b.getFullYear() &&
+        a.getMonth() === b.getMonth() &&
+        a.getDate() === b.getDate();
 
-    const horarios = ["08:00 - 12:00", "13:00 - 17:00"];
+    const irParaDia = (data) =>
+        navigate(`/EscalaDoDia/${data}`);
+
+    const trocaDaCelula = (turno, dataBR) => {
+        const dataISO = normalizarData(toISO(dataBR));
+        const turnoNorm = normalizarTurno(turno);
+
+        return trocasAprovadas.find(t => {
+            const meuDia = normalizarData(t.meudia);
+            const diaColega = normalizarData(t.diacolega);
+
+            return (
+                normalizarTurno(t.horariosolicitante) === turnoNorm &&
+                meuDia === dataISO
+            ) || (
+                normalizarTurno(t.horariodestinatario) === turnoNorm &&
+                diaColega === dataISO
+            );
+        });
+    };
 
     const proximaSemana = () => {
-        const novaData = new Date(dataReferencia);
-        novaData.setDate(novaData.getDate() + 7);
-        setDataReferencia(novaData);
+        const d = new Date(dataReferencia);
+        d.setDate(d.getDate() + 7);
+        setDataReferencia(d);
     };
 
     const semanaAnterior = () => {
-        const novaData = new Date(dataReferencia);
-        novaData.setDate(novaData.getDate() - 7);
-        setDataReferencia(novaData);
+        const d = new Date(dataReferencia);
+        d.setDate(d.getDate() - 7);
+        setDataReferencia(d);
     };
 
-    const voltarParaHoje = () => {
+    const voltarParaHoje = () =>
         setDataReferencia(new Date());
+
+
+    const nomeSobrenome = (nomeCompleto) => {           // retorna nome e sobrenome para melhorar visualização na tabela
+        const partes = nomeCompleto.trim().split(" ");
+
+        if (partes.length === 1) return partes[0];
+
+        return `${partes[0]} ${partes[1][0].toUpperCase()}`;
     };
+
+    const funcionarioNaTroca = (cpf, troca) => {   // verifica se funcionario participou da troca
+    if (!troca) return false;
 
     return (
-        <div className="container mt-4 escala-semana-page">
-            <h2 className="mb-4">Escala da Semana</h2>
+        troca.cpfSolicitante === cpf ||
+        troca.cpfDestinatario === cpf
+    );
+
+};
+
+    return (
+        <div className="container-fluid px-4 mt-4">
+            <h2 className="mb-4">
+                Escala da Semana{setorAtual && ` — ${setorAtual.nome}`}
+            </h2>
 
             <div className="mb-3 d-flex justify-content-between">
-                <button className="btn btn-outline-primary" onClick={semanaAnterior}>← Semana Anterior</button>
-                <button className="btn btn-outline-success" onClick={voltarParaHoje}>Semana Atual</button>
-                <button className="btn btn-outline-primary" onClick={proximaSemana}>Próxima Semana →</button>
+                <button className="btn btn-outline-primary" onClick={semanaAnterior}>
+                    ← Semana Anterior
+                </button>
+                <button className="btn btn-outline-success" onClick={voltarParaHoje}>
+                    Semana Atual
+                </button>
+                <button className="btn btn-outline-primary" onClick={proximaSemana}>
+                    Próxima Semana →
+                </button>
             </div>
 
             <div className="table-responsive">
-                <table className="table table-bordered text-center align-middle">
+                <table className="table table-bordered align-middle text-center">
                     <thead className="table-light">
                         <tr>
                             <th rowSpan={2}>Horário</th>
-                            {diasSemana.map((dia, idx) => (
+                            {diasSemana.map((dia, i) => (
                                 <th
-                                    key={idx}
-                                    colSpan={cargos.length}
+                                    key={i}
+                                    colSpan={cargos.length || 1}
                                     className={dia.isHoje ? "bg-primary text-white" : ""}
                                     style={{ cursor: "pointer" }}
                                     onClick={() => irParaDia(dia.data)}
@@ -126,29 +257,133 @@ const EscalaDaSemana = () => {
                             ))}
                         </tr>
                         <tr>
-                            {diasSemana.map((_, idx) =>
-                                cargos.map((cargo, cIdx) => <th key={`cargo-${idx}-${cIdx}`}>{cargo}</th>)
+                            {diasSemana.map((_, i) =>
+                                (cargos.length ? cargos : ["—"]).map((cargo, j) => (
+                                    <th key={`${i}-${j}`}>{cargo}</th>
+                                ))
                             )}
                         </tr>
                     </thead>
+
                     <tbody>
-                        {horarios.map((horario, rowIdx) => (
-                            <tr key={rowIdx}>
-                                <td className="bg-light text-nowrap"><strong>{horario}</strong></td>
-                                {diasSemana.map((dia, colIdx) => {
-                                    const escalaDia = escalas[dia.data] || {};
-                                    const turno = escalaDia[horario] || {};
-                                    return cargos.map((cargo, cIdx) => (
-                                        <td key={`cell-${rowIdx}-${colIdx}-${cIdx}`} className="text-start text-wrap">
-                                            {turno[cargo]?.map((nome, i) => <div key={i}>• {nome}</div>) || <span className="text-muted">—</span>}
+                        {horarios.map((horario, r) => (
+                            <tr key={r}>
+                                <td className="bg-light"><strong>{horario}</strong></td>
+
+                                {diasSemana.map((dia, c) => {
+                                    const troca = trocaDaCelula(horario, dia.data);
+                                    const escalaDia = escalas[dia.data]?.[horario] || {};
+
+                                    return (cargos.length ? cargos : ["—"]).map((cargo, k) => (
+                                        <td
+                                            key={`${r}-${c}-${k}`}
+                                        >
+                                            {escalaDia[cargo]?.length ? (
+                                                escalaDia[cargo].map((funcionario, i) => {
+                                                    const participanteTroca = funcionarioNaTroca(funcionario.cpf, troca);
+                                                    const falta = gestor ? faltaDe(funcionario.cpf, dia.data, horario) : null;
+                                                    return (
+                                                    <div
+                                                        key={i}
+                                                        style={{
+
+                                                            color: isUsuarioDesativado(funcionario.cpf)
+                                                                ? "red"
+                                                                : participanteTroca ? "#d39e00" : "inherit",
+                                                            fontWeight: participanteTroca ? "bold" : "normal",
+                                                            cursor: gestor || participanteTroca ? "pointer" : "default"
+                                                        }}
+                                                        title={gestor ? "Registrar ou ver falta" : undefined}
+                                                        onClick={() => {
+                                                            if (gestor) {
+                                                                setFaltaSelecionada({
+                                                                    funcionario: { nome: funcionario.nome, cpf: funcionario.cpf },
+                                                                    dataBR: dia.data,
+                                                                    horario,
+                                                                    troca: participanteTroca ? troca : null
+                                                                });
+                                                            } else if (participanteTroca) {
+                                                                setModalInfo(troca);
+                                                            }
+                                                        }}
+                                                    >
+                                                        • <span style={{ textDecoration: falta || funcionario.indisponivel ? "line-through" : "none" }}>
+                                                            {nomeSobrenome(funcionario.nome)}
+                                                        </span>
+                                                        {funcionario.indisponivel && (
+                                                            <span className="badge bg-secondary ms-1">indisponível</span>
+                                                        )}
+                                                        {funcionario.tipo === "extra" && (
+                                                            <span className="badge bg-info text-dark ms-1">extra</span>
+                                                        )}
+                                                        {falta && (
+                                                            <span className="badge bg-danger ms-1">faltou</span>
+                                                        )}
+                                                    </div>
+                                                    );
+                                                    })
+                                            ) : troca ? (
+                                                <div
+                                                    style={{
+                                                        color: "#d39e00",
+                                                        fontWeight: "bold",
+                                                        cursor: "pointer"
+                                                    }}
+                                                    onClick={() => setModalInfo(troca)}
+                                                >
+                                                    Troca aprovada
+                                                </div>
+                                            ) : (
+                                                <span className="text-muted">—</span>
+                                            )}
+            
                                         </td>
                                     ));
                                 })}
                             </tr>
                         ))}
                     </tbody>
+
                 </table>
+
             </div>
+
+            {modalInfo && (
+                <div className="modal-bg" onClick={() => setModalInfo(null)}>
+                    <div className="modal-box" onClick={e => e.stopPropagation()}>
+                        <h4>Troca Aprovada</h4>
+                        <p><strong>Solicitante:</strong> {modalInfo.nomeSolicitante}</p>
+                        <p><strong>Data solicitante:</strong> {formatarDataBR(modalInfo.meudia)}</p>
+                        <p><strong>Turno solicitante:</strong> {modalInfo.horariosolicitante}</p>
+                        <p><strong>Destinatário:</strong> {modalInfo.nomeDestinatario}</p>
+                        <p><strong>Data destinatário:</strong> {formatarDataBR(modalInfo.diacolega)}</p>
+                        <p><strong>Turno destinatário:</strong> {modalInfo.horariodestinatario}</p>
+                        <p><strong>Motivo:</strong> {modalInfo.motivo}</p>
+
+                        <button className="btn btn-secondary mt-3" onClick={() => setModalInfo(null)}>
+                            Fechar
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            <FaltaModal
+                show={!!faltaSelecionada}
+                onClose={() => setFaltaSelecionada(null)}
+                funcionario={faltaSelecionada?.funcionario}
+                dataBR={faltaSelecionada?.dataBR}
+                horario={faltaSelecionada?.horario}
+                troca={faltaSelecionada?.troca}
+                falta={
+                    faltaSelecionada
+                        ? faltaDe(faltaSelecionada.funcionario.cpf, faltaSelecionada.dataBR, faltaSelecionada.horario)
+                        : null
+                }
+                onAlterado={() => {
+                    setFaltaSelecionada(null);
+                    setVersaoFaltas(v => v + 1);
+                }}
+            />
         </div>
     );
 };

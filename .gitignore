@@ -1,0 +1,10 @@
+# Python cache
+__pycache__/
+*.pyc
+
+# Configuração local (usar .env.example como modelo)
+.env
+
+# Frontend
+node_modules/
+frontend/build/

@@ -1,13 +1,179 @@
-from pydantic import BaseModel
+from datetime import date
+from pydantic import BaseModel, EmailStr, field_validator, model_validator, constr
+from validate_docbr import CPF
+import re
+
+from core.perfis import CARGO_COORDENADOR, is_cargo_gestao
+from services.periodoService import TURNOS
+
+cpf_validator = CPF()
+
+
+def _exigir_setor(user):
+    # Gestores não têm setor nem ciclo de trabalho próprio.
+    if is_cargo_gestao(user.cargo):
+        user.setor_id = None
+        user.turno = None
+        user.inicio_ciclo = None
+    elif user.setor_id is None:
+        raise ValueError("Setor é obrigatório para funcionários")
+    return user
+
+
+def _validar_turno(turno):
+    if turno is None or not turno.strip():
+        return None
+    turno = turno.strip()
+    if turno not in TURNOS:
+        raise ValueError(f"turno deve ser '{TURNOS[0]}' ou '{TURNOS[1]}'")
+    return turno
+
+
+def _data_vazia_como_nula(valor):
+    if isinstance(valor, str) and not valor.strip():
+        return None
+    return valor
+
 
 class UserCreate(BaseModel):
-    email: str
-    password: str
-    crm: str
+    email: EmailStr
+    password : str
+    # coordenadores são cadastrados sem COREN
+    crm: str | None = None
     cpf: str
-    nome_completo: str
+    nome_completo: constr(min_length=3, strip_whitespace=True)
     cargo: str
+    horaEscala: str
+    situacao: str
+    setor_id: int | None = None
+    turno: str | None = None
+    inicio_ciclo: date | None = None
+
+    @model_validator(mode="after")
+    def validar_setor(self):
+        return _exigir_setor(self)
+
+    @model_validator(mode="after")
+    def validar_coren_por_cargo(self):
+        if (self.cargo or "").strip().lower() == CARGO_COORDENADOR.lower():
+            self.crm = None
+        elif not self.crm:
+            raise ValueError("COREN é obrigatório para enfermeiros e técnicos de enfermagem")
+        return self
+
+    @field_validator("turno")
+    @classmethod
+    def validar_turno(cls, v):
+        return _validar_turno(v)
+
+    @field_validator("inicio_ciclo", mode="before")
+    @classmethod
+    def validar_inicio_ciclo(cls, v):
+        return _data_vazia_como_nula(v)
+
+    @field_validator("cpf")
+    @classmethod
+    def validar_cpf(cls, v):
+        # remove máscara
+        cpf = re.sub(r'\D', '', v)
+
+        # tamanho obrigatório
+        if len(cpf) != 11:
+            raise ValueError("CPF deve ter 11 dígitos")
+
+        # valida usando bliblioteca regra do digito de validação
+        if not cpf_validator.validate(cpf):
+            raise ValueError("CPF inválido")
+
+        return cpf 
+
+    @field_validator("crm")
+    @classmethod
+    def validar_crm(cls, v):
+
+        """
+        Formato do CRM:
+        123456-RJ/ENF
+
+        Regras:
+        - 4 a 6 números
+        - hífen
+        -  2 letras
+        - /
+        -  2 a 4 letras
+        """
+
+        if v is None or not v.strip():
+            return None
+
+        crm = v.strip().upper()
+
+        regex = r'^\d{4,6}-[A-Z]{2}/[A-Z]{2,4}$'
+
+        if not re.match(regex, crm):
+            raise ValueError("CRM deve estar no formato 123456-RJ/ENF")
+
+        return crm
+
+    @field_validator("horaEscala")
+    @classmethod
+    def validar_hora_escala(cls, v):
+        if not v in ["12x36", "12x60"]:
+            raise ValueError("horaEscala deve ser '12x36' ou '12x60'")
+        return v
+
+
+class UserUpdate(BaseModel):
+    email: EmailStr
+    password: str | None = None
+    # a conta padrão do admin é criada sem CRM
+    crm: str | None = None
+    cpf: str
+    nome_completo: constr(min_length=3, strip_whitespace=True)
+    cargo: str
+    horaEscala: str
+    situacao: str
+    setor_id: int | None = None
+    turno: str | None = None
+    inicio_ciclo: date | None = None
+
+    @model_validator(mode="after")
+    def validar_setor(self):
+        return _exigir_setor(self)
+
+    @field_validator("turno")
+    @classmethod
+    def validar_turno(cls, v):
+        return _validar_turno(v)
+
+    @field_validator("inicio_ciclo", mode="before")
+    @classmethod
+    def validar_inicio_ciclo(cls, v):
+        return _data_vazia_como_nula(v)
+
 
 class UserLogin(BaseModel):
     email: str
     password: str
+
+class UserPublic(BaseModel):
+    """Representação segura do usuário (sem senha)."""
+    id: int
+    email: str
+    nome_completo: str
+    crm: str | None = None
+    cpf: str | None = None
+    cargo: str
+    horaEscala: str
+    situacao: str
+    setor_id: int | None = None
+    setor_nome: str | None = None
+    turno: str | None = None
+    inicio_ciclo: date | None = None
+
+    model_config = {"from_attributes": True}
+
+class Token(BaseModel):
+    access_token:str
+    token_type: str = "bearer"
+    user: UserPublic

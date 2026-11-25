@@ -1,6 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CiLogin } from "react-icons/ci";
 import 'bootstrap/dist/css/bootstrap.min.css';
+import { api, getSetorAtual } from '../components/api/Api';
+import { CARGO_COORDENADOR, isCargoGestao } from '../components/utils/perfis';
+import { OPCOES_TURNO, opcoesDeCargo, usuarioDaSessao } from '../components/EditarPessoaModal';
+import { avisar } from '../components/Mensagens';
+import CampoData from '../components/CampoData';
+
 
 const SignUpModal = ({ show, onClose }) => {
   const [email, setEmail] = useState('');
@@ -8,70 +14,162 @@ const SignUpModal = ({ show, onClose }) => {
   const [crms, setCrms] = useState('');
   const [cpf, setCpf] = useState('');
   const [name, setName] = useState('');
-  const [cargo, setCargo] = useState('');
+  const [horaEscala, sethoraEscala] = useState('12x36');
+  const [cargo, setCargo] = useState('Tecnico');
   const [error, setError] = useState('');
+  const [cpfValido, setCpfValido] = useState(null);
+  const [setores, setSetores] = useState([]);
+  const [setorId, setSetorId] = useState('');
+  const [turno, setTurno] = useState('');
+  const [inicioCiclo, setInicioCiclo] = useState('');
+  const [usuarioLogado] = useState(usuarioDaSessao);
+
+  const cargoDeGestao = isCargoGestao(cargo);
+  // coordenadores são cadastrados sem COREN
+  const pedeCoren = cargo !== CARGO_COORDENADOR;
+  const opcoesCargo = opcoesDeCargo(usuarioLogado);
+
+  useEffect(() => {
+    if (!show) return;
+    setSetorId(String(getSetorAtual()?.id ?? ''));
+    api.get('/setores/')
+      .then(setSetores)
+      .catch(() => setError('Erro ao carregar setores.'));
+  }, [show]);
+
+  function validarCPF(cpf) {
+    cpf = cpf.replace(/\D/g, "");
+
+    if (cpf.length !== 11) return false;
+    if (/^(.)\1+$/.test(cpf)) return false;
+
+    let soma = 0;
+    for (let i = 0; i < 9; i++) {
+      soma += parseInt(cpf.charAt(i)) * (10 - i);
+    }
+    let dig1 = 11 - (soma % 11);
+    if (dig1 > 9) dig1 = 0;
+    if (dig1 !== parseInt(cpf.charAt(9))) return false;
+
+    soma = 0;
+    for (let i = 0; i < 10; i++) {
+      soma += parseInt(cpf.charAt(i)) * (11 - i);
+    }
+    let dig2 = 11 - (soma % 11);
+    if (dig2 > 9) dig2 = 0;
+
+    return dig2 === parseInt(cpf.charAt(10));
+  }
 
   const handleCpfChange = (e) => {
     let value = e.target.value.replace(/\D/g, "");
+
     value = value.replace(/(\d{3})(\d)/, "$1.$2");
     value = value.replace(/(\d{3})(\d)/, "$1.$2");
     value = value.replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+
     setCpf(value);
+
+    const cpfNumerico = value.replace(/\D/g, "");
+    if (cpfNumerico.length === 11) {
+      setCpfValido(validarCPF(cpfNumerico));
+    } else {
+      setCpfValido(null);
+    }
+  };
+
+  const handleCoren = (coren) => {
+    const value = coren.trim().toUpperCase();
+    const regex = /^[0-9]{3,6}-[A-Z]{2}\/(ENF|TE|AE|OBST)$/;
+
+    if (!regex.test(value)) {
+      return {
+        valido: false,
+        mensagem: "Formato inválido! Use o padrão: XXXXXX-YY/ZZZZ"
+      };
+    }
+
+    return { valido: true };
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!email || !password || !cpf || !name || !crms || !cargo) {
+    if (cpfValido === false) {
+      setError("CPF inválido!");
+      return;
+    }
+
+    if (!email || !password || !cpf || !name || (pedeCoren && !crms) || !cargo || !horaEscala ||
+      (!cargoDeGestao && (!setorId || !turno || !inicioCiclo))) {
       setError("Preencha todos os campos obrigatórios!");
       return;
     }
 
-    setError(""); 
+    if (pedeCoren) {
+      const corenValidacao = handleCoren(crms);
+      if (!corenValidacao.valido) {
+        setError(corenValidacao.mensagem);
+        return;
+      }
+    }
+
+    setError("");
 
     const payload = {
-      nome_completo: name,  
+      nome_completo: name,
       email,
       password,
-      crm: crms,
+      crm: pedeCoren ? crms : null,
       cpf,
-      cargo
+      cargo,
+      horaEscala: horaEscala,
+      situacao: "Ativo",
+      setor_id: cargoDeGestao ? null : Number(setorId),
+      turno: cargoDeGestao ? null : turno,
+      inicio_ciclo: cargoDeGestao ? null : inicioCiclo
     };
 
     try {
-      const response = await fetch("http://localhost:8000/usuario/", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(payload)
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-
-        if (Array.isArray(errorData.detail)) {
-          const messages = errorData.detail.map(err => err.msg).join(", ");
-          setError(messages);
-        } else {
-          setError(errorData.detail || "Erro ao criar usuário");
-        }
-        return;
-      }
+      // o cadastro exige um gestor logado, então a chamada leva o token
+      await api.post('/auth/register', payload);
 
       setEmail('');
       setPassword('');
       setCrms('');
       setCpf('');
       setName('');
-      setCargo('');
+      setCargo('Tecnico');
+      sethoraEscala('12x36');
+      setTurno('');
+      setInicioCiclo('');
       setError('');
       onClose();
 
+      await avisar("Usuário criado com sucesso!", { variante: "sucesso" });
+      window.location.reload();
+
     } catch (err) {
-      setError("Erro de conexão com o servidor");
+      console.error("Erro ao cadastrar usuário:", err);
+      setError(err.message || "Erro de conexão com o servidor");
     }
   };
+
+  const handleOnClose = async (e) => {
+    setEmail('');
+    setPassword('');
+    setCrms('');
+    setCpf('');
+    setName('');
+    setCargo('Tecnico');
+    sethoraEscala('12x36');
+    setTurno('');
+    setInicioCiclo('');
+    setError('');
+    setCpfValido('');
+    return;
+  }
+
 
   if (!show) return null;
 
@@ -84,12 +182,15 @@ const SignUpModal = ({ show, onClose }) => {
             <div className="modal-header">
               <h5 className="modal-title">
                 <CiLogin size={28} className="text-primary me-2" />
-                Sign Up
+                Cadastrar
               </h5>
               <button
                 type="button"
                 className="btn-close"
-                onClick={onClose}
+                onClick={() => {
+                  handleOnClose();
+                  onClose();
+                }}
               ></button>
             </div>
 
@@ -97,6 +198,7 @@ const SignUpModal = ({ show, onClose }) => {
               {error && <div className="alert alert-danger">{error}</div>}
 
               <form onSubmit={handleSubmit}>
+
                 <div className="mb-3">
                   <label className="form-label">Email</label>
                   <input
@@ -109,7 +211,7 @@ const SignUpModal = ({ show, onClose }) => {
                 </div>
 
                 <div className="mb-3">
-                  <label className="form-label">Password</label>
+                  <label className="form-label">Senha</label>
                   <input
                     type="password"
                     className="form-control"
@@ -119,27 +221,33 @@ const SignUpModal = ({ show, onClose }) => {
                   />
                 </div>
 
-                <div className="mb-3">
-                  <label className="form-label">Coren</label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    value={crms}
-                    onChange={(e) => setCrms(e.target.value)}
-                    required
-                  />
-                </div>
+                {pedeCoren && (
+                  <div className="mb-3">
+                    <label className="form-label">Coren</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder='Ex: 123456-RJ/ENF'
+                      value={crms}
+                      onChange={(e) => setCrms(e.target.value)}
+                      required
+                    />
+                  </div>
+                )}
 
                 <div className="mb-3">
                   <label className="form-label">CPF</label>
                   <input
                     type="text"
-                    className="form-control"
+                    className={`form-control ${cpfValido === false ? "is-invalid" : ""}`}
                     value={cpf}
                     onChange={handleCpfChange}
                     maxLength={14}
                     required
                   />
+                  {cpfValido === false && (
+                    <span className="text-danger">CPF inválido</span>
+                  )}
                 </div>
 
                 <div className="mb-3">
@@ -161,14 +269,70 @@ const SignUpModal = ({ show, onClose }) => {
                     onChange={(e) => setCargo(e.target.value)}
                     required
                   >
-                    <option value="Tecnico">Técnico(a) de Enfermagem</option>
-                    <option value="Enfermeiro">Enfermeiro(a)</option>
-                    <option value="Coordenador">Coordenador</option>
+                    {opcoesCargo.map((c) => (
+                      <option key={c.valor} value={c.valor}>{c.rotulo}</option>
+                    ))}
                   </select>
                 </div>
-
+                {!cargoDeGestao && (
+                  <div className="mb-3">
+                    <label className="form-label">Setor</label>
+                    <select
+                      className="form-control"
+                      value={setorId}
+                      onChange={(e) => setSetorId(e.target.value)}
+                      required
+                    >
+                      <option value="">Selecione o setor</option>
+                      {setores.map((s) => (
+                        <option key={s.id} value={s.id}>{s.nome}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                <div className="mb-3">
+                  <label className="form-label">Hora de Escala</label>
+                  <select
+                    className="form-control"
+                    value={horaEscala}
+                    onChange={(e) => sethoraEscala(e.target.value)}
+                    required
+                  >
+                    <option value="12x36">12x36</option>
+                    <option value="12x60">12x60</option>
+                  </select>
+                </div>
+                {!cargoDeGestao && (
+                  <>
+                    <div className="mb-3">
+                      <label className="form-label">Turno</label>
+                      <select
+                        className="form-control"
+                        value={turno}
+                        onChange={(e) => setTurno(e.target.value)}
+                        required
+                      >
+                        <option value="">Selecione o turno</option>
+                        {OPCOES_TURNO.map((t) => (
+                          <option key={t.valor} value={t.valor}>{t.rotulo}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="mb-3">
+                      <label className="form-label">Início do ciclo</label>
+                      <CampoData
+                        value={inicioCiclo}
+                        onChange={(e) => setInicioCiclo(e.target.value)}
+                        required
+                      />
+                      <div className="form-text">
+                        Primeiro dia de trabalho. A escala do período segue o regime a partir dele.
+                      </div>
+                    </div>
+                  </>
+                )}
                 <button type="submit" className="btn btn-primary w-100">
-                  Sign-Up
+                  Cadastrar
                 </button>
               </form>
             </div>

@@ -1,17 +1,29 @@
 import React, { useState, useEffect } from "react";
 import { FaUserMinus } from "react-icons/fa";
 import "bootstrap/dist/css/bootstrap.min.css";
+import { api, getSetorAtual } from "./api/Api";
+import { isCargoGestao } from "./utils/perfis";
+import { avisar } from "./Mensagens";
+import CampoData from "./CampoData";
+
+const MOTIVOS = ["Doença", "Férias", "Imprevisto", "Acidente", "Outro"];
 
 const AddAusenteModal = ({ show, onClose, onSuccess }) => {
+
     const [formData, setFormData] = useState({
-        ausente: "Sim",
         nome: "",
         cpf: "",
-        data: "",
-        horario: "08:00 - 12:00",
         cargo: "",
+        motivo: "",
+        descricao: "",
+        removerDaEscala: "nao",
+        data: "",
+        horario: "07:00 - 19:00",
+        data_final: null,
+        horario_final: null
     });
 
+    const [tipoAusencia, setTipoAusencia] = useState("turno");
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
 
@@ -21,79 +33,121 @@ const AddAusenteModal = ({ show, onClose, onSuccess }) => {
     useEffect(() => {
         const fetchUsuarios = async () => {
             try {
-                const res = await fetch("http://localhost:8000/usuario/");
-                const data = await res.json();
-                setFuncionarios(data);
-                const cargosUnicos = [...new Set(data.map(u => u.cargo))];
+                const data = await api.get("/users/");
+                setFuncionarios(data.filter((u) => u.setor_id === getSetorAtual()?.id));
+
+                const cargosUnicos = [...new Set(data.map(u => u.cargo))]
+                    .filter((cargo) => !isCargoGestao(cargo));
+
                 setCargos(cargosUnicos);
             } catch (err) {
                 console.error(err);
                 setError("Erro ao buscar usuários. Tente novamente.");
             }
-        };
+        }
+
         fetchUsuarios();
     }, []);
 
     const funcionariosFiltrados = formData.cargo
-        ? funcionarios.filter(f => f.cargo === formData.cargo)
+        ? funcionarios.filter((f) => f.cargo === formData.cargo)
         : [];
 
     const handleChange = (e) => {
         const { name, value } = e.target;
 
         if (name === "nome") {
-            const funcionario = funcionariosFiltrados.find(f => f.nome_completo === value);
-            setFormData({
-                ...formData,
-                nome: value,
+            const funcionario = funcionarios.find((f) => String(f.cpf) === String(value));
+            setFormData((prev) => ({
+                ...prev,
+                nome: funcionario ? funcionario.nome_completo : "",
                 cpf: funcionario ? funcionario.cpf : "",
-            });
-        } else {
-            setFormData({ ...formData, [name]: value });
+            }));
+            return;
         }
+
+        setFormData((prev) => ({ ...prev, [name]: value }));
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        if (!formData.nome || !formData.cpf || !formData.data || !formData.cargo) {
+        if (!formData.nome || !formData.cpf || !formData.cargo || !formData.motivo) {
             setError("Preencha todos os campos obrigatórios!");
+            return;
+        }
+
+        if (!formData.data) {
+            setError("Informe a data.");
+            return;
+        }
+        if (tipoAusencia === "intervalo" && !formData.data_final) {
+            setError("Informe a data final.");
             return;
         }
 
         setError("");
         setSuccess("");
 
+        let payload = {
+            ausente: "Sim",
+            nome: formData.nome,
+            cpf: formData.cpf,
+            cargo: formData.cargo,
+            motivo: formData.motivo,
+            descricao: formData.descricao.trim() || null,
+            remover_da_escala: formData.removerDaEscala === "sim",
+            data: formData.data,
+            horario: formData.horario,
+            data_final: null,
+            horario_final: null
+        }
+
+        if (tipoAusencia === "intervalo") {
+            payload.data_final = formData.data_final;
+            payload.horario_final = formData.horario_final;
+        }
+        const conflitos = await verificarConflitosEscala();
+
         try {
-            const res = await fetch("http://localhost:8000/ausentes/", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(formData),
-            });
-
-            if (!res.ok) {
-                const data = await res.json();
-
-                if (data.detail) {
-                    const detailMsg = typeof data.detail === "string"
-                        ? data.detail
-                        : JSON.stringify(data.detail);
-                    setError(detailMsg);
-                } else {
-                    setError("Erro ao cadastrar ausente");
-                }
-                return;
-            }
+            const resposta = await api.post("/ausentes/", payload);
 
             setSuccess("Funcionário ausente registrado com sucesso!");
+
+            const removidos = resposta?.removidos_da_escala || [];
+            if (payload.remover_da_escala) {
+                avisar(
+                    removidos.length > 0
+                        ? `${formData.nome} foi retirado da escala nos seguintes plantões:\n\n` +
+                          removidos.map((r) => `${r.data.replace(/-/g, "/")} - ${r.horario}`).join("\n")
+                        : `${formData.nome} não tinha plantões na escala nesse período.`,
+                    { variante: "sucesso", titulo: "Indisponibilidade registrada" }
+                );
+            } else if (conflitos.length > 0) {
+                const lista = conflitos
+                    .map(c => `${c.data} - ${c.horario}`)
+                    .join("\n");
+
+                avisar(
+                    `O funcionário ${formData.nome} já está escalado no(s) seguinte(s) dia(s):\n\n${lista}`,
+                    { variante: "atencao" }
+                );
+            }
+
             setFormData({
-                ausente: "Sim",
                 nome: "",
                 cpf: "",
-                data: "",
-                horario: "08:00 - 12:00",
                 cargo: "",
+                motivo: "",
+                descricao: "",
+                removerDaEscala: "nao",
+                data: "",
+                horario: "07:00 - 19:00",
+                data_final: null,
+                horario_final: null
             });
+
+            setTipoAusencia("turno");
 
             if (onSuccess) onSuccess();
 
@@ -104,11 +158,102 @@ const AddAusenteModal = ({ show, onClose, onSuccess }) => {
 
         } catch (err) {
             console.error(err);
-            setError("Erro de conexão. Tente novamente.");
+            setError(err.message || "Erro de conexão. Tente novamente.");
         }
     };
 
     if (!show) return null;
+
+    const verificarConflitosEscala = async () => {
+        const conflitos = [];
+
+        const adicionarConflito = (data, horario) => {
+            conflitos.push({
+                data,
+                horario
+            });
+        };
+
+        const formatarDataBR = (data) => {
+            const [y, m, d] = data.split("-");
+            return `${d}-${m}-${y}`;
+        };
+
+        if (tipoAusencia === "turno") {
+            try {
+                const data = await api.get(`/escaladodia/${formatarDataBR(formData.data)}`);
+                data.Escala?.forEach(e => {
+                    if (e.cpf === formData.cpf && e.Horario === formData.horario) {
+                        adicionarConflito(formatarDataBR(formData.data), e.Horario);
+                    }
+                });
+            } catch {
+                
+            }
+        }
+        if (tipoAusencia === "intervalo") {
+            const TURNOS = ["07:00 - 19:00", "19:00 - 07:00"];
+
+            const formatarDataURL = (dataISO) => {
+                const [y, m, d] = dataISO.split("-");
+                return `${d}-${m}-${y}`;
+            };
+
+            let atual = new Date(formData.data);
+            const fim = new Date(formData.data_final);
+
+            while (atual <= fim) {
+                const dataISO = atual.toISOString().split("T")[0];
+                const dataURL = formatarDataURL(dataISO);
+
+                let turnosParaVerificar = [];
+
+                if (formData.data === formData.data_final) {
+                    turnosParaVerificar = TURNOS.filter(
+                        t => t === formData.horario || t === formData.horario_final
+                    );
+                }
+
+                else if (dataISO === formData.data) {
+                    turnosParaVerificar = TURNOS.filter(
+                        t => t === formData.horario
+                    );
+                }
+
+                else if (dataISO === formData.data_final) {
+                    turnosParaVerificar = TURNOS.filter(
+                        t => t === formData.horario_final
+                    );
+                }
+
+                else {
+                    turnosParaVerificar = TURNOS;
+                }
+
+                try {
+                    const data = await api.get(`/escaladodia/${dataURL}`);
+
+                    for (const turno of turnosParaVerificar) {
+                        const existeEscala = data.Escala?.some(
+                            e => e.cpf === formData.cpf && e.Horario === turno
+                        );
+
+                        if (existeEscala) {
+                            adicionarConflito(formatarDataBR(dataISO), turno);
+                        }
+                    }
+                } catch {
+                    
+                }
+
+                atual.setDate(atual.getDate() + 1);
+            }
+        }
+
+
+        return conflitos;
+    };
+
 
     return (
         <>
@@ -116,7 +261,6 @@ const AddAusenteModal = ({ show, onClose, onSuccess }) => {
                 <div className="modal-dialog modal-dialog-centered">
                     <div className="modal-content">
 
-                        {/* Cabeçalho */}
                         <div className="modal-header">
                             <h5 className="modal-title d-flex align-items-center">
                                 <FaUserMinus className="text-primary me-2" />
@@ -125,14 +269,12 @@ const AddAusenteModal = ({ show, onClose, onSuccess }) => {
                             <button type="button" className="btn-close" onClick={onClose}></button>
                         </div>
 
-                        {/* Corpo */}
                         <div className="modal-body">
                             {error && <div className="alert alert-danger">{error}</div>}
                             {success && <div className="alert alert-success">{success}</div>}
 
                             <form onSubmit={handleSubmit}>
 
-                                {/* Cargo */}
                                 <div className="mb-3">
                                     <label className="form-label">Cargo</label>
                                     <select
@@ -149,67 +291,193 @@ const AddAusenteModal = ({ show, onClose, onSuccess }) => {
                                     </select>
                                 </div>
 
-                                {/* Nome */}
                                 <div className="mb-3">
                                     <label className="form-label">Nome</label>
                                     <select
                                         className="form-select"
                                         name="nome"
-                                        value={formData.nome}
+                                        value={formData.cpf || ""}
                                         onChange={handleChange}
-                                        required
                                         disabled={!formData.cargo}
                                     >
                                         <option value="">Selecione o funcionário</option>
-                                        {funcionariosFiltrados.map((f, idx) => (
-                                            <option key={idx} value={f.nome_completo}>{f.nome_completo}</option>
+                                        {funcionariosFiltrados.map((f) => (
+                                            <option key={f.cpf} value={f.cpf}>
+                                                {f.nome_completo} ({f.cpf})
+                                            </option>
                                         ))}
                                     </select>
                                 </div>
 
-                                {/* CPF */}
                                 <div className="mb-3">
                                     <label className="form-label">CPF</label>
                                     <input
                                         type="text"
                                         className="form-control"
-                                        name="cpf"
                                         value={formData.cpf}
                                         readOnly
                                     />
                                 </div>
 
-                                {/* Data */}
                                 <div className="mb-3">
-                                    <label className="form-label">Data</label>
-                                    <input
-                                        type="date"
-                                        className="form-control"
-                                        name="data"
-                                        value={formData.data}
-                                        onChange={handleChange}
-                                        required
-                                    />
+                                    <label className="form-label">Tipo de ausência</label>
+                                    <div>
+                                        <div className="form-check form-check-inline">
+                                            <input
+                                                className="form-check-input"
+                                                type="radio"
+                                                name="tipoAusencia"
+                                                value="turno"
+                                                checked={tipoAusencia === "turno"}
+                                                onChange={(e) => setTipoAusencia(e.target.value)}
+                                            />
+                                            <label className="form-check-label">Um turno</label>
+                                        </div>
+
+                                        <div className="form-check form-check-inline">
+                                            <input
+                                                className="form-check-input"
+                                                type="radio"
+                                                name="tipoAusencia"
+                                                value="intervalo"
+                                                checked={tipoAusencia === "intervalo"}
+                                                onChange={(e) => setTipoAusencia(e.target.value)}
+                                            />
+                                            <label className="form-check-label">Um Período</label>
+                                        </div>
+                                    </div>
                                 </div>
 
-                                {/* Horário */}
+                                {tipoAusencia === "turno" && (
+                                    <>
+                                        <div className="mb-3">
+                                            <label className="form-label">Data</label>
+                                            <CampoData
+                                                name="data"
+                                                value={formData.data}
+                                                onChange={handleChange}
+                                            />
+
+                                            <label className="form-label mt-2">Turno</label>
+                                            <select
+                                                className="form-select"
+                                                name="horario"
+                                                value={formData.horario}
+                                                onChange={handleChange}
+                                            >
+                                                <option value="07:00 - 19:00">07:00 - 19:00</option>
+                                                <option value="19:00 - 07:00">19:00 - 07:00</option>
+                                            </select>
+                                        </div>
+                                    </>
+                                )}
+
+                                {tipoAusencia === "intervalo" && (
+                                    <>
+                                        <div className="mb-3">
+                                            <label className="form-label">Data Inicial</label>
+                                            <CampoData
+                                                name="data"
+                                                value={formData.data}
+                                                onChange={handleChange}
+                                            />
+
+                                            <label className="form-label mt-2">Turno Inicial</label>
+                                            <select
+                                                className="form-select"
+                                                name="horario"
+                                                value={formData.horario}
+                                                onChange={handleChange}
+                                            >
+                                                <option value="07:00 - 19:00">07:00 - 19:00</option>
+                                                <option value="19:00 - 07:00">19:00 - 07:00</option>
+                                            </select>
+                                        </div>
+
+                                        <div className="mb-3">
+                                            <label className="form-label">Data Final</label>
+                                            <CampoData
+                                                name="data_final"
+                                                value={formData.data_final}
+                                                onChange={handleChange}
+                                            />
+
+                                            <label className="form-label mt-2">Turno Final</label>
+                                            <select
+                                                className="form-select"
+                                                name="horario_final"
+                                                value={formData.horario_final}
+                                                onChange={handleChange}
+                                            >
+                                                <option value="07:00 - 19:00">07:00 - 19:00</option>
+                                                <option value="19:00 - 07:00">19:00 - 07:00</option>
+                                            </select>
+                                        </div>
+                                    </>
+                                )}
+
                                 <div className="mb-3">
-                                    <label className="form-label">Horário</label>
+                                    <label className="form-label">Remover da escala?</label>
+                                    <div>
+                                        <div className="form-check form-check-inline">
+                                            <input
+                                                className="form-check-input"
+                                                type="radio"
+                                                id="remover-escala-sim"
+                                                name="removerDaEscala"
+                                                value="sim"
+                                                checked={formData.removerDaEscala === "sim"}
+                                                onChange={handleChange}
+                                            />
+                                            <label className="form-check-label" htmlFor="remover-escala-sim">Sim</label>
+                                        </div>
+                                        <div className="form-check form-check-inline">
+                                            <input
+                                                className="form-check-input"
+                                                type="radio"
+                                                id="remover-escala-nao"
+                                                name="removerDaEscala"
+                                                value="nao"
+                                                checked={formData.removerDaEscala === "nao"}
+                                                onChange={handleChange}
+                                            />
+                                            <label className="form-check-label" htmlFor="remover-escala-nao">Não</label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="mb-3">
+                                    <label className="form-label">Motivo</label>
                                     <select
                                         className="form-select"
-                                        name="horario"
-                                        value={"08:00 - 12:00"}
+                                        name="motivo"
+                                        value={formData.motivo}
                                         onChange={handleChange}
                                         required
                                     >
-                                        <option value="08:00 - 12:00">08:00 - 12:00</option>
-                                        <option value="13:00 - 17:00">13:00 - 17:00</option>
+                                        <option value="">Selecione o motivo</option>
+                                        {MOTIVOS.map((m) => (
+                                            <option key={m} value={m}>{m}</option>
+                                        ))}
                                     </select>
+                                </div>
+
+                                <div className="mb-3">
+                                    <label className="form-label">Descrição</label>
+                                    <textarea
+                                        className="form-control"
+                                        name="descricao"
+                                        rows={3}
+                                        maxLength={1000}
+                                        value={formData.descricao}
+                                        onChange={handleChange}
+                                    />
                                 </div>
 
                                 <button type="submit" className="btn btn-primary w-100">
                                     Registrar Ausente
                                 </button>
+
                             </form>
                         </div>
 

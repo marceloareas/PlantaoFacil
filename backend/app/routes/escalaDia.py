@@ -1,77 +1,193 @@
+from validators.turnosConsecutivos import verificar_turnos_consecutivos
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
+from core.dependencies import get_setor_id, require_coordenador
 from database import get_db
 from models.escalaDiaModels import Escala
+from models.funcAusentesModels import Ausentes
+from models.userModels import User
 from schemas.escalaDiaSchemas import EscalaDiaCreate
+from services.emprestimoService import verificar_entrada_na_escala
+from services.escalaPeriodoService import turno_bloqueado_por_ausencia
+from services.limitesService import avisos_para, resumo_extras_alocados
+from services.periodoService import FORMATO_ESCALA, tipo_novo_plantao
+from datetime import datetime
 
 router = APIRouter(prefix="/escaladodia", tags=["Escala do Dia"])
 
-@router.post("/{data}")
-def create_escala_do_dia(data: str, escala_dia: EscalaDiaCreate, db: Session = Depends(get_db)):
-    escalas_criadas = []
+
+def verificar_escalado_em_outro_setor(db: Session, data: str, item, setor_id: int):
+    conflito = db.query(Escala).filter(
+        Escala.DataEscala == data,
+        Escala.Horario == item.Horario,
+        Escala.Cpf == item.Cpf,
+        Escala.setor_id != setor_id,
+    ).first()
+
+    if conflito:
+        raise HTTPException(
+            status_code=400,
+            detail=f"{item.Nome} já está escalado no turno {item.Horario} do setor {conflito.setor.nome}",
+        )
+
+
+def ler_data_da_escala(data: str) -> datetime:
+    try:
+        return datetime.strptime(data, FORMATO_ESCALA)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Data inválida, use o formato DD-MM-AAAA")
+
+
+def serializar_linha(e: Escala) -> dict:
+    return {
+        "Horario": e.Horario,
+        "Nome": e.Nome,
+        "Cargo": e.Cargo,
+        "Cpf": e.Cpf,
+        "Tipo": e.tipo or "regular",
+        # preenchido quando o funcionário é de outro setor (emprestado)
+        "SetorOrigem": e.user.setor.nome if e.user and e.user.setor and e.user.setor_id != e.setor_id else None,
+    }
+
+
+def marcar_indisponiveis(db: Session, data_dt: datetime, linhas: list) -> list:
+    """Marca as linhas de quem tem indisponibilidade registrada nesse dia e turno."""
+    dia = data_dt.date()
+    cpfs = {linha["Cpf"] for linha in linhas}
+    ausencias = []
+    if cpfs:
+        ausencias = (
+            db.query(Ausentes)
+            .filter(Ausentes.cpf.in_(cpfs), Ausentes.ausente == "Sim", Ausentes.data <= dia)
+            .all()
+        )
+    for linha in linhas:
+        linha["Indisponivel"] = any(
+            a.cpf == linha["Cpf"] and turno_bloqueado_por_ausencia(dia, linha["Horario"], a)
+            for a in ausencias
+        )
+    return linhas
+
+
+def criar_linhas(db: Session, data: str, data_dt: datetime, escala_dia: EscalaDiaCreate, setor_id: int, tipos_existentes: dict) -> tuple[list, set]:
+    """Cria as linhas recebidas; quem já estava no turno mantém o tipo, quem entrou agora recebe o tipo de plantão novo.
+
+    Devolve também os CPFs que acabaram de receber um plantão extra.
+    """
+    tipo_novo = None
+    novas_escalas = []
+    cpfs_com_extra_novo = set()
+
     for item in escala_dia.Escala:
+
+        verificacao = verificar_turnos_consecutivos(
+            db,
+            item.Cpf,
+            data_dt,
+            item.Horario
+        )
+
+        if verificacao:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Devido a 3 turnos seguidos do usuário {item.Nome}, a alocação foi bloqueada"
+            )
+
+        verificar_escalado_em_outro_setor(db, data, item, setor_id)
+
+        tipo = tipos_existentes.get((item.Cpf, item.Horario))
+        if tipo is None:
+            # só quem entra agora passa pelas regras de empréstimo
+            funcionario = db.query(User).filter(User.cpf == item.Cpf).first()
+            emprestimo_pontual = verificar_entrada_na_escala(db, funcionario, setor_id, data, data_dt.date())
+
+            if emprestimo_pontual:
+                # cobre um plantão de outro setor num dia em que estaria de folga
+                tipo = "extra"
+            else:
+                if tipo_novo is None:
+                    tipo_novo = tipo_novo_plantao(db, setor_id, data_dt.date())
+                tipo = tipo_novo
+            if tipo == "extra":
+                cpfs_com_extra_novo.add(item.Cpf)
+
         nova_escala = Escala(
             DataEscala=data,
             Horario=item.Horario,
             Nome=item.Nome,
-            Cargo=item.Cargo
+            Cargo=item.Cargo,
+            Cpf=item.Cpf,
+            setor_id=setor_id,
+            tipo=tipo
         )
         db.add(nova_escala)
-        escalas_criadas.append(nova_escala)
-    db.commit()
-    for e in escalas_criadas:
-        db.refresh(e)
-    return escalas_criadas
+        novas_escalas.append(nova_escala)
+        db.flush()  # Garante que o novo registro seja processado antes da próxima iteração
+
+    return novas_escalas, cpfs_com_extra_novo
+
+
+def resposta_com_avisos(db: Session, mensagem: str, data: str, data_dt: datetime, linhas: list, setor_id: int, cpfs_com_extra_novo: set) -> dict:
+    return {
+        "message": mensagem,
+        "DataEscala": data,
+        "Escala": marcar_indisponiveis(db, data_dt, linhas),
+        "avisos": avisos_para(db, setor_id, {linha["Cpf"] for linha in linhas}, data_dt.date()),
+        "extras_alocados": resumo_extras_alocados(db, setor_id, cpfs_com_extra_novo, data_dt.date()),
+    }
+
+
+@router.post("/{data}", dependencies=[Depends(require_coordenador)])
+def create_escala_do_dia(data: str, escala_dia: EscalaDiaCreate, setor_id: int = Depends(get_setor_id), db: Session = Depends(get_db)):
+    data_dt = ler_data_da_escala(data)
+    try:
+        existentes = db.query(Escala).filter(Escala.DataEscala == data, Escala.setor_id == setor_id).all()
+        tipos_existentes = {(e.Cpf, e.Horario): e.tipo for e in existentes}
+
+        escalas_criadas, cpfs_com_extra_novo = criar_linhas(db, data, data_dt, escala_dia, setor_id, tipos_existentes)
+        linhas = [serializar_linha(e) for e in escalas_criadas]
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise e
+
+    return resposta_com_avisos(db, "Escala criada com sucesso", data, data_dt, linhas, setor_id, cpfs_com_extra_novo)
 
 @router.get("/{data}")
-def get_escala_do_dia(data: str, db: Session = Depends(get_db)):
-    escalas = db.query(Escala).filter(Escala.DataEscala == data).all()
+def get_escala_do_dia(data: str, setor_id: int = Depends(get_setor_id), db: Session = Depends(get_db)):
+    escalas = db.query(Escala).filter(Escala.DataEscala == data, Escala.setor_id == setor_id).all()
 
     if not escalas:
         raise HTTPException(status_code=404, detail="Nenhuma escala encontrada para essa data")
 
-    resultado = [
-        {
-            "Horario": e.Horario,
-            "Nome": e.Nome,
-            "Cargo": e.Cargo
-        }
-        for e in escalas
-    ]
+    resultado = marcar_indisponiveis(db, ler_data_da_escala(data), [serializar_linha(e) for e in escalas])
 
     return {
         "DataEscala": data,
         "Escala": resultado
     }
-@router.put("/{data}")
-def update_escala_do_dia(data: str, escala_dia: EscalaDiaCreate, db: Session = Depends(get_db)):
-    escalas_antigas = db.query(Escala).filter(Escala.DataEscala == data).all()
 
-    if escalas_antigas:
-        for e in escalas_antigas:
-            db.delete(e)
+@router.put("/{data}", dependencies=[Depends(require_coordenador)])
+def update_escala_do_dia(data: str, escala_dia: EscalaDiaCreate, setor_id: int = Depends(get_setor_id), db: Session = Depends(get_db)):
+    data_dt = ler_data_da_escala(data)
+    escalas_antigas = db.query(Escala).filter(Escala.DataEscala == data, Escala.setor_id == setor_id).all()
+    # o tipo (regular/extra) de quem continua no turno não muda ao salvar
+    tipos_existentes = {(e.Cpf, e.Horario): e.tipo for e in escalas_antigas}
+
+    try:
+
+        if escalas_antigas:
+            for e in escalas_antigas:
+
+                db.delete(e)
+            db.flush()
+
+        novas_escalas, cpfs_com_extra_novo = criar_linhas(db, data, data_dt, escala_dia, setor_id, tipos_existentes)
+        linhas = [serializar_linha(e) for e in novas_escalas]
         db.commit()
 
-    novas_escalas = []
-    for item in escala_dia.Escala:
-        nova_escala = Escala(
-            DataEscala=data,
-            Horario=item.Horario,
-            Nome=item.Nome,
-            Cargo=item.Cargo
-        )
-        db.add(nova_escala)
-        novas_escalas.append(nova_escala)
+    except Exception as e:
+        db.rollback()
+        raise e
 
-    db.commit()
-    for e in novas_escalas:
-        db.refresh(e)
-
-    return {
-        "message": "Escala atualizada com sucesso",
-        "DataEscala": data,
-        "Escala": [
-            {"Horario": e.Horario, "Nome": e.Nome, "Cargo": e.Cargo}
-            for e in novas_escalas
-        ]
-    }
+    return resposta_com_avisos(db, "Escala atualizada com sucesso", data, data_dt, linhas, setor_id, cpfs_com_extra_novo)

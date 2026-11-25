@@ -61,7 +61,7 @@ const CalendarPage = () => {
 
       <div className="calendar-grid">
         {daysOfWeek.map((day) => (
-          <div key={day} className="calendar-day-name">
+          <div key={day.toString().padStart(2, '0')} className="calendar-day-name">
             {day}
           </div>
         ))}
@@ -69,7 +69,7 @@ const CalendarPage = () => {
           <div
             key={index}
             onClick={() => 
-              day && navigate(`/escalaDoDia/${day}-${currentMonth + 1}-${currentYear}`)
+              day.toString().padStart(2, '0') && navigate(`/escalaDoDia/${day.toString().padStart(2, '0')}-${currentMonth + 1}-${currentYear}`)
           }
                       className={`calendar-day ${
 

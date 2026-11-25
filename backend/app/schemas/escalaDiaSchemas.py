@@ -5,6 +5,7 @@ class EscalaItem(BaseModel):
     Horario: str
     Nome: str
     Cargo: str
+    Cpf: str
 
 class EscalaDiaCreate(BaseModel):
     DataEscala: str

@@ -1,0 +1,705 @@
+import { useParams } from "react-router-dom";
+import { useState, useEffect, useCallback } from "react";
+import "./EditarEscala.css";
+import "bootstrap/dist/css/bootstrap.min.css";
+import { api, getSetorAtual } from "../../components/api/Api";
+import { isCargoGestao, isGestor } from "../../components/utils/perfis";
+import { avisar, avisarExtrasAlocados } from "../../components/Mensagens";
+
+const horarios = ["07:00 - 19:00", "19:00 - 07:00"];
+
+const toISO = (dataBR) => {
+    if (!dataBR) return null;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dataBR)) return dataBR;
+    const [d, m, y] = dataBR.split("-");
+    return `${y}-${m}-${d}`;
+};
+
+
+const EscalaDoDia = () => {
+    const { data } = useParams();
+    const setorAtual = getSetorAtual();
+
+    const [usuarios, setUsuarios] = useState([]);
+    const [categorias, setCategorias] = useState([]);
+    const [escala, setEscala] = useState([]);
+    const [nomesAusentes, setNomesAusentes] = useState([]);
+    const [escalaExistente, setEscalaExistente] = useState([]);
+    const [user, setUser] = useState(null);
+
+    // período da data: undefined enquanto carrega, null se não houver
+    const [periodo, setPeriodo] = useState(undefined);
+    // resumo de extras/trocas do período (GET /avisos/)
+    const [situacao, setSituacao] = useState(null);
+
+    const [trocasAprovadas, setTrocasAprovadas] = useState([]);
+    const [modalInfo, setModalInfo] = useState(null);
+    const [emprestimosDia, setEmprestimosDia] = useState({
+        emprestados_para_fora: [],
+        recebidos: [],
+        disponiveis: [],
+    });
+
+    useEffect(() => {
+        const userData = localStorage.getItem("user");
+        if (userData) setUser(JSON.parse(userData));
+    }, []);
+
+    const gestor = isGestor(user);
+
+    const carregarPeriodo = useCallback(async () => {
+        if (!data || !gestor) return;
+
+        try {
+            const vigente = await api.get(`/periodos/vigente?data=${toISO(data)}`);
+            setPeriodo(vigente || null);
+            setSituacao(vigente ? await api.get(`/avisos/?periodo_id=${vigente.id}`) : null);
+        } catch (err) {
+            console.error("Erro ao buscar período e avisos:", err);
+        }
+    }, [data, gestor]);
+
+    useEffect(() => {
+        carregarPeriodo();
+    }, [carregarPeriodo]);
+
+    useEffect(() => {
+        if (!data) return;
+
+        const fetchTrocas = async () => {
+            try {
+                const dataRes = await api.get("/trocas/");
+
+                const [dia, mes, ano] = data.split("-");
+                const dataISO = `${ano}-${mes}-${dia}`;
+
+                const aprovadas = dataRes.filter((t) => {
+                    if (t.situacao !== "Aprovada") return false;
+                    const meuDiaBR = (t.meudia);
+                    const diaColegaBR = (t.diacolega);
+                    console.log("Comparando trocas:", meuDiaBR, diaColegaBR, "com", dataISO);
+                    return meuDiaBR === dataISO || diaColegaBR === dataISO;
+                });
+                console.log("Trocas aprovadas para a data:", aprovadas);
+                setTrocasAprovadas(aprovadas);
+            } catch (err) {
+                console.error("Erro ao buscar trocas aprovadas:", err);
+            }
+        };
+
+        fetchTrocas();
+    }, [data]);
+
+    const envolvidosEmTroca = trocasAprovadas.flatMap((t) => [
+        { nome: t.cpfSolicitante, turno: t.horariodestinatario },
+        { nome: t.cpfDestinatario, turno: t.horariosolicitante },
+    ]);
+
+    const estaEmTroca = (nome, turnoAtual) => {
+        console.log("Checando troca para:", nome, turnoAtual, envolvidosEmTroca);
+        if (envolvidosEmTroca.some((e) => e.nome === nome && e.turno === turnoAtual)) {
+            console.log("Encontrado em troca:", nome, turnoAtual);
+        }
+        return envolvidosEmTroca.some((e) => e.nome === nome && e.turno === turnoAtual);
+    };
+
+    const getTrocaInfo = (nome, turnoAtual) => {
+        return trocasAprovadas.find(
+            (t) =>
+                (t.cpfSolicitante === nome && t.horariodestinatario === turnoAtual) ||
+                (t.cpfDestinatario === nome && t.horariosolicitante === turnoAtual)
+        );
+    };
+
+    useEffect(() => {
+        const fetchUsuarios = async () => {
+            try {
+                const dataRes = await api.get("/users/");
+                const ativos = dataRes.filter(
+                    (u) => !isCargoGestao(u.cargo) && u.setor_id === getSetorAtual()?.id
+                );
+                setUsuarios(ativos);
+
+                const uniqueCategorias = [...new Set(dataRes.map((u) => u.cargo))].filter(
+                    (cargo) => cargo && !isCargoGestao(cargo)
+                );
+                setCategorias(uniqueCategorias);
+            } catch (err) {
+                console.error("Erro ao buscar usuários:", err);
+            }
+        };
+
+        fetchUsuarios();
+    }, []);
+
+    // empréstimos do dia: quem saiu do setor, quem veio de outro setor e quem pode cobrir um plantão
+    useEffect(() => {
+        if (!data || !gestor) return;
+
+        api.get(`/emprestimos/dia/${data}`)
+            .then((res) => setEmprestimosDia({
+                emprestados_para_fora: res?.emprestados_para_fora || [],
+                recebidos: res?.recebidos || [],
+                disponiveis: res?.disponiveis || [],
+            }))
+            .catch((err) => console.error("Erro ao buscar empréstimos do dia:", err));
+    }, [data, gestor]);
+
+    const cpfsEmprestadosParaFora = new Set(emprestimosDia.emprestados_para_fora.map((e) => e.cpf));
+    // funcionários que trabalham no setor neste dia: os do setor que não foram emprestados + os recebidos
+    const membrosDoDia = [
+        ...usuarios.filter((u) => !cpfsEmprestadosParaFora.has(u.cpf)),
+        ...emprestimosDia.recebidos.filter((r) => !usuarios.some((u) => u.cpf === r.cpf)),
+    ];
+    const emprestaveis = emprestimosDia.disponiveis.filter(
+        (u) => !membrosDoDia.some((m) => m.cpf === u.cpf)
+    );
+    const ehEmprestimoPontual = (cpf) =>
+        !membrosDoDia.some((u) => u.cpf === cpf) && emprestaveis.some((u) => u.cpf === cpf);
+    const setorOrigemDe = (cpf) =>
+        (emprestaveis.find((u) => u.cpf === cpf) || emprestimosDia.recebidos.find((u) => u.cpf === cpf))?.setor_nome;
+
+    useEffect(() => {
+        if (categorias.length > 0) {
+            const novaEscala = Array.from({ length: horarios.length }, () =>
+                Array.from({ length: categorias.length }, () => [])
+            );
+            setEscala(novaEscala);
+        }
+    }, [categorias]);
+
+    useEffect(() => {
+        const fetchEscala = async () => {
+            if (!data) return;
+            try {
+                const dataRes = await api.get(`/escaladodia/${data}`);
+                setEscalaExistente(dataRes.Escala || []);
+            } catch (err) {
+                if (err.status !== 404) console.error("Erro ao buscar escala:", err);
+            }
+        };
+
+        fetchEscala();
+    }, [data]);
+
+    useEffect(() => {
+        if (escalaExistente.length === 0 || categorias.length === 0) return;
+
+        const novaEscala = Array.from({ length: horarios.length }, () =>
+            Array.from({ length: categorias.length }, () => [])
+        );
+
+        escalaExistente.forEach((item) => {
+            const row = horarios.indexOf(item.Horario);
+            const col = categorias.indexOf(item.Cargo);
+            if (row >= 0 && col >= 0) novaEscala[row][col].push({
+                nome: item.Nome,
+                cpf: item.Cpf,
+                tipo: item.Tipo,
+                setorOrigem: item.SetorOrigem,
+                indisponivel: item.Indisponivel,
+            });
+        });
+
+        setEscala(novaEscala);
+    }, [escalaExistente, categorias]);
+
+    
+
+    useEffect(() => {
+        if (!data) return;
+
+        const fetchAusentes = async () => {
+            try {
+                const dataISO = toISO(data);
+                const dataRes = await api.get(`/ausentes/${dataISO}`);
+                setNomesAusentes(dataRes || []);
+            } catch (err) {
+                console.error("Erro ao buscar ausentes:", err);
+                setNomesAusentes([]);
+            }
+        };
+
+        fetchAusentes();
+    }, [data]);
+
+
+const isTurnoBlockedByAusencia = (dataBR, turno, ausencia) => {
+    const diaISO = toISO(dataBR);
+    const inicio = ausencia.data;
+    const fim = ausencia.data_final || ausencia.data;
+
+    const idxTurno = horarios.indexOf(turno);
+    const idxInicio = horarios.indexOf(ausencia.horario);
+    const idxFim = horarios.indexOf(ausencia.horario_final || ausencia.horario);
+
+    if (diaISO < inicio || diaISO > fim) return false;
+
+    if (diaISO === inicio && diaISO === fim) {
+        return idxTurno >= idxInicio && idxTurno <= idxFim;
+    } 
+    
+    if (diaISO === inicio) {
+        return idxTurno >= idxInicio;
+    }
+
+    if (diaISO === fim) {
+        return idxTurno <= idxFim;
+    }
+
+    return true;
+};
+    
+
+    
+
+    const isUserAbsentForTurn = (cpf, turno) => {
+        if (!nomesAusentes || nomesAusentes.length === 0) return false;
+
+        return nomesAusentes.some((a) => {
+            if (a.ausente !== "Sim") return false;
+            if (a.cpf !== cpf) return false;
+            return isTurnoBlockedByAusencia(data, turno, a);
+        });
+    };
+
+    const nomesDaLista = (lista, categoria, horario) =>
+        lista
+            .filter((u) => u.cargo === categoria)
+            .filter((u) => !isUserAbsentForTurn(u.cpf, horario))
+            .filter((u) => u.situacao === "Ativo")
+            .map((u) => ({ nome: u.nome_completo, cpf: u.cpf, cargo: u.cargo, setor: u.setor_nome }));
+
+    const nomesPorCategoria = (categoria, horario) => nomesDaLista(membrosDoDia, categoria, horario);
+
+    // funcionários de outros setores que não estão na escala do próprio setor neste dia
+    const emprestaveisPorCategoria = (categoria) =>
+        Array.from(
+            new Map(
+                horarios
+                    .flatMap((h) => nomesDaLista(emprestaveis, categoria, h))
+                    .map((u) => [u.cpf, u])
+            ).values()
+        );
+
+    const salvoNoTurno = (cpf, horario) =>
+        escalaExistente.some((e) => e.Cpf === cpf && e.Horario === horario);
+
+    // o servidor mantém o tipo de quem já estava salvo no turno; quem entra depois da escala gerada vira extra
+    const tipoPrevisto = (cpf, horario) => {
+        const salvo = escalaExistente.find((e) => e.Cpf === cpf && e.Horario === horario);
+        if (salvo) return salvo.Tipo || "regular";
+        // empréstimo de um único plantão sempre conta como extra
+        if (ehEmprestimoPontual(cpf)) return "extra";
+        return periodo?.escala_gerada_em ? "extra" : "regular";
+    };
+
+    // extras ainda não salvos desta pessoa na tela (o outro turno do dia)
+    const extrasNaoSalvos = (cpf) =>
+        horarios.filter((h, rowIdx) =>
+            !salvoNoTurno(cpf, h) &&
+            (escala[rowIdx] || []).some((coluna) => coluna.some((item) => item.cpf === cpf))
+        ).length;
+
+    const avisarSeExcederExtras = (usuario) => {
+        const limite = situacao?.limites?.max_extras_periodo;
+        if (limite === undefined || limite === null) return;
+
+        const resumo = situacao.funcionarios?.find((f) => f.cpf === usuario.cpf);
+        const extras = (resumo?.extras || 0) + extrasNaoSalvos(usuario.cpf) + 1;
+
+        if (extras > limite) {
+            avisar(
+                `${usuario.nome_completo} passará do limite de extras do período (${extras}/${limite}). ` +
+                "O plantão será incluído mesmo assim.",
+                { variante: "atencao" }
+            );
+        }
+    };
+
+    const handleDragStart = (e, usuario) => {
+        e.dataTransfer.setData("usuario", JSON.stringify({
+            nome: usuario.nome,
+            cpf: usuario.cpf
+        }));
+    };
+
+    const allowDrop = (e) => e.preventDefault();
+
+    const handleDrop = (e, row, col) => {
+        e.preventDefault();
+        const usuarioSelecionado = JSON.parse(e.dataTransfer.getData("usuario") || "{}");
+        const categoriaAlvo = categorias[col];
+        const horarioAlvo = horarios[row];
+        const usuario =
+            membrosDoDia.find((u) => u.cpf === usuarioSelecionado.cpf) ||
+            emprestaveis.find((u) => u.cpf === usuarioSelecionado.cpf);
+
+        if (!usuario || !usuarioSelecionado.cpf) return;
+
+        if (usuario.cargo !== categoriaAlvo) {
+            avisar(`${usuario.nome_completo} não pertence à categoria ${categoriaAlvo}.`, { variante: "erro" });
+            return;
+        }
+
+        if (isUserAbsentForTurn(usuario.cpf, horarioAlvo)) {
+            avisar(
+                `${usuario.nome_completo} está ausente para o turno ${horarioAlvo}.`,
+                { variante: "erro" }
+            );
+            return;
+        }
+
+        const novaEscala = escala.map((l) => l.map((c) => [...c]));
+        const jaExiste = novaEscala[row].some((coluna) => coluna.some((item) => item.cpf === usuario.cpf));
+
+        if (jaExiste) {
+            avisar(`${usuario.nome_completo} já está escalado para o turno ${horarioAlvo}.`, { variante: "erro" });
+            return;
+        }
+
+        const tipo = tipoPrevisto(usuario.cpf, horarioAlvo);
+
+        // só avisa: o limite de extras nunca impede a inclusão
+        if (tipo === "extra" && !salvoNoTurno(usuario.cpf, horarioAlvo)) {
+            avisarSeExcederExtras(usuario);
+        }
+
+        novaEscala[row][col].push({
+            nome: usuario.nome_completo,
+            cpf: usuario.cpf,
+            tipo,
+            setorOrigem: setorOrigemDe(usuario.cpf),
+        });
+        setEscala(novaEscala);
+    };
+
+
+    const removerNome = (row, col, cpf) => {
+        const novaEscala = escala.map((linha) => linha.map((col) => [...col]));
+        novaEscala[row][col] = novaEscala[row][col].filter((item) => item.cpf !== cpf);
+        setEscala(novaEscala);
+    };
+
+
+    const existeUsuarioDesativadoNaEscala = () => {
+        for (let row = 0; row < escala.length; row++) {
+            for (let col = 0; col < escala[row].length; col++) {
+                for (const item of escala[row][col]) {
+                    const usuario = usuarios.find(
+                        (u) => u.cpf === item.cpf
+                    );
+
+                    if (usuario && usuario.situacao === "Desativado") {
+                        return item.nome;
+                    }
+                }
+            }
+        }
+        return null;
+    };
+
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+
+        const nomeDesativado = existeUsuarioDesativadoNaEscala();
+
+        if (nomeDesativado) {
+            avisar(`O usuário ${nomeDesativado} está desativado e não pode ser escalado.`, { variante: "erro" });
+            return;
+        }
+
+        const payload = {
+            DataEscala: data,
+            Escala: [],
+        };
+
+        horarios.forEach((horario, rowIdx) => {
+            categorias.forEach((categoria, colIdx) => {
+                escala[rowIdx][colIdx].forEach((item) => {
+                    payload.Escala.push({ Horario: horario, Nome: item.nome, Cargo: categoria, Cpf: item.cpf });
+                });
+            });
+        });
+
+        try {
+            const resposta = escalaExistente.length > 0
+                ? await api.put(`/escaladodia/${data}`, payload)
+                : await api.post(`/escaladodia/${data}`, payload);
+
+            // a resposta traz o tipo decidido pelo servidor; também evita um novo POST no próximo envio
+            if (Array.isArray(resposta?.Escala)) setEscalaExistente(resposta.Escala);
+
+            carregarPeriodo();
+
+            const avisos = resposta?.avisos || [];
+            await avisar(
+                avisos.length > 0
+                    ? `Escala enviada com sucesso!\n\nAvisos de limite do período:\n${avisos.map((a) => `• ${a.mensagem}`).join("\n")}`
+                    : "Escala enviada com sucesso!",
+                { variante: avisos.length > 0 ? "atencao" : "sucesso", titulo: "Escala enviada" }
+            );
+            await avisarExtrasAlocados(resposta?.extras_alocados);
+        } catch (err) {
+            console.error(err);
+            avisar(err.message || "Erro ao enviar escala", { variante: "erro" });
+        }
+    };
+
+    const maxRows = Math.max(...categorias.map((cat) => nomesPorCategoria(cat, horarios[0]).length), 2);
+
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    const [dia, mes, ano] = data ? data.split("-").map(Number) : [null, null, null];
+    const dataSelecionada = data ? new Date(ano, mes - 1, dia) : null;
+    if (dataSelecionada) dataSelecionada.setHours(0, 0, 0, 0);
+    const isDataPassada = dataSelecionada && dataSelecionada < hoje;
+
+    const isUsuarioDesativado = (cpf) => {
+        console.log("Verificando se usuário desativado:", cpf);
+        return usuarios.some(
+            (u) => u.cpf === cpf && u.situacao === "Desativado"
+        );
+    };
+
+    const handleDiaAnterior = () => {
+        const formatarDataURL = (data) => data.toISOString().split("T")[0];
+        let dataAnterior = formatarDataURL(new Date(dataSelecionada.getTime() - 86400000));
+        dataAnterior = dataAnterior.split("-").reverse().join("-");
+        window.location.href = "/EditarEscala/" + dataAnterior;
+    };
+
+    const handleDiaPosterior = () => {
+        const formatarDataURL = (data) => data.toISOString().split("T")[0];
+        let dataPosterior = formatarDataURL(new Date(dataSelecionada.getTime() + 86400000));
+        dataPosterior = dataPosterior.split("-").reverse().join("-");
+        window.location.href = "/EditarEscala/" + dataPosterior;
+    };
+
+
+    return (
+        <div className="container mt-4">
+            {isDataPassada && (<h2 className="alert alert-danger"> Observando data passada </h2>)}
+            <h2 style={{ textAlign: "center", marginBottom: "30px" }}>
+                Escala do Dia: {data ? data.replaceAll("-", "/") : "Nenhuma data selecionada"}
+                {setorAtual && ` — ${setorAtual.nome}`}
+            </h2>
+            
+            <div>
+                <div className="mb-3 d-flex justify-content-between">
+                    <td>
+                        <button className="btn btn-outline-primary" style={{ width: "140%" }} onClick={handleDiaAnterior}> ← Dia Anterior</button>
+                    </td>
+                    <td style={{ width: "100%" }}></td>
+                    <td>
+                        <button className="btn btn-outline-primary" style={{ width: "140%" }} onClick={handleDiaPosterior}>Dia Posterior →</button>
+                    </td>
+                </div>
+            </div>
+
+            {gestor && (
+                <div className="escala-layout">
+                    <div className="nomes-box">
+                        <h3>Nomes disponíveis</h3>
+                        <table className="nomes-table">
+                            <thead>
+                                <tr>{categorias.map((cat, idx) => <th key={idx}>{cat}</th>)}</tr>
+                            </thead>
+                            <tbody>
+                                {Array.from({ length: maxRows }).map((_, rowIdx) => (
+                                    <tr key={rowIdx}>
+                                        {categorias.map((cat, colIdx) => {
+                                            const nomes = Array.from(
+                                                new Map(
+                                                    horarios
+                                                        .flatMap((h) => nomesPorCategoria(cat, h))
+                                                        .map((u) => [u.cpf, u])
+                                                ).values()
+                                            );
+
+                                            return (
+                                                <td key={colIdx}>
+                                                    {nomes[rowIdx] && (
+                                                        <div
+                                                            draggable={!isDataPassada}
+                                                            onDragStart={(e) => handleDragStart(e, nomes[rowIdx])}
+                                                            className="nome-item"
+                                                        >
+                                                            {nomes[rowIdx].nome}
+                                                            {setorOrigemDe(nomes[rowIdx].cpf) && (
+                                                                <small className="text-muted"> ({setorOrigemDe(nomes[rowIdx].cpf)})</small>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </td>
+                                            );
+                                        })}
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+
+                        {emprestaveis.length > 0 && (
+                            <>
+                                <h3 className="mt-4">Emprestar de outro setor</h3>
+                                <table className="nomes-table">
+                                    <thead>
+                                        <tr>{categorias.map((cat, idx) => <th key={idx}>{cat}</th>)}</tr>
+                                    </thead>
+                                    <tbody>
+                                        {Array.from({
+                                            length: Math.max(...categorias.map((cat) => emprestaveisPorCategoria(cat).length), 0),
+                                        }).map((_, rowIdx) => (
+                                            <tr key={rowIdx}>
+                                                {categorias.map((cat, colIdx) => {
+                                                    const nome = emprestaveisPorCategoria(cat)[rowIdx];
+                                                    return (
+                                                        <td key={colIdx}>
+                                                            {nome && (
+                                                                <div
+                                                                    draggable={!isDataPassada}
+                                                                    onDragStart={(e) => handleDragStart(e, nome)}
+                                                                    className="nome-item"
+                                                                >
+                                                                    {nome.nome}
+                                                                    <small className="text-muted"> ({nome.setor})</small>
+                                                                </div>
+                                                            )}
+                                                        </td>
+                                                    );
+                                                })}
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </>
+                        )}
+                    </div>
+
+                    <div className="escala-box">
+                        <h3>Escala</h3>
+                        <form onSubmit={!isDataPassada ? handleSubmit : (e) => e.preventDefault()} className="form">
+                            <table className="escala-table">
+                                <thead>
+                                    <tr>
+                                        <th>Horário</th>
+                                        {categorias.map((cat, idx) => <th key={idx}>{cat}</th>)}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {horarios.map((horario, rowIdx) => (
+                                        <tr key={rowIdx}>
+                                            <td>{horario}</td>
+
+                                            {categorias.map((_, colIdx) => (
+                                                <td
+                                                    key={colIdx}
+                                                    onDragOver={allowDrop}
+                                                    onDrop={(e) => handleDrop(e, rowIdx, colIdx)}
+                                                    className="escala-cell"
+                                                >
+                                                                        {escala[rowIdx] && escala[rowIdx][colIdx] && escala[rowIdx][colIdx].length > 0 ? (
+                                                escala[rowIdx][colIdx].map((item, i) => {
+                                                    const nome = item.nome;
+                                                    const cpf = item.cpf;
+                                                    const extra = item.tipo === "extra";
+                                                    const turnoAtual = horarios[rowIdx];
+                                                    const trocado = estaEmTroca(cpf, turnoAtual);
+                                                    const info = getTrocaInfo(cpf, turnoAtual);
+
+                                                    return (
+                                                        <div
+                                                            key={`${cpf}-${i}`}
+                                                            className="nome-escala"
+                                                            style={{
+                                                                color: isUsuarioDesativado(cpf)
+                                                                    ? "red"
+                                                                    : trocado
+                                                                        ? "orange"
+                                                                        : "inherit",
+                                                                fontWeight: trocado ? "bold" : "normal",
+                                                                cursor: trocado ? "pointer" : "default",
+                                                            }}
+
+                                                            onClick={() => {
+                                                                if (trocado && info) setModalInfo(info);
+                                                            }}
+                                                        >
+                                                            <span>
+                                                                <span style={{ textDecoration: item.indisponivel ? "line-through" : "none" }}>
+                                                                    {nome}
+                                                                </span>
+                                                                {item.indisponivel && (
+                                                                    <span className="badge bg-secondary ms-1">indisponível</span>
+                                                                )}
+                                                                {extra && (
+                                                                    <span className="badge bg-info text-dark ms-1">extra</span>
+                                                                )}
+                                                                {item.setorOrigem && (
+                                                                    <span className="badge bg-warning text-dark ms-1">
+                                                                        emprestado ({item.setorOrigem})
+                                                                    </span>
+                                                                )}
+                                                            </span>{" "}
+                                                            {!trocado && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => removerNome(rowIdx, colIdx, cpf)}
+                                                                    className="remove-btn"
+                                                                >
+                                                                    X
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })
+                                            ) : (
+                                                "—"
+                                            )}
+                                                </td>
+                                            ))}
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+
+                            {!isDataPassada && gestor && (
+                                <button type="submit" className="submit-button">Enviar Escala</button>
+                            )}
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {user && !gestor && <h2>Você não tem permissão para acessar esta página.</h2>}
+
+            {modalInfo && (
+                <div className="modal-bg" onClick={() => setModalInfo(null)}>
+                    <div className="modal-box" onClick={(e) => e.stopPropagation()}>
+                        <h2>Troca Aprovada</h2>
+                        <p>
+                            <strong>Solicitante:</strong> {modalInfo.nomeSolicitante}
+                        </p>
+                        <p>
+                            <strong>Destinatário:</strong> {modalInfo.nomeDestinatario}
+                        </p>
+                        <p>
+                            <strong>Turno do Solicitante:</strong> {modalInfo.horariosolicitante}
+                        </p>
+                        <p>
+                            <strong>Turno do Destinatário:</strong> {modalInfo.horariodestinatario}
+                        </p>
+                        <p>
+                            <strong>Motivo:</strong> {modalInfo.motivo}
+                        </p>
+
+                        <button className="close-modal" onClick={() => setModalInfo(null)}>Fechar</button>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+export default EscalaDoDia;
